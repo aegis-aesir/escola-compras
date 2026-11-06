@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Estrelas: iniciar sistema local",
+      "type": "process",
+      "command": "node",
+      "args": ["scripts/run-framework.mjs", "dev", "--hostname", "127.0.0.1"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {"reveal": "always", "panel": "dedicated"}
+    },
+    {
+      "label": "Estrelas: verificar tipos",
+      "type": "process",
+      "command": "node",
+      "args": ["node_modules/typescript/bin/tsc", "--noEmit"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Estrelas: testar regras de compras",
+      "type": "process",
+      "command": "node",
+      "args": ["scripts/workflow-test.mjs"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Estrelas: gerar versão",
+      "type": "process",
+      "command": "node",
+      "args": ["scripts/run-framework.mjs", "build"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": [],
+      "group": {"kind": "build", "isDefault": true}
+    }
+  ]
+}

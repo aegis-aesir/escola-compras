@@ -1,0 +1,11 @@
+{
+  "chatgpt.openOnStartup": true,
+  "editor.tabSize": 2,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.wrangler": true,
+    "**/.sites-runtime": true
+  }
+}

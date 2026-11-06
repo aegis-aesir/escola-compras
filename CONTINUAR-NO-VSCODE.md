@@ -1,0 +1,40 @@
+# Continuar no VS Code
+
+Este é o mesmo sistema de compras construído no app. O código e o histórico Git estão nesta pasta; não é necessário recriar o projeto.
+
+## Primeiro uso
+
+1. Abra a área de trabalho `Colegio Estrelas.code-workspace`, na pasta acima.
+2. Abra o Codex pela barra lateral ou por `Ctrl+Shift+P` → `Codex: Open Codex Sidebar`.
+3. Se aparecer a tela de entrada, entre com sua conta ChatGPT. A instalação não cria uma nova conta ou assinatura.
+4. Comece com a mensagem abaixo.
+
+> Continue o sistema de compras do Colégio Estrelas neste projeto existente. Leia AGENTS.md, IMPLEMENTACAO.md e CONTINUAR-NO-VSCODE.md. O fluxo das duas diretorias já está definido e testado. A diretoria geral aprova a necessidade, não o valor. Precisamos agora implementar a pesquisa real de preços na internet e o agente WhatsApp para cotar em Manaus, buscar fornecedores nacionais após 1 dia útil sem proposta válida e apoiar a execução pela diretoria administrativa. Primeiro confira o estado do projeto e identifique as integrações e configurações que faltam. Preserve os registros, as regras aprovadas e a hospedagem existente.
+
+## Atalhos preparados
+
+Em `Terminal` → `Run Task`, use:
+
+- **Estrelas: iniciar sistema local** — abre o servidor de desenvolvimento em http://127.0.0.1:5173.
+- **Estrelas: verificar tipos** — verifica a consistência do código.
+- **Estrelas: testar regras de compras** — testa papéis e prazos com dados fictícios.
+- **Estrelas: gerar versão** — gera os arquivos de produção, sem publicar.
+
+O ambiente local já tem dependências instaladas e banco local preparado. Os registros TESTE LOCAL não são dados reais e não são publicados. O usuário de teste local chama-se Seedy.
+
+## O que falta conectar
+
+- Pesquisa automática de referências e de fornecedores nacionais.
+- WhatsApp Business: número, provedor, envio, recebimento e interpretação das propostas.
+- Execução em segundo plano e monitoramento do prazo com o painel fechado.
+- Acessos dos funcionários e das diretorias, usando seus e-mails reais.
+
+Não há credenciais dessas integrações configuradas neste projeto. A configuração do editor não ativa esses serviços.
+
+## Hospedagem atual
+
+Site privado: https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site
+
+O projeto está vinculado a Sites pelo arquivo `.openai/hosting.json` e pelo Git remoto existente. Não recriar a hospedagem. O último código publicado antes desta preparação do editor corresponde ao commit `aef7bf078efa1458e56900335102b42a254b6ea5`.
+
+As ferramentas e plugins disponíveis na extensão podem diferir dos disponíveis no app. Se a publicação Sites não estiver disponível na extensão, a edição e os testes continuam locais; a publicação pode ser realizada pelo app no mesmo projeto. Não copiar credenciais entre ferramentas.
