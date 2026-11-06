@@ -1,0 +1,20 @@
+import { z } from 'zod';
+export const sectors = ['Pedagógico', 'Secretaria', 'Administrativo', 'Financeiro', 'Manutenção', 'Limpeza', 'Cozinha', 'Tecnologia'];
+export const stages = {pending:'Aguardando aprovação',quoting:'Em cotação',approved:'Compra aprovada',ordered:'Pedido realizado',received:'Recebido',rejected:'Não aprovado'};
+export type Stage = keyof typeof stages;
+export const itemSchema = z.object({name:z.string().trim().min(2).max(160),quantity:z.number().positive().max(100000),unit:z.string().trim().min(1).max(30),spec:z.string().trim().max(500)});
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,'Data inválida');
+export const requestSchema = z.object({title:z.string().trim().min(3).max(140),department:z.string().trim().min(2).max(80),priority:z.enum(['Normal','Alta','Urgente']),neededBy:date,reason:z.string().trim().min(5).max(2000),items:z.array(itemSchema).min(1).max(50)});
+export const supplierSchema = z.object({name:z.string().trim().min(2).max(150),category:z.string().trim().min(2).max(100),phone:z.string().regex(/^\+?[1-9]\d{9,14}$/,'Use o número com DDI e DDD, sem espaços'),contact:z.string().trim().max(100)});
+export const quoteSchema = z.object({supplierId:z.string().uuid(),prices:z.array(z.number().positive().max(10000000)).min(1).max(50),freight:z.number().nonnegative().max(1000000),deliveryDays:z.number().int().nonnegative().max(365),conditions:z.string().trim().min(2).max(1000),validUntil:date});
+export type Item = z.infer<typeof itemSchema>;
+export type Supplier = z.infer<typeof supplierSchema> & {id:string;version:number};
+export type Quote = z.infer<typeof quoteSchema> & {id:string;supplierName:string;createdAt:string;total:number};
+export type Purchase = z.infer<typeof requestSchema> & {id:string;code:string;authorId:string;authorName:string;status:Stage;quotes:Quote[];selectedQuoteId?:string;decision?:string;createdAt:string;updatedAt:string;version:number};
+export type Member = {id:string;email:string;name:string;role:'solicitante'|'compras'|'aprovador'|'admin';department:string;version:number};
+export type Settings = {name:string;legalName:string;minQuotes:number;departments:string[]};
+export type Activity = {id:string;entity:string;actor:string;action:string;at:string};
+export type Snapshot = {requests:Purchase[];suppliers:Supplier[];members:Member[];settings:Settings;activity:Activity[];me:{id:string;name:string;email:string;role:Member['role'];department:string}};
+export const money = (n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+export const quoteTotal = (items:Item[], prices:number[],freight:number)=>Math.round((items.reduce((sum,item,i)=>sum+item.quantity*(prices[i]??0),0)+freight)*100)/100;
+export function quotationMessage(r:Purchase,s:Supplier){return `Olá, ${s.contact||s.name}! Somos do Colégio Estrelas (Centro Educacional Estrelas do Amanhã LTDA). Solicitamos uma cotação para ${r.code}:\n\n${r.items.map((i,n)=>`${n+1}. ${i.name} — ${i.quantity} ${i.unit}${i.spec?`\n   Especificação: ${i.spec}`:''}`).join('\n')}\n\nNecessidade até: ${r.neededBy.split('-').reverse().join('/')}.\nPor favor, informe preço unitário, marca/modelo, disponibilidade, frete, prazo de entrega, condição de pagamento e validade da proposta. Informe também se algum item difere da especificação.\n\nEsta é uma solicitação de cotação, sem confirmação de compra. Obrigado!`;}
