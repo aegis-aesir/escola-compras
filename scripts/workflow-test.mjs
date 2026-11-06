@@ -1,0 +1,17 @@
+import {build} from 'esbuild';
+import assert from 'node:assert/strict';
+await build({entryPoints:['app/workflow.ts'],outfile:'outputs/workflow-test-bundle.mjs',platform:'node',format:'esm',bundle:true});
+const {transition,nextBusinessDay,localExpired}=await import('../outputs/workflow-test-bundle.mjs');
+const fri='2026-11-06T14:00:00.000Z',mon='2026-11-09T14:00:00.000Z';
+assert.equal(nextBusinessDay(fri),mon,'Friday contact expires Monday at same local time');
+assert.equal(nextBusinessDay(fri,['2026-11-09']),'2026-11-10T14:00:00.000Z','Configured holidays skipped');
+const r={id:'test',status:'quoting',quotes:[],localDeadline:mon};
+assert.equal(localExpired(r,'2026-11-09T13:59:00.000Z'),false);
+assert.equal(localExpired(r,mon),true);
+assert.equal(localExpired({...r,quotes:[{validUntil:'2026-11-09'}]},mon),false,'Valid local quote suppresses national fallback');
+const settings={minQuotes:1,holidays:[]};
+assert.throws(()=>transition({status:'general_review'},{action:'approve',reason:'aprovar necessidade'},{role:'administrativo',name:'DA'},[],settings,fri),e=>e.status===403);
+assert.throws(()=>transition({status:'admin_review'},{action:'admin_review',reason:'parecer administrativo'},{role:'geral',name:'DG'},[],settings,fri),e=>e.status===403);
+assert.throws(()=>transition({status:'quoting'},{action:'select',reason:'selecionar fornecedor'},{role:'geral',name:'DG'},[],settings,fri),e=>e.status===403);
+assert.equal(transition(r,{action:'national',reason:'prazo local sem propostas'},{role:'administrativo',name:'DA'},[],settings,mon).data.status,'national');
+console.log('PASS: separated director roles, business-day deadline, holiday skip, national fallback blocked by valid local quote.');
