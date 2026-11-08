@@ -15,3 +15,10 @@ assert.throws(()=>transition({status:'admin_review'},{action:'admin_review',reas
 assert.throws(()=>transition({status:'quoting'},{action:'select',reason:'selecionar fornecedor'},{role:'geral',name:'DG'},[],settings,fri),e=>e.status===403);
 assert.equal(transition(r,{action:'national',reason:'prazo local sem propostas'},{role:'administrativo',name:'DA'},[],settings,mon).data.status,'national');
 console.log('PASS: separated director roles, business-day deadline, holiday skip, national fallback blocked by valid local quote.');
+const e={references:[{unitPrice:10,sourceName:'Fonte teste',sourceUrl:'https://example.com/item',researchedOn:'2026-11-06'}],freight:0,freightKnown:false,notes:'Frete não apurado.'};
+const administrative={id:'auto',status:'admin_review',items:[{name:'Teste',unit:'un',quantity:2,spec:''}],quotes:[],estimate:{...e,total:20,method:'automatic',recordedAt:fri}};
+const corrected=transition(administrative,{action:'estimate',data:{...e,references:[{...e.references[0],unitPrice:12}]}},{role:'administrativo',name:'DA'},[],settings,fri);
+assert.equal(corrected.data.estimate.total,24);assert.equal(corrected.data.status,'admin_review');assert.equal(corrected.data.estimate.freightKnown,false);
+assert.throws(()=>transition({...administrative,status:'general_review'},{action:'estimate',data:e},{role:'administrativo',name:'DA'},[],settings,fri));
+
+assert.equal(transition(administrative,{action:'estimate',data:{...e,freight:80}},{role:'administrativo',name:'DA'},[],settings,fri).data.estimate.total,20,'unknown freight excluded even if submitted positive');

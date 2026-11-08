@@ -9,12 +9,14 @@ export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purcha
   const jobs=data.integrations.jobs.filter(j=>j.requestId===r.id&&j.type==='estimate_search');
   if(!jobs.length&&!['estimating','pending'].includes(r.status))return null;
   return <section className="integration-research"><h3>Pesquisa automática · OpenClaw</h3>
-    <p className="muted">Fontes encontradas precisam de conferência de preço, embalagem, frete e disponibilidade. Não são propostas comerciais.</p>
+    <p className="muted">O agente operacional do OpenClaw analisa as páginas, identifica produto, unidade e preço e devolve as referências para o sistema preencher a estimativa. Quando todos os itens têm referência, calcula o total e encaminha para análise administrativa. Valores ambíguos ficam pendentes; estimativas não são propostas comerciais.</p>
     {['estimating','pending'].includes(r.status)&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Colocar pesquisa na fila</button>}
     {!data.integrations.bridgeConfigured&&<p className="note">A ponte ainda precisa ser configurada. As pesquisas ficam guardadas na fila.</p>}
     {jobs.map(j=><div className="source-row" key={j.id}><strong>{r.items[j.itemIndex??0]?.name} · {jobLabels[j.state]}</strong><small>{j.type==='national_search'?'Fornecedores nacionais':'Referências de preço'} · {j.researchedAt?date(j.researchedAt):date(j.createdAt)}</small>
       {j.error&&<p className="muted">{j.error}</p>}
-      {j.state==='failed'&&<button className="text-button" disabled={busy} onClick={()=>onSave({action:'retry_integration',id:j.id,version:j.version})}>Tentar pesquisa novamente</button>}
+      {j.type==='estimate_search'&&j.state==='review'&&!j.priceEvidence&&<p className="note">Não foi possível confirmar automaticamente produto, unidade e preço nas páginas consultadas. Nenhum valor foi inventado. Confira as fontes ou refaça a pesquisa. {j.analysisReason}</p>}
+      {j.priceEvidence&&<p className="note">Preço extraído pelo agente operacional e validado contra a página. {j.analysisReason}</p>}
+      {['estimating','pending'].includes(r.status)&&['failed','review'].includes(j.state)&&<button className="text-button" disabled={busy} onClick={()=>onSave({action:'retry_integration',id:j.id,version:j.version})}>Refazer pesquisa de preços</button>}
       {j.sources?.length===0&&<p>Nenhuma fonte encontrada. Ajuste a pesquisa manualmente e registre as referências conferidas.</p>}
       {j.sources?.map((s,i)=><div className="research-source" key={i}><a href={s.url} target="_blank" rel="noopener noreferrer">{s.title} ↗</a><p>{s.description}</p></div>)}
     </div>)}

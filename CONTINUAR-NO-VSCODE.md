@@ -24,6 +24,8 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 ## Integração atual e próximos passos
 
+- Estimativa automática: pesquisas novas e pedidos ainda em estimativa usam o agente `operacional` do OpenClaw para analisar páginas e extrair evidências estruturadas. Todos os itens precisam de preço validável para encaminhar à análise administrativa. Frete desconhecido não entra no total. A administração pode corrigir a estimativa antes de encaminhar à diretoria geral.
+
 - Ponte OpenClaw implementada em `integrations/openclaw/`: pesquisa de fontes, cotações e recebimento para revisão, com monitoramento de prazos. Leia `INTEGRACOES.md` e confira o contato recente no painel antes de afirmar que está conectada.
 - Conta `operacional`, número +55 92 9201-7107. Envio real desativado inicialmente; não enviar mensagens de teste sem autorização específica.
 - Interpretação de propostas e acompanhamento da execução ainda dependem da administração.

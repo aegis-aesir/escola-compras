@@ -17,7 +17,8 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
   const validQuote=()=>{const q=old.quotes.find(q=>q.id===(b.quoteId||old.selectedQuoteId));if(!q)throw new FlowError('Selecione uma proposta.');if(q.validUntil<todayManaus(now))throw new FlowError('A proposta está vencida. Atualize a cotação.');return q};
   switch(b.action){
     case 'estimate':{
-      permit('administrativo');stage('estimating','pending');const e=estimateSchema.parse(b.data);
+      permit('administrativo');stage('estimating','pending','admin_review');const e=estimateSchema.parse(b.data);
+      if(e.freightKnown===false)e.freight=0;
       if(e.references.length!==old.items.length)throw new FlowError('Informe uma referência para cada item.');
       if(e.references.some(r=>r.researchedOn>todayManaus(now)))throw new FlowError('A data de pesquisa não pode estar no futuro.');
       data.estimate={...e,total:quoteTotal(old.items,e.references.map(r=>r.unitPrice),e.freight),recordedAt:now,method:'manual'};data.status='admin_review';action='Estimativa de referência registrada; encaminhada à diretoria administrativa';break;

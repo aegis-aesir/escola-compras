@@ -1,3 +1,4 @@
+import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
 import { type Purchase, type Supplier, type Settings, quotationMessage, categorySchema, supplierSchema } from '../app/model';
 import { categoryKey, matchingSuppliers, requestCategories } from '../app/supplier-discovery';
@@ -50,8 +51,8 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
   let created=0;
   for(const [itemIndex,item] of r.items.entries()) {
     const query=`${item.name} ${item.spec} ${item.unit} ${type==='estimate_search'?'preço comprar Brasil':'fornecedor entrega Manaus AM Brasil'}`.slice(0,380);
-    const id='search:'+await digest(JSON.stringify([r.id,type,itemIndex,item]));
-    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,itemIndex,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+    const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item]));
+    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
     if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
   }
   return created;
@@ -135,11 +136,11 @@ export async function retryJob(db:D1Database,id:string,version:number,actor:stri
   const j=await row<IntegrationJob>(db,id,jobKind);
   if(!j||j.version!==version)throw new FlowError('Tarefa atualizada. Recarregue o painel.',409);
   // Uncertain sends can never be retried automatically or through this action.
-  if(!['failed','blocked'].includes(j.state))throw new FlowError('Esta tarefa não permite nova tentativa.');
+  if(!['failed','blocked'].includes(j.state)&&!(j.type==='estimate_search'&&j.state==='review'))throw new FlowError('Esta tarefa não permite nova tentativa.');
   if(j.type==='whatsapp_quote'&&(j.state!=='blocked'||env.WHATSAPP_SEND_ENABLED!=='true'))throw new FlowError('Envio desativado ou exige conferência manual.');
   const r=await row<Purchase>(db,j.requestId,'request');
   if(!r||!eligible(r,j,await rows<Supplier>(db,'supplier')))throw new FlowError('A etapa do pedido não permite esta tarefa.');
-  if(!await update(db,j,{...j,state:'queued',attempts:0,error:undefined,updatedAt:now,nextAttemptAt:now},j.requestId,actor,'Nova tentativa de integração solicitada',now))throw new FlowError('Tarefa atualizada. Recarregue.',409);
+  if(!await update(db,j,{...j,state:'queued',attempts:0,error:undefined,priceEvidence:undefined,sources:undefined,researchedAt:undefined,updatedAt:now,nextAttemptAt:now},j.requestId,actor,'Nova tentativa de integração solicitada',now))throw new FlowError('Tarefa atualizada. Recarregue.',409);
 }
 async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
@@ -154,11 +155,31 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
     await update(db,r,result.data,r.id,'OpenClaw',result.action,now);
   }
 }
+async function projectAutomaticEstimates(db:D1Database,now:string) {
+  const jobs=await rows<IntegrationJob>(db,jobKind);
+  for(const r of await rows<Purchase>(db,'request')) {
+    if(!['estimating','pending'].includes(r.status)||r.estimate)continue;
+    const selected:IntegrationJob[]=[];
+    for(const [i,item] of r.items.entries()) {
+      const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item]));
+      const j=jobs.find(j=>j.id===id&&j.state==='review'&&j.priceEvidence&&j.researchedAt);
+      if(!j||!extractReference(item,j.priceEvidence!))break;
+      selected.push(j);
+    }
+    if(!selected.length||selected.length!==r.items.length)continue;
+    const references=selected.map((j,i)=>({unitPrice:extractReference(r.items[i],j.priceEvidence!)!.unitPrice,sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!))}));
+    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente operacional do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1}: ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
+    result.data.estimate!.method='automatic';
+    result.data.estimate!.freightKnown=false;
+    await update(db,r,result.data,r.id,'Sistema','Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
+  }
+}
 export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   const school=await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>();
   if(!school)throw new FlowError('Inicialize a escola pelo painel antes de ativar a ponte.',409);
   await projectSentContacts(db,JSON.parse(school.data),now);
   await advanceDeadlines(db,now);
+  await projectAutomaticEstimates(db,now);
   for(const r of await rows<Purchase>(db,'request')) {
     if(['estimating','pending'].includes(r.status)||(['quoting','national'].includes(r.status)&&r.generalApproval))await enqueueSearch(db,r,'Sistema',now);
   }
@@ -185,14 +206,14 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
       // A changed phone number requires a fresh human decision, never silent rerouting.
       if(phone(suppliers.find(s=>s.id===j.supplierId)!.phone)!==j.target)continue;
     }
-    const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,120000),updatedAt:now};
+    const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?300000:120000),updatedAt:now};
     const guards=[r,...(j.type==='whatsapp_quote'?[suppliers.find(s=>s.id===j.supplierId)!]:[])];
     if(await update(db,j,next,j.requestId,'Ponte OpenClaw','Processamento da integração iniciado',now,guards))return {...next,version:j.version+1};
   }
   return null;
 }
 const sourceSchema=z.object({title:z.string().trim().min(1).max(300),url:z.string().url().max(2000).refine(v=>{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password}),description:z.string().max(2000)});
-const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
+const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),analysis:z.object({status:z.literal('verified'),sourceUrl:z.string().url().max(2000),productName:z.string().min(2).max(300),productQuote:z.string().min(3).max(2000),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().min(3).max(2000),packageQuantity:z.number().int().min(1).max(100000),unit:z.string().max(30),unitQuote:z.string().min(3).max(2000),itemMatches:z.literal(true),unitMatches:z.literal(true),reason:z.string().min(10).max(2000)})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
 export async function completeJob(db:D1Database,input:unknown,now:string) {
   const b=resultSchema.parse(input),j=await row<IntegrationJob>(db,b.jobId,jobKind);
   if(!j||j.leaseToken!==b.leaseToken)throw new FlowError('Processamento expirado ou não reconhecido.',409);
@@ -203,11 +224,13 @@ export async function completeJob(db:D1Database,input:unknown,now:string) {
     if(b.outcome==='success'&&b.providerMessageId&&b.sentAt&&b.sentAt<=now&&b.sentAt>=j.updatedAt)next={...next,state:'done',providerMessageId:b.providerMessageId,sentAt:b.sentAt};
     else next={...next,state:'uncertain',error:'Envio sem confirmação confiável. Conferir no OpenClaw antes de novo contato.'};
   } else if(b.outcome==='success'&&b.sources) {
-    next={...next,state:'review',sources:b.sources,researchedAt:now,error:undefined};
+    next={...next,state:'review',sources:b.sources,researchedAt:now,error:undefined,priceEvidence:undefined,analysisReason:b.analysisReason};
+    if(j.type==='estimate_search'&&j.item&&b.priceEvidence&&b.sources.some(s=>s.url===b.priceEvidence!.url)&&extractReference(j.item,b.priceEvidence))next.priceEvidence=b.priceEvidence;
   } else {
     next={...next,state:j.attempts>=maxAttempts?'failed':'queued',nextAttemptAt:addMs(now,60000*2**j.attempts),error:'Pesquisa indisponível ou resposta incompatível. Confira a configuração do OpenClaw.'};
   }
   if(!await update(db,j,next,j.requestId,'OpenClaw',next.state==='review'?'Pesquisa recebida; fontes e valores exigem conferência':next.state==='done'?'Envio confirmado pelo OpenClaw':next.error!,now))throw new FlowError('Tarefa atualizada por outro processo.',409);
+  if(j.type==='estimate_search')await projectAutomaticEstimates(db,now);
   return {duplicate:false};
 }
 const inboxSchema=z.object({messageId:z.string().min(1).max(300),accountId:z.literal(accountId),from:z.string().regex(/^\+[1-9]\d{9,14}$/),to:z.literal(schoolPhone),text:z.string().min(1).max(16000),receivedAt:z.string().datetime()});

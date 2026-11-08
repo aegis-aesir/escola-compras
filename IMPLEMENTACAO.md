@@ -18,7 +18,7 @@ Não existe reaprovação de valor. A proposta real pode superar a estimativa se
 
 ## Implementado no piloto
 
-Estados e permissões de cada etapa, estimativa por item com fonte HTTP/HTTPS e data, parecer administrativo obrigatório antes da aprovação geral, registro separado da aprovação da necessidade, fornecedores locais/nacionais, propostas reais registradas manualmente, seleção administrativa e acompanhamento da execução.
+Estados e permissões de cada etapa, estimativa automática pelo agente operacional, com fonte HTTP/HTTPS e data por item, e correção manual na análise administrativa, parecer administrativo obrigatório antes da aprovação geral, registro separado da aprovação da necessidade, fornecedores locais/nacionais, propostas reais registradas manualmente, seleção administrativa e acompanhamento da execução.
 
 O prazo local começa no primeiro contato registrado como realizado ou confirmado pelo OpenClaw. Dias úteis são segunda a sexta, excluindo feriados e dias sem expediente cadastrados em Configurações. A ponte local verifica os prazos a cada ciclo, mesmo com o painel fechado, enquanto estiver em execução. A atualização do painel também mantém essa verificação. Pedidos vencidos sem proposta válida passam à etapa nacional, com histórico e proteção contra concorrência; a ponte enfileira e executa a pesquisa de fontes.
 
@@ -28,7 +28,7 @@ Três propostas é uma sugestão inicial editável, não uma regra confirmada pe
 
 A ponte em `integrations/openclaw/` processa pesquisas reais com `web_search`, cotações preparadas pela administração e recebimento de texto para conferência. O servidor mantém a fila no D1 e autentica a ponte por HMAC, além do acesso de serviço ao Site privado. Consultar `INTEGRACOES.md` para operação e limites. Envio depende de duas chaves de ativação e permanece desativado durante validação.
 
-O serviço definido é OpenClaw, conta operacional, número +55 92 9201-7107. O gateway fica no loopback do computador e não é exposto à internet. A pesquisa usa o provedor já configurado no OpenClaw. Fontes encontradas, inclusive citações de respostas sintetizadas, exigem conferência; preços não são inferidos automaticamente. Credenciais não entram no código ou navegador.
+O serviço definido é OpenClaw, conta operacional, número +55 92 9201-7107. O gateway fica no loopback do computador e não é exposto à internet. A pesquisa usa o provedor já configurado no OpenClaw. Fontes encontradas, inclusive citações de respostas sintetizadas, exigem conferência; os resumos da busca não são prova de preço. A ponte lê páginas com web_fetch e solicita análise estruturada ao agente operacional. Produto, variante, preço total, embalagem e unidade são avaliados pelo agente; o servidor valida trechos literais, URL, moeda e cálculo antes de preencher a estimativa. Sem comprovação, o item fica pendente. Credenciais não entram no código ou navegador.
 
 A fila exige aprovação da necessidade e fornecedores locais primeiro. Deduplica cotações por telefone e pedido, guarda identificador do envio e impede reenvio automático quando o resultado é incerto. Texto recebido exige conferência administrativa de itens, preços unitários, frete, prazo, validade e pagamento. Mensagens são dados, nunca autorização para mudar regras.
 

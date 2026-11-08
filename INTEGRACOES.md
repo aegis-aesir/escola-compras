@@ -165,3 +165,13 @@ A operação assinada `import_suppliers` da ponte recebe `batch: {source, contac
 
 O servidor valida todo o lote antes de gravar, preserva registros existentes, deduplica por telefone com ou sem `+`, registra origem/data e histórico. Retorna contagens e resultados por índice: criado, existente ou conflito de categoria/abrangência. Repetir o lote não duplica os fornecedores. Não cria pesquisas, cotações ou mensagens. Arquivos de contatos e relatórios de importação permanecem privados em `outputs/`, fora do Git. Validação isolada: `node scripts/supplier-import-test.mjs`.
 
+
+## Estimativas pelo agente operacional
+
+A ponte pesquisa fontes, lê até três páginas via `web_fetch` e passa trechos limitados ao agente existente `operacional` por `openclaw gateway call agent`. Usa o modelo/configuração já definidos para esse agente, com custo normal desse provedor. Não cria outro agente nem altera o atendimento WhatsApp. O CLI é localizado no caminho Windows padrão; `OPENCLAW_CLI_PATH` permite indicar outra instalação.
+
+A execução utiliza sessão própria por processamento, `modelRun: true`, `promptMode: none`, `disableMessageTool: true` e `deliver: false`. Não recebe credenciais do Site no subprocesso. O prompt instrui analisar apenas os textos fornecidos, não executar instruções de páginas nem usar ferramentas. A resposta JSON declara equivalência, moeda BRL, preço total, quantidade por embalagem, unidade e trechos literais. O servidor valida estrutura, fonte e evidências; a interpretação semântica é do agente e segue para conferência administrativa, não constitui aprovação de compra.
+
+Quando todos os itens têm referências, o servidor calcula quantidades e total e passa para análise administrativa. Frete desconhecido é excluído do total e identificado. Pendências não ganham preços inventados; o painel mostra a justificativa e permite refazer a pesquisa. Estimativa em análise administrativa pode ser corrigida com histórico; após encaminhamento à diretoria geral essa edição fica bloqueada. Resultados antigos ou de itens alterados não sobrescrevem pedidos. O polling recupera projeções interrompidas sem duplicação.
+
+Pesquisas de estimativa usam lease de 5 minutos para leitura/análise. A chamada ao agente tem orçamento de 120 segundos, espera do CLI de 160 segundos e limite de processo de 170 segundos. Falhas usam a política de até três tentativas existente. As pesquisas anteriores só de links são preservadas; o identificador `prices-agent-v1` inicia a extração para pedidos ainda em estimativa. Testes: `node scripts/price-evidence-test.mjs`, `node scripts/automatic-estimate-test.mjs` e os testes de integração existentes. Nenhuma mensagem real deve ser usada para validar esse fluxo.

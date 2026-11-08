@@ -1,3 +1,5 @@
+import {analyzePages} from './agent-estimator.mjs';
+import {extractReference} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
 import { isGoogleMapsUrl } from './search-utils.mjs';
 
@@ -52,7 +54,7 @@ export function searchSources(result) {
   }
   return sources;
 }
-export async function executeJob(config,job,fetcher=fetch) {
+export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) {
   const result={jobId:job.id,leaseToken:job.leaseToken};
   if(job.type==='whatsapp_quote') {
     // Never rely on OpenClaw's HTTP dryRun flag: that flag is ignored by the
@@ -75,6 +77,22 @@ export async function executeJob(config,job,fetcher=fetch) {
       }catch{/* Maps may be unavailable or unindexed; use local web sources. */}
     }
     const response=await invoke(config,{tool:'web_search',args:{query:job.query,count:5},idempotencyKey:job.id},fetcher);
-    return {...result,outcome:'success',sources:searchSources(response)};
+    const sources=searchSources(response);
+    if(job.type==='estimate_search'&&job.item) {
+      const pages=await Promise.all(sources.slice(0,3).map(async source=>{
+        try {
+          const page=structured(await invoke(config,{tool:'web_fetch',args:{url:source.url,extractMode:'text',maxChars:12000}},fetcher));
+          if(page.error||typeof page.text!=='string'||typeof page.title!=='string')return null;
+          return {url:source.url,title:page.title.slice(0,300),text:page.text.slice(0,5000),truncated:!!page.truncated||page.text.length>5000};
+        }catch{return null;}
+      }));
+      const available=pages.filter(Boolean);
+      if(!available.length)return {...result,outcome:'success',sources,analysisReason:'Não foi possível ler as páginas dos produtos.'};
+      const analysis=await analyze(job,available);
+      const selected=available.find(p=>p.url===analysis.sourceUrl);
+      const evidence=selected?{...selected,analysis}:undefined;
+      return {...result,outcome:'success',sources,priceEvidence:evidence&&extractReference(job.item,evidence)?evidence:undefined,analysisReason:typeof analysis.reason==='string'?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
+    }
+    return {...result,outcome:'success',sources};
   }catch{return {...result,outcome:'error'}}
 }

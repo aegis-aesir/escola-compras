@@ -14,7 +14,7 @@ Responda em português do Brasil, com linguagem simples. Leia `IMPLEMENTACAO.md`
 
 ## Estado real e próximos passos
 
-Há um piloto funcional com banco D1, autenticação e permissões, formulários, estimativas manuais, duas etapas de direção, registro de propostas, contatos e execução. A ponte OpenClaw está implementada: fila assinada, pesquisa de fontes, recebimento de texto para revisão, cotações com proteção contra duplicidade e monitoramento de prazo. Verificar o contato recente da ponte e as duas chaves de envio antes de afirmar que está operacional. Envio real permanece desativado na configuração inicial; pedido e acompanhamento pelo agente ainda não estão automatizados. Não simular resultados como se fossem reais.
+Há um piloto funcional com banco D1, autenticação e permissões, formulários, estimativas automáticas com extração pelo agente operacional e correção administrativa, duas etapas de direção, registro de propostas, contatos e execução. A ponte OpenClaw está implementada: fila assinada, pesquisa de fontes, recebimento de texto para revisão, cotações com proteção contra duplicidade e monitoramento de prazo. Verificar o contato recente da ponte e as duas chaves de envio antes de afirmar que está operacional. Envio real permanece desativado na configuração inicial; pedido e acompanhamento pelo agente ainda não estão automatizados. Não simular resultados como se fossem reais.
 
 Leia `INTEGRACOES.md` para operar e validar a integração. Credenciais ficam no servidor e em cofre Windows DPAPI fora do projeto. Preserve idempotência, histórico e revisão de informações ambíguas. Não enviar mensagens reais a fornecedores durante testes sem autorização específica. Não solicitar credenciais no chat; orientar configuração segura quando necessária.
 
