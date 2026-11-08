@@ -8,14 +8,14 @@ Responda em português do Brasil, com linguagem simples. Leia `IMPLEMENTACAO.md`
 - Fluxo: solicitação dos setores → estimativa de preços na internet → análise da diretoria administrativa → aprovação da necessidade pela diretoria geral → cotações reais com fornecedores locais pelo WhatsApp → busca nacional após 1 dia útil sem proposta local válida → execução gerenciada pela diretoria administrativa com apoio do agente WhatsApp → recebimento.
 - Diretora Geral: Franciluce Lima. Ela aprova o pedido, não o valor. Não criar teto financeiro ou reaprovação por diferença entre estimativa e preço real.
 - Estimativa e proposta comercial real são registros diferentes, com fontes e datas.
-- O nome/e-mail da diretoria administrativa, e-mail de Franciluce e conexão WhatsApp ainda precisam ser definidos.
+- O nome/e-mail da diretoria administrativa e e-mail de Franciluce ainda precisam ser definidos. WhatsApp: OpenClaw, conta `operacional`, número +55 92 9201-7107.
 - Três cotações é apenas a sugestão inicial configurável, ainda não regra confirmada pela escola.
 
 ## Estado real e próximos passos
 
-Há um piloto funcional com banco D1, autenticação e permissões, formulários, estimativas manuais, duas etapas de direção, registro de propostas, contatos e execução. Busca web automática, envio/recebimento WhatsApp e processamento em segundo plano AINDA NÃO estão implementados. Não descrever essas integrações como prontas nem simular resultados como se fossem reais.
+Há um piloto funcional com banco D1, autenticação e permissões, formulários, estimativas manuais, duas etapas de direção, registro de propostas, contatos e execução. A ponte OpenClaw está implementada: fila assinada, pesquisa de fontes, recebimento de texto para revisão, cotações com proteção contra duplicidade e monitoramento de prazo. Verificar o contato recente da ponte e as duas chaves de envio antes de afirmar que está operacional. Envio real permanece desativado na configuração inicial; pedido e acompanhamento pelo agente ainda não estão automatizados. Não simular resultados como se fossem reais.
 
-O próximo trabalho é definir e implementar as integrações reais, com credenciais guardadas no servidor, mensagens idempotentes, histórico e revisão de informações ambíguas. Confirmar provedor/número WhatsApp antes de escolher uma integração. Não enviar mensagens reais a fornecedores durante testes sem autorização específica. Não solicitar credenciais no chat; orientar configuração segura quando necessária.
+Leia `INTEGRACOES.md` para operar e validar a integração. Credenciais ficam no servidor e em cofre Windows DPAPI fora do projeto. Preserve idempotência, histórico e revisão de informações ambíguas. Não enviar mensagens reais a fornecedores durante testes sem autorização específica. Não solicitar credenciais no chat; orientar configuração segura quando necessária.
 
 ## Código, validação e publicação
 

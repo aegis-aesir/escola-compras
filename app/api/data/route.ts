@@ -3,6 +3,7 @@ import { getChatGPTUser } from '../../chatgpt-auth';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
+import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
@@ -19,7 +20,14 @@ async function context(){
   return {db,all,me,settings:JSON.parse(school!.data) as Settings};
 }
 function fail(e:unknown){if(e instanceof z.ZodError)return Response.json({error:e.issues[0]?.message||'Confira os campos.'},{status:400}); if(e instanceof AppError || e instanceof FlowError)return Response.json({error:e.message},{status:e.status}); console.error('Data operation failed',e instanceof Error?e.message:'unknown');return Response.json({error:'Não foi possível salvar. Tente novamente.'},{status:500});}
-export async function GET(){try{const {db,all,me,settings}=await context();const now=new Date().toISOString(); if(me.role!=='solicitante'){for(const r of all.filter(r=>r.kind==='request'&&localExpired(r,now))){const next={...r,status:'national',nationalReason:'1 dia útil sem proposta local válida',updatedAt:now};const changed=await db.batch([db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?').bind(JSON.stringify(next),r.id,r.version),db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),r.id,'Sistema','Prazo local vencido; pesquisa nacional pendente de integração',now)]);if(changed[0].meta.changes===1)Object.assign(r,next,{version:r.version+1});}}const requests=all.filter(r=>r.kind==='request'&&(me.role!=='solicitante'||r.authorId===me.id));const ids=new Set(requests.map(r=>r.id));const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();return Response.json({requests,suppliers:me.role==='solicitante'?[]:all.filter(r=>r.kind==='supplier'),members:me.role==='admin'?all.filter(r=>r.kind==='member'):[],settings,me,activity:activity.results.filter((r:any)=>me.role!=='solicitante'||ids.has(r.entity))},{headers:{'Cache-Control':'no-store'}});}catch(e){return fail(e)}}
+export async function GET(){try{
+  let {db,all,me,settings}=await context();
+  if(me.role!=='solicitante'&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
+  const requests=all.filter(r=>r.kind==='request'&&(me.role!=='solicitante'||r.authorId===me.id));
+  const ids=new Set(requests.map(r=>r.id));
+  const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
+  return Response.json({requests,suppliers:me.role==='solicitante'?[]:all.filter(r=>r.kind==='supplier'),members:me.role==='admin'?all.filter(r=>r.kind==='member'):[],settings,me,integrations:['admin','administrativo'].includes(me.role)?await integrationSnapshot(db,env):undefined,activity:activity.results.filter((r:any)=>me.role!=='solicitante'||ids.has(r.entity))},{headers:{'Cache-Control':'no-store'}});
+}catch(e){return fail(e)}}
 export async function POST(req:Request){try{
   if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new AppError('Origem inválida.',403);
   if(!req.headers.get('content-type')?.includes('application/json'))throw new AppError('Formato inválido.');
@@ -27,6 +35,19 @@ export async function POST(req:Request){try{
   let b:any;try{b=JSON.parse(raw)}catch{throw new AppError('Conteúdo inválido.')}
   const {db,all,me,settings}=await context();const now=new Date().toISOString();
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
+  if(['research','prepare_openclaw','retry_integration','review_message'].includes(b.action)){
+    permit(['admin','administrativo']);
+    if(b.action==='retry_integration')await retryJob(db,b.id,b.version,me.name,now,env);
+    else if(b.action==='review_message')await reviewMessage(db,b.id,b.version,b.reason,me.name,now);
+    else {
+      const r=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;
+      if(!r)throw new AppError('Solicitação não encontrada.',404);
+      if(r.version!==b.version)throw new AppError('Solicitação atualizada. Recarregue.',409);
+      if(b.action==='research')await enqueueSearch(db,r,me.name,now);
+      else {const s=all.find(s=>s.id===b.supplierId&&s.kind==='supplier');if(!s)throw new AppError('Fornecedor não encontrado.');await enqueueQuotation(db,r,s,me.name,now,env)}
+    }
+    return Response.json({ok:true});
+  }
   let id:string=crypto.randomUUID(),kind='',data:any,action='',old:any;
   if(b.action==='request'){
     const input=requestSchema.parse(b.data);if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { IntegrationSnapshot } from './integration-model';
 export const sectors = ['Pedagógico', 'Secretaria', 'Administrativo', 'Financeiro', 'Manutenção', 'Limpeza', 'Cozinha', 'Tecnologia'];
 export const stages = {estimating:'Estimativa na internet',admin_review:'Análise administrativa',general_review:'Aprovação do pedido · DG',quoting:'Cotação local · Manaus',national:'Busca nacional',execution:'Execução administrativa',ordered:'Pedido realizado',received:'Recebido',rejected:'Não aprovado',pending:'Legado · estimativa pendente',approved:'Compra aprovada (fluxo anterior)'};
 export type Stage = keyof typeof stages;
@@ -13,11 +14,11 @@ export type Item = z.infer<typeof itemSchema>;
 export type Supplier = z.infer<typeof supplierSchema> & {id:string;version:number};
 export type Quote = z.infer<typeof quoteSchema> & {id:string;supplierName:string;createdAt:string;total:number};
 export type Estimate=z.infer<typeof estimateSchema>&{total:number;recordedAt:string;method:'manual'};
-export type Purchase = z.infer<typeof requestSchema> & {id:string;code:string;authorId:string;authorName:string;status:Stage;quotes:Quote[];selectedQuoteId?:string;decision?:string;createdAt:string;updatedAt:string;version:number;estimate?:Estimate;adminReview?:string;generalApproval?:{actor:string;at:string;reason:string};localStartedAt?:string;localDeadline?:string;localAttempts?:{supplierId:string;supplierName:string;at:string;note:string}[];nationalReason?:string;executionNotes?:{at:string;actor:string;note:string}[]};
+export type Purchase = z.infer<typeof requestSchema> & {id:string;code:string;authorId:string;authorName:string;status:Stage;quotes:Quote[];selectedQuoteId?:string;decision?:string;createdAt:string;updatedAt:string;version:number;estimate?:Estimate;adminReview?:string;generalApproval?:{actor:string;at:string;reason:string};localStartedAt?:string;localDeadline?:string;localAttempts?:{supplierId:string;supplierName:string;at:string;note:string;integrationJobId?:string}[];nationalReason?:string;executionNotes?:{at:string;actor:string;note:string}[]};
 export type Member = {id:string;email:string;name:string;role:'solicitante'|'administrativo'|'geral'|'admin';department:string;version:number};
 export type Settings = {name:string;legalName:string;minQuotes:number;departments:string[];holidays?:string[]};
 export type Activity = {id:string;entity:string;actor:string;action:string;at:string};
-export type Snapshot = {requests:Purchase[];suppliers:Supplier[];members:Member[];settings:Settings;activity:Activity[];me:{id:string;name:string;email:string;role:Member['role'];department:string}};
+export type Snapshot = {requests:Purchase[];suppliers:Supplier[];members:Member[];settings:Settings;activity:Activity[];integrations?:IntegrationSnapshot;me:{id:string;name:string;email:string;role:Member['role'];department:string}};
 export const money = (n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
 export const quoteTotal = (items:Item[], prices:number[],freight:number)=>Math.round((items.reduce((sum,item,i)=>sum+item.quantity*(prices[i]??0),0)+freight)*100)/100;
 export function quotationMessage(r:Purchase,s:Supplier){return `Olá, ${s.contact||s.name}! Somos do Colégio Estrelas (Centro Educacional Estrelas do Amanhã LTDA). Solicitamos uma cotação para ${r.code}:\n\n${r.items.map((i,n)=>`${n+1}. ${i.name} — ${i.quantity} ${i.unit}${i.spec?`\n   Especificação: ${i.spec}`:''}`).join('\n')}\n\nNecessidade até: ${r.neededBy.split('-').reverse().join('/')}.\nPor favor, informe preço unitário, marca/modelo, disponibilidade, frete, prazo de entrega, condição de pagamento e validade da proposta. Informe também se algum item difere da especificação.\n\nEsta é uma solicitação de cotação, sem confirmação de compra. Obrigado!`;}

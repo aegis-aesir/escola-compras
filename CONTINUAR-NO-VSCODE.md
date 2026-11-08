@@ -22,14 +22,14 @@ Em `Terminal` → `Run Task`, use:
 
 O ambiente local já tem dependências instaladas e banco local preparado. Os registros TESTE LOCAL não são dados reais e não são publicados. O usuário de teste local chama-se Seedy.
 
-## O que falta conectar
+## Integração atual e próximos passos
 
-- Pesquisa automática de referências e de fornecedores nacionais.
-- WhatsApp Business: número, provedor, envio, recebimento e interpretação das propostas.
-- Execução em segundo plano e monitoramento do prazo com o painel fechado.
+- Ponte OpenClaw implementada em `integrations/openclaw/`: pesquisa de fontes, cotações e recebimento para revisão, com monitoramento de prazos. Leia `INTEGRACOES.md` e confira o contato recente no painel antes de afirmar que está conectada.
+- Conta `operacional`, número +55 92 9201-7107. Envio real desativado inicialmente; não enviar mensagens de teste sem autorização específica.
+- Interpretação de propostas e acompanhamento da execução ainda dependem da administração.
 - Acessos dos funcionários e das diretorias, usando seus e-mails reais.
 
-Não há credenciais dessas integrações configuradas neste projeto. A configuração do editor não ativa esses serviços.
+Credenciais não ficam neste projeto. O Site usa variáveis de servidor; o launcher Windows lê o cofre DPAPI em `%USERPROFILE%/.openclaw/estrelas-compras/secrets.dpapi`. O gateway e a ponte precisam estar em execução. A configuração do editor, sozinha, não ativa esses serviços.
 
 ## Hospedagem atual
 

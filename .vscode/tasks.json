@@ -2,6 +2,23 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Estrelas: testar integração OpenClaw",
+      "type": "process",
+      "command": "node",
+      "args": ["scripts/integration-test.mjs"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Estrelas: verificar ponte OpenClaw (sem envio)",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/integrations/openclaw/start-windows.ps1", "-Once"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
       "label": "Estrelas: iniciar sistema local",
       "type": "process",
       "command": "node",
