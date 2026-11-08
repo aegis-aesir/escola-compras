@@ -91,7 +91,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
       const analysis=await analyze(job,available);
       const selected=available.find(p=>p.url===analysis.sourceUrl);
       const evidence=selected?{...selected,analysis}:undefined;
-      return {...result,outcome:'success',sources,priceEvidence:evidence&&extractReference(job.item,evidence)?evidence:undefined,analysisReason:typeof analysis.reason==='string'?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
+      return {...result,outcome:'success',sources,priceEvidence:evidence&&extractReference(job.item,evidence)?evidence:undefined,analysisReason:typeof analysis.reason==='string'&&analysis.reason.trim()?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
     }
     return {...result,outcome:'success',sources};
   }catch{return {...result,outcome:'error'}}

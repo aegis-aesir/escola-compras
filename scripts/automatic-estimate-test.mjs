@@ -36,5 +36,12 @@ try {
  const pending=(await api.rows(db,'request')).find(r=>r.id==='late');
  assert.equal(pending.status,'estimating');assert.equal(pending.estimate,undefined,'stale item result cannot fill estimate');
  assert.equal(JSON.stringify((await api.rows(db,'request')).find(r=>r.id==='request').estimate),oldEstimate);
+ const legacy={...request,id:'legacy-analysis'};
+ await db.prepare('INSERT INTO records VALUES (?,?,?,1)').bind(legacy.id,'request',JSON.stringify(legacy)).run();
+ await api.enqueueSearch(db,legacy,'test',now);
+ const legacyJob=(await api.rows(db,'integration_job')).find(j=>j.requestId===legacy.id);
+ await db.prepare('UPDATE records SET data=? WHERE id=?').bind(JSON.stringify({...legacyJob,state:'review',sources:[source]}),legacyJob.id).run();
+ await api.enqueueSearch(db,legacy,'test',now);
+ assert.equal((await api.rows(db,'integration_job')).find(j=>j.id===legacyJob.id).state,'queued','old bridge result without agent analysis is reprocessed');
  console.log('Automatic estimate: item snapshot, verified source, quantities, administrative review and replay passed.');
 }finally{await mf.dispose();}

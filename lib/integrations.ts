@@ -53,7 +53,10 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
     const query=`${item.name} ${item.spec} ${item.unit} ${type==='estimate_search'?'preço comprar Brasil':'fornecedor entrega Manaus AM Brasil'}`.slice(0,380);
     const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item]));
     const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
-    if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
+    const existing=await row<IntegrationJob>(db,id,jobKind);
+    if(existing?.state==='review'&&existing.item&&!existing.analysisReason&&!existing.priceEvidence) {
+      if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise operacional reenfileirada',now))created++;
+    }else if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
   }
   return created;
 }
