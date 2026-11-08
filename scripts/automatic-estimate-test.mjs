@@ -18,11 +18,11 @@ try {
  assert.deepEqual(job.item,item,'research carries exact requested item');
  const source={title:'Assento sanitário Modelo Alfa branco',url:'https://example.com/product',description:'Fonte fictícia'};
  const analysis={status:'verified',sourceUrl:source.url,productName:source.title,productQuote:source.title,priceAmount:129.9,currency:'BRL',priceType:'total',priceQuote:'Preço R$ 129,90',packageQuantity:1,unit:'un',unitQuote:'Por unidade.',itemMatches:true,unitMatches:true,reason:'Produto, cor e unidade correspondem ao pedido.'};
- const result={jobId:job.id,leaseToken:job.leaseToken,outcome:'success',sources:[source],priceEvidence:{analysis,url:source.url,title:source.title,text:source.title+'\nPreço R$ 129,90\nPor unidade.'}};
+ const result={jobId:job.id,leaseToken:job.leaseToken,outcome:'success',sources:[source],browserResearch:{state:'ready',detail:'Sessão de teste',profile:'compras',checkedAt:now},priceEvidence:{origin:'authenticated_browser',analysis,url:source.url,title:source.title,text:source.title+'\nPreço R$ 129,90\nPor unidade.'}};
  await api.completeJob(db,result,now);
  let saved=(await api.rows(db,'request'))[0];
  assert.equal(saved.status,'admin_review');assert.equal(saved.estimate.total,649.5);
- assert.equal(saved.estimate.method,'automatic');assert.equal(saved.estimate.freightKnown,false);
+ assert.equal(saved.estimate.method,'automatic');assert(saved.estimate.notes.includes('navegador autenticado'));assert.equal(saved.estimate.freightKnown,false);
  assert.equal(saved.generalApproval,undefined);assert.equal(saved.quotes.length,0);
  const version=saved.version;await api.completeJob(db,result,now);await api.tick(db,{},now);
  saved=(await api.rows(db,'request'))[0];assert.equal(saved.version,version,'no repeat transition');

@@ -171,7 +171,7 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     }
     if(!selected.length||selected.length!==r.items.length)continue;
     const references=selected.map((j,i)=>({unitPrice:extractReference(r.items[i],j.priceEvidence!)!.unitPrice,sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!))}));
-    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente operacional do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1}: ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
+    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente operacional do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
     result.data.estimate!.method='automatic';
     result.data.estimate!.freightKnown=false;
     await update(db,r,result.data,r.id,'Sistema','Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
@@ -209,14 +209,14 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
       // A changed phone number requires a fresh human decision, never silent rerouting.
       if(phone(suppliers.find(s=>s.id===j.supplierId)!.phone)!==j.target)continue;
     }
-    const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?300000:120000),updatedAt:now};
+    const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?600000:120000),updatedAt:now};
     const guards=[r,...(j.type==='whatsapp_quote'?[suppliers.find(s=>s.id===j.supplierId)!]:[])];
     if(await update(db,j,next,j.requestId,'Ponte OpenClaw','Processamento da integração iniciado',now,guards))return {...next,version:j.version+1};
   }
   return null;
 }
 const sourceSchema=z.object({title:z.string().trim().min(1).max(300),url:z.string().url().max(2000).refine(v=>{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password}),description:z.string().max(2000)});
-const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),analysis:z.object({status:z.literal('verified'),sourceUrl:z.string().url().max(2000),productName:z.string().min(2).max(300),productQuote:z.string().min(3).max(2000),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().min(3).max(2000),packageQuantity:z.number().int().min(1).max(100000),unit:z.string().max(30),unitQuote:z.string().min(3).max(2000),itemMatches:z.literal(true),unitMatches:z.literal(true),reason:z.string().min(10).max(2000)})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
+const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.literal('verified'),sourceUrl:z.string().url().max(2000),productName:z.string().min(2).max(300),productQuote:z.string().min(3).max(2000),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().min(3).max(2000),packageQuantity:z.number().int().min(1).max(100000),unit:z.string().max(30),unitQuote:z.string().min(3).max(2000),itemMatches:z.literal(true),unitMatches:z.literal(true),reason:z.string().min(10).max(2000)})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
 export async function completeJob(db:D1Database,input:unknown,now:string) {
   const b=resultSchema.parse(input),j=await row<IntegrationJob>(db,b.jobId,jobKind);
   if(!j||j.leaseToken!==b.leaseToken)throw new FlowError('Processamento expirado ou não reconhecido.',409);
@@ -227,7 +227,7 @@ export async function completeJob(db:D1Database,input:unknown,now:string) {
     if(b.outcome==='success'&&b.providerMessageId&&b.sentAt&&b.sentAt<=now&&b.sentAt>=j.updatedAt)next={...next,state:'done',providerMessageId:b.providerMessageId,sentAt:b.sentAt};
     else next={...next,state:'uncertain',error:'Envio sem confirmação confiável. Conferir no OpenClaw antes de novo contato.'};
   } else if(b.outcome==='success'&&b.sources) {
-    next={...next,state:'review',sources:b.sources,researchedAt:now,error:undefined,priceEvidence:undefined,analysisReason:b.analysisReason};
+    next={...next,state:'review',sources:b.sources,researchedAt:now,error:undefined,priceEvidence:undefined,analysisReason:b.analysisReason,browserResearch:b.browserResearch};
     if(j.type==='estimate_search'&&j.item&&b.priceEvidence&&b.sources.some(s=>s.url===b.priceEvidence!.url)&&extractReference(j.item,b.priceEvidence))next.priceEvidence=b.priceEvidence;
   } else {
     next={...next,state:j.attempts>=maxAttempts?'failed':'queued',nextAttemptAt:addMs(now,60000*2**j.attempts),error:'Pesquisa indisponível ou resposta incompatível. Confira a configuração do OpenClaw.'};

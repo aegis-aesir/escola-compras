@@ -24,6 +24,8 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 ## Integração atual e próximos passos
 
+- Pesquisa no Mercado Livre pelo perfil dedicado `compras` do OpenClaw, com login manual do usuário. Abrir com `integrations/openclaw/open-shopping-browser.ps1`. Verificar login real antes de afirmar que a pesquisa autenticada está operacional. O painel informa sessão expirada/bloqueada e permite refazer a pesquisa. Frete sem quantidade/destino conferidos continua fora do total.
+
 - Estimativa automática: pesquisas novas e pedidos ainda em estimativa usam o agente `operacional` do OpenClaw para analisar páginas e extrair evidências estruturadas. Todos os itens precisam de preço validável para encaminhar à análise administrativa. Frete desconhecido não entra no total. A administração pode corrigir a estimativa antes de encaminhar à diretoria geral.
 
 - Ponte OpenClaw implementada em `integrations/openclaw/`: pesquisa de fontes, cotações e recebimento para revisão, com monitoramento de prazos. Leia `INTEGRACOES.md` e confira o contato recente no painel antes de afirmar que está conectada.

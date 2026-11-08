@@ -1,3 +1,4 @@
+import {researchMercadoLivre} from './mercado-browser.mjs';
 import {analyzePages} from './agent-estimator.mjs';
 import {extractReference} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
@@ -13,7 +14,7 @@ export function bridgeConfig(env=process.env) {
   if(!local&&!env.ESTRELAS_SITES_SERVICE_TOKEN)throw new Error('Configure o acesso de serviço ao Site privado.');
   const gateway=new URL(env.OPENCLAW_GATEWAY_URL||'http://127.0.0.1:18789');
   if(!['http:','https:'].includes(gateway.protocol)||!['127.0.0.1','localhost','[::1]'].includes(gateway.hostname)||gateway.username||gateway.password||gateway.pathname!=='/'||gateway.search||gateway.hash)throw new Error('O gateway deve permanecer no loopback da máquina OpenClaw.');
-  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local};
+  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local};
 }
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());
@@ -76,22 +77,34 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
         if(sources.length)return {...result,outcome:'success',sources};
       }catch{/* Maps may be unavailable or unindexed; use local web sources. */}
     }
-    const response=await invoke(config,{tool:'web_search',args:{query:job.query,count:5},idempotencyKey:job.id},fetcher);
-    const sources=searchSources(response);
+    let browserPages=[],browserSources=[],browserResearch;
+    if(job.type==='estimate_search'&&job.item&&config.browserResearch) {
+      const browsing=await researchMercadoLivre(job.item,async args=>structured(await invoke(config,{tool:'browser',args},fetcher)));
+      browserPages=browsing.pages;browserSources=browsing.sources;
+      browserResearch={state:browsing.state,detail:browsing.detail,profile:'compras',checkedAt:new Date().toISOString()};
+    }
+    let webSources=[];
+    try {
+      const response=await invoke(config,{tool:'web_search',args:{query:job.query,count:5},idempotencyKey:job.id},fetcher);
+      webSources=searchSources(response);
+    }catch{if(!browserResearch)throw new Error('Pesquisa indisponível.');}
+    // Mercado Livre must use its authenticated browser when this mode is enabled.
+    if(config.browserResearch)webSources=webSources.filter(s=>!/(^|\.)mercadolivre\.com(?:\.br)?$/.test(new URL(s.url).hostname));
+    const sources=[...browserSources,...webSources].slice(0,5);
     if(job.type==='estimate_search'&&job.item) {
-      const pages=await Promise.all(sources.slice(0,3).map(async source=>{
+      const pages=await Promise.all(webSources.slice(0,Math.max(0,3-browserPages.length)).map(async source=>{
         try {
           const page=structured(await invoke(config,{tool:'web_fetch',args:{url:source.url,extractMode:'text',maxChars:12000}},fetcher));
           if(page.error||typeof page.text!=='string'||typeof page.title!=='string')return null;
-          return {url:source.url,title:page.title.slice(0,300),text:page.text.slice(0,5000),truncated:!!page.truncated||page.text.length>5000};
+          return {url:source.url,title:page.title.slice(0,300),text:page.text.slice(0,5000),truncated:!!page.truncated||page.text.length>5000,origin:'public'};
         }catch{return null;}
       }));
-      const available=pages.filter(Boolean);
-      if(!available.length)return {...result,outcome:'success',sources,analysisReason:'Não foi possível ler as páginas dos produtos.'};
+      const available=[...browserPages,...pages.filter(Boolean)];
+      if(!available.length)return {...result,outcome:'success',sources,browserResearch,analysisReason:browserResearch?.detail||'Não foi possível ler as páginas dos produtos.'};
       const analysis=await analyze(job,available);
       const selected=available.find(p=>p.url===analysis.sourceUrl);
       const evidence=selected?{...selected,analysis}:undefined;
-      return {...result,outcome:'success',sources,priceEvidence:evidence&&extractReference(job.item,evidence)?evidence:undefined,analysisReason:typeof analysis.reason==='string'&&analysis.reason.trim()?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
+      return {...result,outcome:'success',sources,browserResearch,priceEvidence:evidence&&extractReference(job.item,evidence)?evidence:undefined,analysisReason:typeof analysis.reason==='string'&&analysis.reason.trim()?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
     }
     return {...result,outcome:'success',sources};
   }catch{return {...result,outcome:'error'}}

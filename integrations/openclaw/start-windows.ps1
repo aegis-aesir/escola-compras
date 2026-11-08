@@ -18,6 +18,7 @@ try {
     $env:ESTRELAS_STATE_DIR = Join-Path $bridgeHome 'state'
     $env:ESTRELAS_INBOX_DIR = Join-Path $bridgeHome 'inbox'
     $env:ESTRELAS_ENABLE_SEND = 'false'
+    $env:ESTRELAS_BROWSER_RESEARCH = 'true'
     $env:ESTRELAS_LOCAL_TEST = 'false'
     $runner = Join-Path $PSScriptRoot 'runner.mjs'
     if ($Once) { & node $runner } else { & node $runner --loop }
