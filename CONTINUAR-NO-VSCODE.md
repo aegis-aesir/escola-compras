@@ -35,6 +35,6 @@ Credenciais não ficam neste projeto. O Site usa variáveis de servidor; o launc
 
 Site privado: https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site
 
-O projeto está vinculado a Sites pelo arquivo `.openai/hosting.json` e pelo Git remoto existente. Não recriar a hospedagem. O último código publicado antes desta preparação do editor corresponde ao commit `aef7bf078efa1458e56900335102b42a254b6ea5`.
+O projeto está vinculado a Sites pelo arquivo `.openai/hosting.json` e pelo Git remoto existente. Não recriar a hospedagem. A integração OpenClaw foi publicada em 08/11/2026 pelo fluxo oficial. Consultar o Git e as versões Sites para identificar o último commit publicado, em vez de assumir o estado antigo do piloto.
 
 As ferramentas e plugins disponíveis na extensão podem diferir dos disponíveis no app. Se a publicação Sites não estiver disponível na extensão, a edição e os testes continuam locais; a publicação pode ser realizada pelo app no mesmo projeto. Não copiar credenciais entre ferramentas.

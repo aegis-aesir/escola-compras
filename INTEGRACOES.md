@@ -71,6 +71,10 @@ powershell.exe -NoProfile -File ./integrations/openclaw/start-windows.ps1
 
 O launcher impede duas instâncias na mesma sessão Windows. A fila do servidor
 também usa controle de versão para impedir que duas pontes assumam a mesma tarefa.
+Nesta instalação, a tarefa `ColegioEstrelas-OpenClaw` foi configurada para iniciar
+no logon do usuário Windows e manter a ponte oculta. Consulte seu estado no
+Agendador de Tarefas; para interromper a ponte, encerre essa tarefa. O computador
+deve permanecer ligado e o usuário conectado.
 Para inicialização automática, use uma tarefa do Windows no logon deste usuário,
 com janela oculta e sem credenciais nos argumentos. A ponte não executa se o
 gateway não estiver disponível; resultados já confirmados não são reenviados.
@@ -111,3 +115,11 @@ WhatsApp real. Pesquisa real pode consumir a franquia do provedor já configurad
 Referências: documentação instalada do OpenClaw 2026.10.10 e
 https://docs.openclaw.ai/gateway/tools-invoke-http-api,
 https://docs.openclaw.ai/automation/hooks/event-types.
+
+Validação em 08/11/2026: sete testes da ponte, teste de regras com D1 isolado,
+teste do fluxo completo local, TypeScript e build aprovados. Pesquisa real no
+gateway retornou fontes do Perplexity. Hook instalado e elegível. Credenciais
+configuradas no servidor e em cofre DPAPI. Publicação oficial no Site existente
+concluída e contato autenticado da ponte confirmado no banco de produção.
+Nenhuma mensagem foi enviada a fornecedores nos testes. Conferência visual
+automatizada indisponível nesta sessão por ausência de navegador conectado.

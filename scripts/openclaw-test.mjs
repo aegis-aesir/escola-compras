@@ -4,7 +4,7 @@ import { mkdtemp, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { bridgeConfig, executeJob, searchSources } from '../integrations/openclaw/client.mjs';
-import { normalizeEvent } from '../integrations/openclaw/handler.js';
+import handler, { normalizeEvent } from '../integrations/openclaw/handler.js';
 import { runOnce } from '../integrations/openclaw/runner.mjs';
 
 test('Perplexity citations become references, never inferred prices',()=>{
@@ -28,6 +28,18 @@ test('hook accepts only operational direct text with valid timestamp',()=>{
   assert.equal(normalizeEvent({...event,context:{...event.context,accountId:'default'}}),null);
   assert.equal(normalizeEvent({...event,context:{...event.context,conversationId:'123@g.us'}}),null);
   assert.equal(normalizeEvent({...event,timestamp:'invalid'}),null);
+});
+test('hook journals repeated synthetic events in an isolated inbox',async()=>{
+  const inbox=await mkdtemp(path.join(os.tmpdir(),'estrelas-inbox-test-'));
+  const previous=process.env.ESTRELAS_INBOX_DIR;
+  process.env.ESTRELAS_INBOX_DIR=inbox;
+  try {
+    await handler(event);await handler(event);
+    assert.equal((await readdir(inbox)).filter(n=>n.endsWith('.json')).length,1);
+  } finally {
+    if(previous===undefined)delete process.env.ESTRELAS_INBOX_DIR;
+    else process.env.ESTRELAS_INBOX_DIR=previous;
+  }
 });
 test('acknowledgement retry does not send twice',async()=>{
   const stateDir=await mkdtemp(path.join(os.tmpdir(),'estrelas-test-'));

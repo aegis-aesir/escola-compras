@@ -7,7 +7,7 @@ $locked = $false
 try {
     $locked = $mutex.WaitOne(0)
     if (-not $locked) { throw 'A ponte já está em execução.' }
-    $protected = Get-Content -LiteralPath $vaultPath -Raw | ConvertTo-SecureString
+    $protected = (Get-Content -LiteralPath $vaultPath -Raw).Trim() | ConvertTo-SecureString
     $credentials = [System.Net.NetworkCredential]::new('', $protected).Password | ConvertFrom-Json
     $gatewayConfig = Get-Content -LiteralPath (Join-Path $env:USERPROFILE '.openclaw/openclaw.json') -Raw | ConvertFrom-Json
     $env:INTEGRATION_SECRET = $credentials.integrationSecret
