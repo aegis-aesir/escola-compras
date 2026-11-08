@@ -159,3 +159,9 @@ fonte, concorrência e cancelamento de pesquisas antigas aprovados. Teste real d
 papelarias em Manaus confirmou fallback para fontes locais quando a busca Maps
 retornou apenas páginas genéricas. Não foram cadastrados contatos fictícios nem
 enviadas mensagens em produção.
+# Importação administrativa de fornecedores
+
+A operação assinada `import_suppliers` da ponte recebe `batch: {source, contacts}` com até 100 fornecedores previamente conferidos. Cada contato inclui nome (`name`), telefone com DDI/DDD (`phone`), categoria (`category`), contato (`contact`), abrangência (`scope`), cidade (`city`) e UF (`state`). Exige os mesmos controles de acesso do Site privado e HMAC da ponte; não aceita chamadas anônimas. Usar apenas para lotes autorizados pela administração, nunca para cadastrar automaticamente resultados da web ou mensagens recebidas.
+
+O servidor valida todo o lote antes de gravar, preserva registros existentes, deduplica por telefone com ou sem `+`, registra origem/data e histórico. Retorna contagens e resultados por índice: criado, existente ou conflito de categoria/abrangência. Repetir o lote não duplica os fornecedores. Não cria pesquisas, cotações ou mensagens. Arquivos de contatos e relatórios de importação permanecem privados em `outputs/`, fora do Git. Validação isolada: `node scripts/supplier-import-test.mjs`.
+

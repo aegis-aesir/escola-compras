@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { FlowError } from '../app/workflow';
 import { claimJob, completeJob, receiveMessage, tick, type IntegrationEnv } from './integrations';
+import { importSuppliers } from './supplier-import';
 
 const encoder=new TextEncoder();
 export async function validSignature(raw:string,timestamp:string,signature:string,secret:string,now:number) {
@@ -31,6 +32,7 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
     }
     if(b.op==='result')return response(await completeJob(env.DB,b.result,now));
     if(b.op==='inbox')return response(await receiveMessage(env.DB,b.message,now));
+    if(b.op==='import_suppliers')return response(await importSuppliers(env.DB,b.batch,now));
     return response({error:'Operação desconhecida.'},400);
   }catch(e){
     if(e instanceof FlowError)return response({error:e.message},e.status);
