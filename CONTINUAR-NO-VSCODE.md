@@ -27,6 +27,7 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 - Ponte OpenClaw implementada em `integrations/openclaw/`: pesquisa de fontes, cotações e recebimento para revisão, com monitoramento de prazos. Leia `INTEGRACOES.md` e confira o contato recente no painel antes de afirmar que está conectada.
 - Conta `operacional`, número +55 92 9201-7107. Envio real desativado inicialmente; não enviar mensagens de teste sem autorização específica.
 - Interpretação de propostas e acompanhamento da execução ainda dependem da administração.
+- Busca de fornecedores por categoria: cadastro interno primeiro, web/Google Maps para categorias sem fornecedor local. A etapa nacional consulta primeiro os fornecedores nacionais cadastrados. Pedidos antigos precisam ter suas categorias definidas no painel. Resultados externos exigem conferência e podem ser cadastrados com fonte/data.
 - Acessos dos funcionários e das diretorias, usando seus e-mails reais.
 
 Credenciais não ficam neste projeto. O Site usa variáveis de servidor; o launcher Windows lê o cofre DPAPI em `%USERPROFILE%/.openclaw/estrelas-compras/secrets.dpapi`. O gateway e a ponte precisam estar em execução. A configuração do editor, sozinha, não ativa esses serviços.

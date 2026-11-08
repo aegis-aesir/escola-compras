@@ -17,9 +17,9 @@ try {
   const now='2026-11-06T14:00:00.000Z';
   await db.prepare('INSERT INTO school VALUES (1,?,?)').bind('test-owner',JSON.stringify({minQuotes:1,holidays:[]})).run();
   async function put(id,kind,data){await db.prepare('INSERT INTO records VALUES (?,?,?,1)').bind(id,kind,JSON.stringify(data)).run();}
-  const supplier={id:'supplier-test',version:1,name:'FICTÍCIO LOCAL',phone:'5592999990000',scope:'local'};
+  const supplier={id:'supplier-test',version:1,name:'FICTÍCIO LOCAL',category:'Papelaria',phone:'5592999990000',scope:'local'};
   await put(supplier.id,'supplier',supplier);
-  const request={id:'request-test',version:1,code:'CE-12345678',title:'TESTE',status:'quoting',items:[{name:'Papel',spec:'A4',unit:'resma',quantity:1}],quotes:[],generalApproval:{actor:'Diretora teste',at:now,reason:'Teste'},neededBy:'2099-12-31'};
+  const request={id:'request-test',version:1,code:'CE-12345678',title:'TESTE',status:'quoting',items:[{name:'Papel',category:'Papelaria',spec:'A4',unit:'resma',quantity:1}],quotes:[],generalApproval:{actor:'Diretora teste',at:now,reason:'Teste'},neededBy:'2099-12-31'};
   await put(request.id,'request',request);
   await assert.rejects(api.enqueueQuotation(db,{...request,generalApproval:undefined},supplier,'test',now,env));
   await assert.rejects(api.enqueueQuotation(db,request,{...supplier,scope:'national'},'test',now,env));

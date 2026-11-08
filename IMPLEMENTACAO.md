@@ -9,8 +9,8 @@ Diretora Geral: Franciluce Lima. Responsável pela diretoria administrativa: ain
 2. O sistema deve pesquisar referências na internet para gerar uma estimativa com fontes e datas.
 3. A diretoria administrativa analisa cada solicitação e encaminha seu parecer.
 4. A diretoria geral aprova a necessidade do pedido, sem aprovar valor ou estabelecer teto financeiro.
-5. Após essa aprovação, o sistema deve cotar pelo WhatsApp com fornecedores locais de Manaus.
-6. Após 1 dia útil desde o primeiro contato efetivamente realizado, sem proposta válida, deve buscar fornecedores nacionais na web.
+5. Após essa aprovação, o sistema consulta fornecedores locais do cadastro interno pela categoria de cada item. Quando não houver cadastro compatível, pesquisa na internet, priorizando perfis de empresas no Google Maps em Manaus. A administração confere as fontes e cadastra os contatos antes de preparar as cotações pelo WhatsApp.
+6. Após 1 dia útil desde o primeiro contato efetivamente realizado, sem proposta válida, consulta fornecedores nacionais no cadastro e pesquisa na web as categorias sem fornecedor nacional.
 7. A diretoria administrativa compara os preços reais e gerencia a execução de cada compra pelo agente WhatsApp.
 8. Pedido, acompanhamento e recebimento ficam registrados no histórico.
 

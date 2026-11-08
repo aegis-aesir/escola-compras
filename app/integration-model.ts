@@ -1,9 +1,9 @@
 export type SearchSource = {title:string;url:string;description:string};
 export type IntegrationJob = {
-  id:string;version:number;requestId:string;type:'estimate_search'|'national_search'|'whatsapp_quote';
+  id:string;version:number;requestId:string;type:'estimate_search'|'local_supplier_search'|'national_search'|'whatsapp_quote';
   state:'queued'|'running'|'review'|'done'|'failed'|'uncertain'|'blocked'|'cancelled';
   createdAt:string;updatedAt:string;attempts:number;nextAttemptAt:string;
-  itemIndex?:number;query?:string;supplierId?:string;supplierName?:string;target?:string;
+  itemIndex?:number;query?:string;category?:string;supplierId?:string;supplierName?:string;target?:string;
   accountId?:string;schoolPhone?:string;message?:string;sources?:SearchSource[];
   researchedAt?:string;providerMessageId?:string;sentAt?:string;error?:string;
   leaseToken?:string;leaseUntil?:string;

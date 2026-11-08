@@ -3,7 +3,7 @@ import { getChatGPTUser } from '../../chatgpt-auth';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
-import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage } from '../../../lib/integrations';
+import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
@@ -35,15 +35,17 @@ export async function POST(req:Request){try{
   let b:any;try{b=JSON.parse(raw)}catch{throw new AppError('Conteúdo inválido.')}
   const {db,all,me,settings}=await context();const now=new Date().toISOString();
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
-  if(['research','prepare_openclaw','retry_integration','review_message'].includes(b.action)){
+  if(['research','prepare_openclaw','retry_integration','review_message','supplier_categories','register_discovered_supplier'].includes(b.action)){
     permit(['admin','administrativo']);
+    if(b.action==='register_discovered_supplier')return Response.json({ok:true,id:await registerDiscoveredSupplier(db,b.jobId,b.sourceIndex,b.data,me.name,now)});
     if(b.action==='retry_integration')await retryJob(db,b.id,b.version,me.name,now,env);
     else if(b.action==='review_message')await reviewMessage(db,b.id,b.version,b.reason,me.name,now);
     else {
       const r=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;
       if(!r)throw new AppError('Solicitação não encontrada.',404);
       if(r.version!==b.version)throw new AppError('Solicitação atualizada. Recarregue.',409);
-      if(b.action==='research')await enqueueSearch(db,r,me.name,now);
+      if(b.action==='supplier_categories')await setSupplierCategories(db,r,b.categories,me.name,now);
+      else if(b.action==='research')await enqueueSearch(db,r,me.name,now);
       else {const s=all.find(s=>s.id===b.supplierId&&s.kind==='supplier');if(!s)throw new AppError('Fornecedor não encontrado.');await enqueueQuotation(db,r,s,me.name,now,env)}
     }
     return Response.json({ok:true});

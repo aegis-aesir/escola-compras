@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { isGoogleMapsUrl } from './search-utils.mjs';
 
 export const ACCOUNT = 'operacional';
 export const SCHOOL_PHONE = '+559292017107';
@@ -46,7 +47,8 @@ export function searchSources(result) {
     const u=new URL(item.url);
     if(!['http:','https:'].includes(u.protocol)||u.username||u.password)throw new Error('Link inválido.');
     const title=typeof item.title==='string'&&item.title.trim()?item.title:u.hostname;
-    sources.push({title:title.slice(0,300),url:item.url,description:citations?'Fonte citada pela pesquisa. Confira preço, embalagem e disponibilidade na página.':typeof item.description==='string'?item.description.slice(0,2000):''});
+    const snippet=typeof item.description==='string'?item.description:item.snippet;
+    sources.push({title:title.slice(0,300),url:item.url,description:citations?'Fonte citada pela pesquisa. Confira preço, embalagem e disponibilidade na página.':typeof snippet==='string'?snippet.slice(0,2000):''});
   }
   return sources;
 }
@@ -63,8 +65,15 @@ export async function executeJob(config,job,fetcher=fetch) {
       return {...result,outcome:'success',providerMessageId:messageId,sentAt:new Date().toISOString()};
     }catch{return {...result,outcome:'uncertain'}}
   }
-  if(!['estimate_search','national_search'].includes(job.type)||typeof job.query!=='string')throw new Error('Tipo de tarefa inválido.');
+  if(!['estimate_search','local_supplier_search','national_search'].includes(job.type)||typeof job.query!=='string')throw new Error('Tipo de tarefa inválido.');
   try {
+    if(job.type==='local_supplier_search') {
+      try {
+        const maps=await invoke(config,{tool:'web_search',args:{query:`${job.query} (site:google.com/maps OR site:google.com.br/maps OR site:maps.google.com)`,count:5},idempotencyKey:job.id+':maps'},fetcher);
+        const sources=searchSources(maps).filter(s=>isGoogleMapsUrl(s.url));
+        if(sources.length)return {...result,outcome:'success',sources};
+      }catch{/* Maps may be unavailable or unindexed; use local web sources. */}
+    }
     const response=await invoke(config,{tool:'web_search',args:{query:job.query,count:5},idempotencyKey:job.id},fetcher);
     return {...result,outcome:'success',sources:searchSources(response)};
   }catch{return {...result,outcome:'error'}}

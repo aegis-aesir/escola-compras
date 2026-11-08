@@ -30,8 +30,37 @@ A proposta só passa a valer depois do registro pela administração.
 A ponte verifica prazos mesmo com o painel fechado, enquanto o computador
 estiver ligado, conectado e com a ponte em execução. Após um dia útil sem
 proposta válida, libera a etapa nacional e enfileira a pesquisa. Usa o calendário
-da escola e o fuso America/Manaus. Não procura fornecedores locais automaticamente:
-eles são cadastrados e escolhidos pela administração.
+da escola e o fuso America/Manaus.
+
+## Descoberta de fornecedores
+
+Cada item tem uma categoria, com sugestões compartilhadas com o cadastro de
+fornecedores. Novas solicitações pedem a categoria; a administração pode preencher
+as categorias dos pedidos antigos, sem alterar itens, quantidades ou aprovações.
+Comparações ignoram caixa, acentos e espaços repetidos. Categorias diferentes
+não são presumidas equivalentes. No cadastro de fornecedor, categorias podem
+ser separadas por vírgula ou ponto e vírgula; cada item tem uma categoria.
+
+Depois da aprovação, a ponte consulta primeiro o banco interno para cada categoria
+e abrangência. Um fornecedor local compatível evita busca externa naquela categoria.
+Categorias sem cadastro geram uma única tarefa, mesmo com vários itens da mesma
+categoria. O cadastro é consultado novamente antes da execução para evitar pesquisa
+desnecessária após um fornecedor ser adicionado. Na etapa nacional, a mesma regra
+usa fornecedores nacionais, respeitando o prazo local existente.
+
+Para Manaus, a primeira pesquisa procura perfis de empresas no Google Maps. Páginas
+de ajuda, preferências, marketing e links genéricos de busca não contam como empresas
+encontradas. Sem perfil útil, o runner pesquisa outras fontes locais. Isso usa a
+busca web do OpenClaw; não há conexão direta com a API Google Places nem garantia
+de cobertura completa do Maps. Um atalho de busca no Maps também fica no painel,
+identificado como navegação manual, separado das fontes efetivamente retornadas.
+
+Fontes externas não são contatos verificados. A administração confere a empresa,
+categoria, localização/atendimento e WhatsApp antes de salvar. O cadastro preserva
+URL, data da pesquisa e responsável pela conferência, e passa a ser usado nas
+buscas internas seguintes. Cadastrar fornecedor não enfileira nem envia mensagem.
+Pedidos com itens de várias categorias ainda exigem conferência de quais itens
+cada empresa atende; propostas e compras divididas permanecem fora desta versão.
 
 ## Configuração segura
 
@@ -102,6 +131,7 @@ resposta não aparecer, conferir o WhatsApp e a política de recebimento da cont
 ```powershell
 node --test scripts/openclaw-test.mjs
 node scripts/integration-test.mjs
+node scripts/supplier-discovery-test.mjs
 node scripts/workflow-test.mjs
 node node_modules/typescript/bin/tsc --noEmit
 node scripts/smoke-test.mjs
@@ -123,3 +153,9 @@ configuradas no servidor e em cofre DPAPI. Publicação oficial no Site existent
 concluída e contato autenticado da ponte confirmado no banco de produção.
 Nenhuma mensagem foi enviada a fornecedores nos testes. Conferência visual
 automatizada indisponível nesta sessão por ausência de navegador conectado.
+
+Atualização de descoberta: testes da consulta interna, categorias, cadastro por
+fonte, concorrência e cancelamento de pesquisas antigas aprovados. Teste real de
+papelarias em Manaus confirmou fallback para fontes locais quando a busca Maps
+retornou apenas páginas genéricas. Não foram cadastrados contatos fictícios nem
+enviadas mensagens em produção.

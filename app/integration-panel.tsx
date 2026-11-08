@@ -6,10 +6,11 @@ const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Man
 
 export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purchase}) {
   if(!data.integrations)return null;
-  const jobs=data.integrations.jobs.filter(j=>j.requestId===r.id&&j.type!=='whatsapp_quote');
+  const jobs=data.integrations.jobs.filter(j=>j.requestId===r.id&&j.type==='estimate_search');
+  if(!jobs.length&&!['estimating','pending'].includes(r.status))return null;
   return <section className="integration-research"><h3>Pesquisa automática · OpenClaw</h3>
     <p className="muted">Fontes encontradas precisam de conferência de preço, embalagem, frete e disponibilidade. Não são propostas comerciais.</p>
-    {['estimating','pending','national'].includes(r.status)&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Colocar pesquisa na fila</button>}
+    {['estimating','pending'].includes(r.status)&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Colocar pesquisa na fila</button>}
     {!data.integrations.bridgeConfigured&&<p className="note">A ponte ainda precisa ser configurada. As pesquisas ficam guardadas na fila.</p>}
     {jobs.map(j=><div className="source-row" key={j.id}><strong>{r.items[j.itemIndex??0]?.name} · {jobLabels[j.state]}</strong><small>{j.type==='national_search'?'Fornecedores nacionais':'Referências de preço'} · {j.researchedAt?date(j.researchedAt):date(j.createdAt)}</small>
       {j.error&&<p className="muted">{j.error}</p>}

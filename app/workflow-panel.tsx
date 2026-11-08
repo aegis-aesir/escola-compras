@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { money, type Purchase, type Snapshot } from './model';
 import { ResearchPanel } from './integration-panel';
+import SupplierDiscoveryPanel from './supplier-discovery-panel';
 type Props={request:Purchase;data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>;onDecision:(value:{action:string;quoteId?:string})=>void};
 export default function WorkflowPanel({request:r,data,busy,onSave,onDecision}:Props){
  const [showEstimate,setShowEstimate]=useState(false),[showContact,setShowContact]=useState(false);
@@ -11,6 +12,7 @@ export default function WorkflowPanel({request:r,data,busy,onSave,onDecision}:Pr
  return <section className="workflow-panel">
  <h3>Estimativa e decisões</h3>
  {admin&&<ResearchPanel request={r} data={data} busy={busy} onSave={onSave}/>}
+ {admin&&<SupplierDiscoveryPanel request={r} data={data} busy={busy} onSave={onSave}/>}
  {r.estimate?<><div className="cost-comparison"><div><small>ESTIMATIVA DE REFERÊNCIA</small><strong>{money(r.estimate.total)}</strong><span>Inclui frete estimado de {money(r.estimate.freight)}</span></div><div><small>PROPOSTA REAL ESCOLHIDA</small><strong>{r.selectedQuoteId?money(r.quotes.find(q=>q.id===r.selectedQuoteId)?.total||0):'Aguardando cotação'}</strong><span>A diretoria geral aprova o pedido, sem aprovar valor.</span></div></div><details><summary>Fontes e premissas da estimativa</summary>{r.estimate.references.map((ref,i)=><div className="source-row" key={i}><strong>{r.items[i]?.name}: {money(ref.unitPrice)} / {r.items[i]?.unit}</strong><a href={ref.sourceUrl} target="_blank" rel="noopener noreferrer">{ref.sourceName} ↗</a><small>Consulta em {ref.researchedOn.split('-').reverse().join('/')}</small></div>)}<p className="muted">{r.estimate.notes}</p><p className="muted">Referências registradas manualmente. Não representam proposta comercial confirmada.</p></details></>:<div className="note">A solicitação aguarda referências de preço conferidas. A pesquisa OpenClaw depende da ponte conectada; acompanhe as fontes acima.</div>}
  {r.adminReview&&<div className="note"><b>Análise administrativa:</b> {r.adminReview}</div>}
  {r.generalApproval&&<div className="note"><b>Pedido aprovado pela diretoria geral:</b> {r.generalApproval.actor} · {date(r.generalApproval.at)}<br/>{r.generalApproval.reason}<br/>Aprovação da necessidade, sem teto de valor.</div>}

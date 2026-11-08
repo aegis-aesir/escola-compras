@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { type Purchase, type Supplier, type Settings, quotationMessage } from '../app/model';
+import { type Purchase, type Supplier, type Settings, quotationMessage, categorySchema, supplierSchema } from '../app/model';
+import { categoryKey, matchingSuppliers, requestCategories } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
 
@@ -35,14 +36,15 @@ async function update(db:D1Database,old:{id:string;version:number},data:object,e
 export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'>,suppliers:Supplier[]) {
+function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'>,suppliers:Supplier[]) {
   if(j.type==='estimate_search')return ['estimating','pending'].includes(r.status);
   if(!r.generalApproval)return false;
-  if(j.type==='national_search')return r.status==='national';
+  if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   const s=suppliers.find(s=>s.id===j.supplierId);
   return !!s&&(r.status==='national'||(r.status==='quoting'&&(s.scope||'local')==='local'));
 }
 export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:string) {
+  if(['quoting','national'].includes(r.status))return enqueueSupplierSearch(db,r,actor,now);
   const type=r.status==='national'?'national_search':'estimate_search';
   if(!eligible(r,{type},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
   let created=0;
@@ -53,6 +55,54 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
     if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
   }
   return created;
+}
+export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:string,now:string) {
+  const type=r.status==='national'?'national_search':'local_supplier_search';
+  if(!r.generalApproval||r.status!==(type==='national_search'?'national':'quoting'))throw new FlowError('A busca de fornecedores exige aprovação e a etapa correspondente.');
+  const scope=type==='local_supplier_search'?'local':'national';
+  const suppliers=await rows<Supplier>(db,'supplier');
+  let created=0;
+  for(const {category,itemIndex} of requestCategories(r)) {
+    if(matchingSuppliers(suppliers,category,scope).length)continue;
+    const query=`${category} fornecedores ${scope==='local'?'Manaus AM loja endereço telefone':'Brasil entrega Manaus AM contato'}`;
+    const id='supplier-search:'+await digest(JSON.stringify([r.id,type,categoryKey(category)]));
+    const job:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,category,itemIndex,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+    const existing=await row<IntegrationJob>(db,id,jobKind);
+    if(existing?.state==='cancelled') {
+      if(await update(db,existing,{...job,createdAt:existing.createdAt},r.id,actor,`Busca retomada sem fornecedor cadastrado: ${category}`,now))created++;
+    }else if(await insert(db,id,jobKind,job,r.id,actor,`Sem fornecedor ${scope==='local'?'local':'nacional'} cadastrado para ${category}; busca web enfileirada`,now))created++;
+  }
+  return created;
+}
+export async function setSupplierCategories(db:D1Database,r:Purchase,input:unknown,actor:string,now:string) {
+  if(!['estimating','pending','admin_review','general_review','quoting','national'].includes(r.status))throw new FlowError('A etapa não permite alterar categorias.');
+  const categories=z.array(categorySchema).length(r.items.length).parse(input);
+  const next={...r,items:r.items.map((item,i)=>({...item,category:categories[i]})),updatedAt:now};
+  if(!await update(db,r,next,r.id,actor,'Categorias dos itens conferidas para busca de fornecedores',now))throw new FlowError('Pedido atualizado. Recarregue.',409);
+  if(r.generalApproval&&['quoting','national'].includes(r.status))await enqueueSupplierSearch(db,next,actor,now);
+}
+export async function registerDiscoveredSupplier(db:D1Database,jobId:string,sourceIndex:number,input:unknown,actor:string,now:string) {
+  const j=await row<IntegrationJob>(db,jobId,jobKind);
+  if(!j||!['local_supplier_search','national_search'].includes(j.type)||j.state!=='review'||!j.category||!j.researchedAt)throw new FlowError('Selecione uma pesquisa de fornecedores concluída.');
+  const r=await row<Purchase>(db,j.requestId,'request');
+  if(!r||!eligible(r,j,[]))throw new FlowError('A pesquisa não corresponde à etapa e às categorias atuais.');
+  const index=z.number().int().nonnegative().parse(sourceIndex),source=j.sources?.[index];
+  if(!source)throw new FlowError('Fonte não encontrada.');
+  const fields=z.object({name:z.string(),phone:z.string(),contact:z.string().default('')}).parse(input);
+  const data=supplierSchema.parse({...fields,category:j.category,scope:j.type==='local_supplier_search'?'local':'national'});
+  const existing=(await rows<Supplier>(db,'supplier')).find(s=>phone(s.phone)===phone(data.phone));
+  if(existing) {
+    if(matchingSuppliers([existing],data.category,data.scope).length)return existing.id;
+    throw new FlowError('Este telefone já está cadastrado em outra categoria ou abrangência. Confira o cadastro existente.');
+  }
+  const hash=await digest(phone(data.phone));
+  const id=`${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`;
+  const created=await insert(db,id,'supplier',{...data,discovery:{sourceUrl:source.url,researchedAt:j.researchedAt,reviewedAt:now,reviewedBy:actor,jobId}},r.id,actor,`Fornecedor cadastrado após conferência da pesquisa: ${data.name}`,now);
+  if(!created) {
+    const winner=await row<Supplier>(db,id,'supplier');
+    if(!winner||!matchingSuppliers([winner],data.category,data.scope).length)throw new FlowError('Este telefone foi cadastrado simultaneamente em outra categoria ou abrangência. Recarregue e confira.',409);
+  }
+  return id;
 }
 export async function enqueueQuotation(db:D1Database,r:Purchase,s:Supplier,actor:string,now:string,env:IntegrationEnv) {
   if(!eligible(r,{type:'whatsapp_quote',supplierId:s.id},[s]))throw new FlowError('A cotação exige aprovação da necessidade e fornecedor permitido nesta etapa.');
@@ -110,7 +160,7 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   await projectSentContacts(db,JSON.parse(school.data),now);
   await advanceDeadlines(db,now);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(['estimating','pending'].includes(r.status)||(r.status==='national'&&r.generalApproval))await enqueueSearch(db,r,'Sistema',now);
+    if(['estimating','pending'].includes(r.status)||(['quoting','national'].includes(r.status)&&r.generalApproval))await enqueueSearch(db,r,'Sistema',now);
   }
   // Expired search leases are safe to retry. Message leases are not: the remote
   // gateway may have sent the message before the connection was interrupted.
@@ -126,8 +176,9 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.state==='queued'&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
     const r=await row<Purchase>(db,j.requestId,'request');
-    if(!r||!eligible(r,j,suppliers)) {
-      await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema','Tarefa cancelada após mudança da etapa',now);continue;
+    const internalMatch=j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
+    if(!r||!eligible(r,j,suppliers)||internalMatch) {
+      await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
     }
     if(j.type==='whatsapp_quote') {
       if(!canSend||env.WHATSAPP_SEND_ENABLED!=='true')continue;
