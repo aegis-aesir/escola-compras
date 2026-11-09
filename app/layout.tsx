@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./appearance.css";
+import { appearanceBootstrap } from './appearance';
 
 export const metadata: Metadata = {
   title: "Estrelas • Central de Compras",
@@ -16,7 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{__html:appearanceBootstrap}}/></head>
       <body className="antialiased">{children}</body>
     </html>
   );

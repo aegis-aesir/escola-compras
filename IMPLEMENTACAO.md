@@ -44,6 +44,8 @@ Pedidos do fluxo anterior preservam seu histórico. Pedidos antigos em cotação
 
 ## Validação
 
+Aparência: o botão **Aparência** no cabeçalho está disponível para todos os perfis. Oferece tema claro, escuro ou automático (acompanha o dispositivo) e destaques em violeta, azul, verde, rosa e laranja. A escolha é pessoal, salva neste navegador e sincronizada entre abas; não altera configurações da escola nem registros de compras.
+
 React/Vinext, Cloudflare Workers, D1 e autenticação Sites. Dados locais de teste não são publicados. Nenhum banco ou credencial está no pacote de produção.
 
 - npx tsc --noEmit
