@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
+import {localTestSession} from './local-test-session.mjs';
 const base='http://127.0.0.1:5173';
 assert.equal((await fetch(base+'/api/data')).status,401,'Anonymous requests must be denied');
-const login=await fetch(base+'/signin-with-chatgpt?return_to=/',{redirect:'manual'});
-const cookie=login.headers.getSetCookie().map(s=>s.split(';')[0]).join('; ');
-assert.ok(cookie,'Local development login cookie');
+const cookie=await localTestSession();
+assert.ok(cookie,'Local development session cookie');
 const headers={cookie,'Content-Type':'application/json',origin:base};
 async function state(){const r=await fetch(base+'/api/data',{headers});assert.equal(r.status,200);return r.json()}
 async function post(body,status=200){const r=await fetch(base+'/api/data',{method:'POST',headers,body:JSON.stringify(body)});const result=await r.json();assert.equal(r.status,status,JSON.stringify(result));return result}

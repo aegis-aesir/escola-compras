@@ -36,9 +36,9 @@ O hook local observa mensagens aceitas pelo OpenClaw; a ponte as entrega ao endp
 
 ## Acesso e dados existentes
 
-Site privado para o proprietário. Primeiro login do proprietário inicializa a administração antes de compartilhar com a equipe. Cadastrar e-mails internos e conceder acesso equivalente na hospedagem são etapas separadas; o cadastro não envia convites.
+Login próprio por usuário e senha, sem conta ChatGPT para os usuários da escola. A hospedagem existente é preservada; a entrada é pública e os dados ficam protegidos por sessão local no servidor. O cabeçalho de identidade ChatGPT não concede acesso.
 
-Perfis: solicitante; diretoria administrativa (análise, fornecedores, cotações e execução); diretoria geral (aprovação da necessidade); administrador do sistema (acesso completo para operar o piloto). Atribuir o e-mail de Franciluce ao perfil Diretoria Geral quando informado. Perfis antigos compras/aprovador são reconhecidos como administrativo/geral.
+Perfis locais: Master (código admin, acesso completo e gestão de usuários); Setor (formulário e consulta dos próprios registros, sem estimativas internas, propostas ou fornecedores); Diretoria Geral (fila de pedidos para aprovar/recusar a necessidade); Diretoria Administrativa (análise, fornecedores, cotações e execução). A diretoria geral não cria solicitações. Usuários antigos por e-mail permanecem nos registros históricos e não autenticam automaticamente.
 
 Pedidos do fluxo anterior preservam seu histórico. Pedidos antigos em cotação sem registro das novas aprovações devem ser explicitamente encaminhados para estimativa antes de prosseguir no novo fluxo. Pedidos já executados permanecem consultáveis.
 

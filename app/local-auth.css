@@ -1,0 +1,10 @@
+.login-shell{min-height:100dvh;max-width:none;display:grid;place-items:center;padding:76px 20px 30px;background:radial-gradient(ellipse at top,color-mix(in srgb,var(--accent-base) 10%,var(--canvas)),var(--canvas) 65%)}
+.login-appearance{position:absolute;right:24px;top:22px}
+.login-card{width:100%;max-width:440px;padding:34px}
+.login-brand{padding:0;margin-bottom:36px;color:var(--ink)}
+.login-heading{margin-bottom:26px}.login-heading>svg{color:var(--accent);margin-bottom:14px}.login-heading h1{font-size:24px;margin-bottom:10px}.login-heading p{font-size:12px}
+.login-submit{width:100%;margin-top:6px}.login-help{margin-top:22px;font-size:11px}.login-hint{font-size:11px;margin:-5px 0 18px}.login-username{font-size:12px;margin-bottom:20px;color:var(--muted)}
+.login-card footer{display:block;text-align:center;margin-top:26px;padding-bottom:0}.login-exit{margin-top:18px}
+.users-panel .panel-heading{align-items:flex-start;flex-wrap:wrap}.users-list{margin-top:15px}.local-user{padding-bottom:15px;border-bottom:1px solid var(--line)}.local-user .member-row{border:0;padding-bottom:12px;flex-wrap:wrap}
+.user-actions{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin:8px 0 14px}.user-actions .muted{font-size:10px}.user-active{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin:0 0 18px}.user-active input{width:16px;height:16px}
+@media(max-width:520px){.login-shell{padding:76px 14px 24px}.login-card{padding:26px}.login-brand>span:last-child{display:block}.login-brand{padding:0}.topbar .topbar-actions{gap:3px}.topbar .topbar-actions .icon-button{padding:7px}}

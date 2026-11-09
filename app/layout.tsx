@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./appearance.css";
+import "./local-auth.css";
 import { appearanceBootstrap } from './appearance';
 
 export const metadata: Metadata = {

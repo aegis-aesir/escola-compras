@@ -9,7 +9,7 @@ Responda em português do Brasil, com linguagem simples. Leia `IMPLEMENTACAO.md`
 - Diretora Geral: Franciluce Lima. Ela aprova o pedido, não o valor. Não criar teto financeiro ou reaprovação por diferença entre estimativa e preço real.
 - Estimativa e proposta comercial real são registros diferentes, com fontes e datas.
 - Fornecedores: consultar primeiro o cadastro interno pela categoria de cada item e pela abrangência. Sem cadastro compatível, pesquisar na internet; para Manaus, priorizar perfis de empresas do Google Maps. Fontes externas exigem conferência antes do cadastro/contato. Não adivinhar categorias de pedidos antigos: a administração deve defini-las no painel.
-- O nome/e-mail da diretoria administrativa e e-mail de Franciluce ainda precisam ser definidos. WhatsApp: OpenClaw, conta `operacional`, número +55 92 9201-7107.
+- Login próprio por usuário e senha. Perfis Master (admin), Setor (solicitante), Diretoria Geral (geral) e Diretoria Administrativa (administrativo). E-mail/conta ChatGPT não são necessários para entrar. A Diretoria Geral apenas aprova/recusa a necessidade. Consulte ACESSOS-LOCAIS.md. WhatsApp: OpenClaw, conta `operacional`, número +55 92 9201-7107.
 - Três cotações é apenas a sugestão inicial configurável, ainda não regra confirmada pela escola.
 
 ## Estado real e próximos passos

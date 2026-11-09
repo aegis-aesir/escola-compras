@@ -1,5 +1,7 @@
 import { env } from 'cloudflare:workers';
-import { getChatGPTUser } from '../../chatgpt-auth';
+import { currentLocalUser } from '../../local-session';
+import { listLocalUsers } from '../../../lib/local-auth';
+import { visibleRequests, canCreateRequest } from '../../access';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
@@ -8,25 +10,25 @@ export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
 async function context(){
-  const user=await getChatGPTUser(); if(!user)throw new AppError('Entre para continuar.',401);
+  const user=await currentLocalUser(); if(!user)throw new AppError('Entre com seu usuário e senha.',401);
+  if(user.mustChangePassword)throw new AppError('Altere sua senha temporária antes de continuar.',403);
   const db=env.DB!;
-  await db.prepare('INSERT OR IGNORE INTO school (id, owner, data) VALUES (1, ?, ?)').bind(user.userId,JSON.stringify(initial)).run();
   const school=await db.prepare('SELECT * FROM school WHERE id=1').first<{owner:string;data:string}>();
+  if(!school)throw new AppError('A escola ainda não foi inicializada.',503);
   const rows=await db.prepare('SELECT * FROM records').all<{id:string;kind:string;data:string;version:number}>();
   const all=rows.results.map(r=>({...JSON.parse(r.data),id:r.id,kind:r.kind,version:r.version}));
-  const member=all.find(r=>r.kind==='member'&&r.email===user.email.toLowerCase());
-  if(school!.owner!==user.userId&&!member)throw new AppError('Seu acesso ainda não foi cadastrado pela administração.',403);
-  const me={id:user.userId,name:user.displayName,email:user.email,role:school!.owner===user.userId?'admin':({compras:'administrativo',aprovador:'geral'} as Record<string,string>)[member.role]||member.role,department:member?.department||'Administrativo'};
+  const me={id:user.id,name:user.name,username:user.username,email:'',role:user.role,department:user.department};
   return {db,all,me,settings:JSON.parse(school!.data) as Settings};
 }
 function fail(e:unknown){if(e instanceof z.ZodError)return Response.json({error:e.issues[0]?.message||'Confira os campos.'},{status:400}); if(e instanceof AppError || e instanceof FlowError)return Response.json({error:e.message},{status:e.status}); console.error('Data operation failed',e instanceof Error?e.message:'unknown');return Response.json({error:'Não foi possível salvar. Tente novamente.'},{status:500});}
 export async function GET(){try{
   let {db,all,me,settings}=await context();
-  if(me.role!=='solicitante'&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
-  const requests=all.filter(r=>r.kind==='request'&&(me.role!=='solicitante'||r.authorId===me.id));
+  if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
+  const requests=visibleRequests(all.filter(r=>r.kind==='request'),me);
   const ids=new Set(requests.map(r=>r.id));
   const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
-  return Response.json({requests,suppliers:me.role==='solicitante'?[]:all.filter(r=>r.kind==='supplier'),members:me.role==='admin'?all.filter(r=>r.kind==='member'):[],settings,me,integrations:['admin','administrativo'].includes(me.role)?await integrationSnapshot(db,env):undefined,activity:activity.results.filter((r:any)=>me.role!=='solicitante'||ids.has(r.entity))},{headers:{'Cache-Control':'no-store'}});
+  const management=['admin','administrativo'].includes(me.role);
+  return Response.json({requests,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:[]},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return fail(e)}}
 export async function POST(req:Request){try{
   if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new AppError('Origem inválida.',403);
@@ -52,18 +54,17 @@ export async function POST(req:Request){try{
   }
   let id:string=crypto.randomUUID(),kind='',data:any,action='',old:any;
   if(b.action==='request'){
+    if(!canCreateRequest(me.role))throw new AppError('Seu perfil permite apenas aprovar ou recusar pedidos.',403);
     const input=requestSchema.parse(b.data);if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
     if(me.role==='solicitante'&&input.department!==me.department)throw new AppError('Você só pode solicitar para seu setor.',403);
     kind='request';data={...input,code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'estimating',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada';
   }else if(b.action==='supplier'){
     permit(['admin','administrativo']);kind='supplier';data=supplierSchema.parse(b.data);action='Fornecedor cadastrado';
   }else if(b.action==='member'){
-    permit(['admin']);kind='member';data=z.object({email:z.string().email().transform(v=>v.toLowerCase()),name:z.string().trim().min(2).max(100),role:z.enum(['solicitante','administrativo','geral','admin']),department:z.string()}).parse(b.data);
-    if(!settings.departments.includes(data.department))throw new AppError('Setor inválido.');
-    old=all.find(r=>r.kind==='member'&&r.email===data.email);if(old)id=old.id;action='Acesso atualizado';
+    throw new AppError('Use Pessoas e acessos para administrar os usuários locais.',400);
   }else if(b.action==='settings'){
     permit(['admin']);const input=z.object({minQuotes:z.number().int().min(1).max(10),departments:z.array(z.string().trim().min(2).max(80)).min(1).max(50),holidays:z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(100).default([])}).parse(b.data);
-    if(all.some(r=>r.kind==='member'&&!input.departments.includes(r.department)))throw new AppError('Há usuários vinculados a um setor que seria removido. Atualize seus acessos primeiro.');
+    if((await listLocalUsers(db)).some(r=>!input.departments.includes(r.department)))throw new AppError('Há usuários vinculados a um setor que seria removido. Atualize seus acessos primeiro.');
     await db.batch([db.prepare('UPDATE school SET data=? WHERE id=1').bind(JSON.stringify({...settings,...input,departments:[...new Set(input.departments)]})),db.prepare('INSERT INTO audit (id,entity,actor,action,at) VALUES (?,?,?,?,?)').bind(id,'school',me.name,'Regras e setores atualizados',now)]);return Response.json({ok:true});
   }else{
     old=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;if(!old)throw new AppError('Solicitação não encontrada.',404);
