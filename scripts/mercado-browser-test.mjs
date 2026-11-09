@@ -44,6 +44,8 @@ assert.equal(readMercadoPage().state,'login_required');
 controls=[element('Minha conta',account.getAttribute('href'),false)];assert.equal(readMercadoPage().state,'unverified');
 controls=[account];const observed=readMercadoPage();assert.equal(observed.state,'ready');assert(observed.text.includes('Lâmpada S41+'));
 assert(!observed.text.includes('Rua Particular'));assert(!observed.text.includes('Nome Privado'));assert(!observed.text.includes('pessoal@'));
+shipping.innerText='Frete R$\n8\n,\n90';assert(!readMercadoPage().text.includes('Frete exibido:'),'split shipping cannot become a partial price');
+shipping.innerText='Frete R$ 8,90';assert(readMercadoPage().text.includes('Frete exibido: R$ 8,90'));
 controls=[{...element('Usuário autenticado','https://myaccount.mercadolivre.com.br/summary'),className:'nav-header-user-myml'}];assert.equal(readMercadoPage().state,'ready','current Mercado Livre account marker');
 controls=[{...element('Usuário autenticado','https://myaccount.mercadolivre.com.br.evil.example/summary'),className:'nav-header-user-myml'}];assert.equal(readMercadoPage().state,'unverified');
 location.hostname='evil.example';assert.equal(readMercadoPage().state,'login_required');

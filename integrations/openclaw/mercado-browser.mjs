@@ -34,7 +34,7 @@ export function readMercadoPage() {
   // the displayed quantity/destination may differ from the school's request.
   const shipping=[...document.querySelectorAll('.ui-pdp-shipping')].filter(visible).map(e=>e.innerText).join(' ');
   if(/frete gr[aá]tis/i.test(shipping))parts.push('Frete grátis exibido; quantidade e destino precisam de conferência.');
-  else if(/R\$\s*[\d.,]+/.test(shipping))parts.push('Frete exibido: '+shipping.match(/R\$\s*[\d.,]+/)[0]+'; quantidade e destino precisam de conferência.');
+  else if(/R\$[ \t]*\d[\d.]*,\d{2}(?!\d)/.test(shipping))parts.push('Frete exibido: '+shipping.match(/R\$[ \t]*\d[\d.]*,\d{2}(?!\d)/)[0]+'; quantidade e destino precisam de conferência.');
   return {state:'ready',url:location.origin+location.pathname,title:clean(h1?.innerText||document.title).slice(0,300),text:parts.join('\n').slice(0,5000),links};
 }
 const explanations={ready:'Mercado Livre consultado no perfil compras com sessão reconhecida.',login_required:'Entre no Mercado Livre no navegador OpenClaw, perfil compras, e refaça a pesquisa.',unverified:'Não foi possível confirmar a sessão ou ler a página. Confira o navegador compras e eventuais verificações do Mercado Livre.',unavailable:'Navegador de compras indisponível. Confira o OpenClaw no computador.'};
@@ -44,7 +44,8 @@ export async function researchMercadoLivre(item,call) {
   const browser=args=>call({profile:MERCADO_PROFILE,target:'host',...args});
   const result=state=>({state,detail:explanations[state],pages,sources});
   try {
-    const query=(item.name+' '+(item.spec||'')).trim().slice(0,300);
+    const spec=(item.spec||'').trim();
+    const query=(item.name+(spec&&!item.name.toLowerCase().includes(spec.toLowerCase())?' '+spec:'')).trim().replace(/\s+/g,'-').slice(0,300);
     const opened=await browser({action:'open',url:'https://lista.mercadolivre.com.br/'+encodeURIComponent(query),timeoutMs:15000});
     tab=opened.suggestedTargetId||opened.tabId||opened.targetId;
     if(!tab)return result('unavailable');
