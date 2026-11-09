@@ -6,7 +6,7 @@ $bootstrapLock=$null
 function Save-ProtectedAccess($content) {
     $temporaryPath=Join-Path $vaultRoot ('local-users-'+[guid]::NewGuid().ToString()+'.tmp')
     [IO.File]::WriteAllText($temporaryPath,$content,(New-Object Text.UTF8Encoding($true)))
-    if(Test-Path -LiteralPath $accessPath){[IO.File]::Replace($temporaryPath,$accessPath,$null)}else{[IO.File]::Move($temporaryPath,$accessPath)}
+    if(Test-Path -LiteralPath $accessPath){[IO.File]::Replace($temporaryPath,$accessPath,[NullString]::Value)}else{[IO.File]::Move($temporaryPath,$accessPath)}
 }
 try {
     New-Item -ItemType Directory -Path $vaultRoot -Force | Out-Null
