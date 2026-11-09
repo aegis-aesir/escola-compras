@@ -7,8 +7,10 @@ Projeto e hospedagem existentes foram preservados.
 
 O Site mantém tarefas no D1. A ponte local consulta a fila por HTTPS assinado
 com HMAC-SHA256 e chama o OpenClaw pelo endereço local `127.0.0.1:18789`.
-Não é necessário expor o gateway à internet. O acesso ao Site privado usa
-uma credencial de serviço independente da identidade dos funcionários.
+Não é necessário expor o gateway à internet. A ponte usa sua assinatura HMAC;
+a credencial de serviço existente é mantida para compatibilidade com a hospedagem.
+A entrada web agora usa login local, sem ChatGPT. Sessões dos funcionários e
+autenticação da ponte são controles independentes; consulte `ACESSOS-LOCAIS.md`.
 
 Pesquisa: `web_search` retorna fontes com data para conferência. Tanto listas
 de resultados quanto citações do Perplexity são aceitas. Respostas sintetizadas

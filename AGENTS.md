@@ -18,6 +18,8 @@ Há um piloto funcional com banco D1, autenticação e permissões, formulários
 
 Leia `INTEGRACOES.md` para operar e validar a integração. Credenciais ficam no servidor e em cofre Windows DPAPI fora do projeto. Preserve idempotência, histórico e revisão de informações ambíguas. Não enviar mensagens reais a fornecedores durante testes sem autorização específica. Não solicitar credenciais no chat; orientar configuração segura quando necessária.
 
+A hospedagem Sites tem entrada pública na tela de login, por decisão do usuário para permitir contas locais sem ChatGPT. Dados e operações exigem sessão local e permissões no servidor. Contas iniciais: master, setor.teste e diretoria.geral. Senhas temporárias ficam no cofre DPAPI fora do projeto; a troca é obrigatória no primeiro acesso. Leia `ACESSOS-LOCAIS.md`.
+
 ## Código, validação e publicação
 
 - Interface: `app/dashboard.tsx`, `app/workflow-panel.tsx`, `app/globals.css`.

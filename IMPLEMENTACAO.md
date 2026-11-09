@@ -46,7 +46,7 @@ Pedidos do fluxo anterior preservam seu histórico. Pedidos antigos em cotação
 
 Aparência: o botão **Aparência** no cabeçalho está disponível para todos os perfis. Oferece tema claro, escuro ou automático (acompanha o dispositivo) e destaques em violeta, azul, verde, rosa e laranja. A escolha é pessoal, salva neste navegador e sincronizada entre abas; não altera configurações da escola nem registros de compras.
 
-React/Vinext, Cloudflare Workers, D1 e autenticação Sites. Dados locais de teste não são publicados. Nenhum banco ou credencial está no pacote de produção.
+React/Vinext, Cloudflare Workers, D1, autenticação local e hospedagem Sites. Dados locais de teste não são publicados. Nenhum banco ou credencial está no pacote de produção.
 
 - npx tsc --noEmit
 - node scripts/smoke-test.mjs (servidor local na porta 5173; cria registros TESTE LOCAL)
@@ -54,4 +54,4 @@ React/Vinext, Cloudflare Workers, D1 e autenticação Sites. Dados locais de tes
 
 Cobertura: acesso anônimo negado, entradas inválidas, sequência obrigatória, parecer administrativo, aprovação da necessidade, contatos locais, impedimento de busca nacional antes do prazo, propostas, preço real acima da estimativa, execução, recebimento, concorrência e histórico. Regras de fim de semana, feriado e supressão da busca nacional quando existe proposta válida foram verificadas separadamente. Revisão visual confirmou filas, estimativa versus preço real e histórico.
 
-Fora desta versão: envio automático do pedido e acompanhamento da execução pelo agente, interpretação automática de propostas, pagamentos, anexos, estoque, notas fiscais, compras divididas entre fornecedores, edição de pedidos e revogação de usuários pelo painel. Validação específica: `node --test scripts/openclaw-test.mjs` e `node scripts/integration-test.mjs`, com banco isolado e sem mensagens reais.
+Fora desta versão: envio automático do pedido e acompanhamento da execução pelo agente, interpretação automática de propostas, pagamentos, anexos, estoque, notas fiscais, compras divididas entre fornecedores e edição de pedidos. Usuários locais já podem ser desativados e ter suas senhas redefinidas por um Master. Validação específica: `node --test scripts/openclaw-test.mjs` e `node scripts/integration-test.mjs`, com banco isolado e sem mensagens reais.
