@@ -18,7 +18,7 @@ export async function rows<T>(db:D1Database,kind:string):Promise<Row<T>[]> {
   const result=await db.prepare('SELECT id,data,version FROM records WHERE kind=?').bind(kind).all<{id:string;data:string;version:number}>();
   return result.results.map(r=>({...JSON.parse(r.data),id:r.id,version:r.version}));
 }
-async function row<T>(db:D1Database,id:string,kind:string):Promise<Row<T>|null> {
+export async function row<T>(db:D1Database,id:string,kind:string):Promise<Row<T>|null> {
   const r=await db.prepare('SELECT id,data,version FROM records WHERE id=? AND kind=?').bind(id,kind).first<{id:string;data:string;version:number}>();
   return r?{...JSON.parse(r.data),id:r.id,version:r.version}:null;
 }

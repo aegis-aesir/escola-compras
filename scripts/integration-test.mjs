@@ -67,5 +67,17 @@ try {
   assert.equal(await api.validSignature(raw,timestamp,signature,secret,Number(timestamp)+300001),false);
   assert.equal((await api.bridgeEndpoint(new Request('https://example.com',{method:'POST',body:'x'.repeat(65000),headers}),env)).status,413);
   assert.equal((await api.bridgeEndpoint(new Request('https://example.com'),{})).status,405);
+  const signed=body=>{const raw=JSON.stringify(body),timestamp=String(Date.now());return new Request('https://example.com',{method:'POST',body:raw,headers:{'content-type':'application/json','x-estrelas-timestamp':timestamp,'x-estrelas-signature':'sha256='+createHmac('sha256',secret).update(timestamp+'.'+raw).digest('hex')}})};
+  const estimateRequest={...request,id:'estimate-request',status:'estimating',generalApproval:undefined};
+  await put(estimateRequest.id,'request',estimateRequest);
+  await api.tick(db,env,now);
+  const estimate=(await api.rows(db,'integration_job')).find(j=>j.requestId===estimateRequest.id&&j.type==='estimate_search');
+  await db.prepare('UPDATE records SET data=? WHERE id=?').bind(JSON.stringify({...estimate,state:'review'}),estimate.id).run();
+  const retry={op:'retry_estimate',jobId:estimate.id,version:estimate.version};
+  assert.equal((await api.bridgeEndpoint(new Request('https://example.com',{method:'POST',body:JSON.stringify(retry),headers:{'content-type':'application/json'}}),env)).status,401);
+  assert.equal((await api.bridgeEndpoint(signed(retry),env)).status,200);
+  assert.equal((await api.rows(db,'integration_job')).find(j=>j.id===estimate.id).state,'queued');
+  assert.equal((await api.bridgeEndpoint(signed(retry),env)).status,409,'stale retry must not apply twice');
+  assert.equal((await api.bridgeEndpoint(signed({op:'retry_estimate',jobId:secondId,version:expired.version}),env)).status,400,'research retry cannot retry WhatsApp');
   console.log('PASS: real isolated D1, approval, local priority, both send switches, concurrency, idempotence, business-day fallback, uncertain send, signatures and body limit.');
 } finally { await mf.dispose(); }

@@ -12,7 +12,7 @@ export function readMercadoPage() {
   const header=document.querySelector('header,[role="banner"]');
   const controls=[...(header?.querySelectorAll('a,button')||[])];
   const login=controls.some(e=>visible(e)&&/^(entre|entrar|crie sua conta)$/i.test(e.textContent.trim()));
-  const authenticated=controls.some(e=>visible(e)&&(/^(minha conta|sair)$/i.test(e.textContent.trim())||/\/gz\/home\/navigation(?:[?#]|$)|\/logout(?:[/?#]|$)/.test(e.getAttribute('href')||'')));
+  const authenticated=controls.some(e=>visible(e)&&(/^(minha conta|sair)$/i.test(e.textContent.trim())||/\/gz\/home\/navigation(?:[?#]|$)|\/logout(?:[/?#]|$)/.test(e.getAttribute('href')||'')||(String(e.className||'').split(/\s+/).includes('nav-header-user-myml')&&e.getAttribute('href')==='https://myaccount.mercadolivre.com.br/summary')));
   if(login)return {state:'login_required'};
   if(!authenticated)return {state:'unverified'};
   const h1=document.querySelector('main h1,.ui-pdp-title');
@@ -48,16 +48,17 @@ export async function researchMercadoLivre(item,call) {
     const opened=await browser({action:'open',url:'https://lista.mercadolivre.com.br/'+encodeURIComponent(query),timeoutMs:15000});
     tab=opened.suggestedTargetId||opened.tabId||opened.targetId;
     if(!tab)return result('unavailable');
-    const read=async()=>{
+    const read=async(listing=false)=>{
       let data;
-      for(let attempt=0;attempt<3;attempt++){
+      for(let attempt=0;attempt<9;attempt++){
         const r=await browser({action:'act',request:{kind:'evaluate',targetId:tab,fn:readMercadoPage.toString()}});data=r.result;
-        if(data?.state==='ready'||data?.state==='login_required')return data;
-        if(attempt<2)await new Promise(resolve=>setTimeout(resolve,500));
+        if(data?.state==='login_required')return data;
+        if(data?.state==='ready'&&(listing?(data.links||[]).some(isMercadoProductUrl):data.text?.includes('R$')))return data;
+        if(attempt<8)await new Promise(resolve=>setTimeout(resolve,750));
       }
       return data;
     };
-    const list=await read();
+    const list=await read(true);
     if(!list||list.state!=='ready')return result(list?.state==='login_required'?'login_required':'unverified');
     const urls=[...new Set((list.links||[]).filter(isMercadoProductUrl).map(value=>{const u=new URL(value);u.hash='';u.search='';return u.href;}))].slice(0,2);
     for(const url of urls) {

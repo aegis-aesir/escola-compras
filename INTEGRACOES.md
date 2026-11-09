@@ -187,3 +187,7 @@ A extração usa DOM renderizado do produto: título, preço, descrição e espe
 Páginas autenticadas têm prioridade. Com esse modo ativo, páginas públicas do Mercado Livre não são usadas silenciosamente em substituição à sessão. Outras lojas continuam disponíveis como fontes públicas. O painel mostra `Mercado Livre · navegador compras`, o estado da sessão na data da pesquisa e a origem da referência utilizada. Use **Refazer pesquisa de preços** após entrar na conta ou resolver uma verificação. Novas estimativas usam o modo logado automaticamente enquanto o perfil estiver disponível.
 
 Validação: `node scripts/mercado-browser-test.mjs`, testes de preços e integração existentes. A confirmação de login e os seletores do site precisam ser verificados na conta real; alterações de layout podem produzir pendência em vez de preço. Nenhuma credencial é enviada ao Site.
+
+Validação em 09/11/2026: sessão real reconhecida pelo controle visível atual da conta e dois anúncios lidos no perfil compras. A leitura aguarda a hidratação dos resultados e do preço por até nove tentativas, sem usar a confirmação da sessão como confirmação de conteúdo carregado.
+
+A operação assinada `retry_estimate` recebe `jobId` e `version`, somente para uma pesquisa de estimativa elegível. Usa os mesmos controles do Site privado/HMAC, valida versão e registra histórico. Não permite reexecutar envios WhatsApp. Destina-se a refazer pesquisas mediante solicitação administrativa, inclusive após o usuário concluir login no perfil compras.

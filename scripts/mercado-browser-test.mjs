@@ -12,6 +12,18 @@ assert.equal(result.state,'ready');assert.equal(result.pages.length,1);assert.eq
 assert(calls[0].url.includes('S41%2B'));assert(calls.every(c=>c.profile==='compras'&&c.target==='host'));
 assert.deepEqual(calls.filter(c=>c.action==='close').map(c=>c.targetId),['own-tab']);
 assert(!calls.some(c=>c.request&&c.request.kind!=='evaluate'));
+let delayedReads=0;
+const delayed=await researchMercadoLivre(item,async args=>{
+  if(args.action==='open')return {targetId:'delayed-tab'};
+  if(args.action==='act'){
+    delayedReads++;
+    if(delayedReads===1)return {result:{state:'ready',links:[]}};
+    if(delayedReads===2)return {result:{state:'ready',links:[product]}};
+    return {result:{state:'ready',url:product,title:'Lâmpada S41+',text:'Preço exibido: R$ 129,90'}};
+  }
+  return {};
+});
+assert.equal(delayed.state,'ready');assert.equal(delayedReads,3,'wait for hydrated search results even when already authenticated');
 const unauthCalls=[];
 const unauth=await researchMercadoLivre(item,async args=>{unauthCalls.push(args);if(args.action==='open')return {suggestedTargetId:'login-test'};if(args.action==='act')return {result:{state:'login_required',links:[product]}};return {};});
 assert.equal(unauth.state,'login_required');assert.equal(unauth.pages.length,0);assert(!unauthCalls.some(c=>c.action==='navigate'));
@@ -32,6 +44,8 @@ assert.equal(readMercadoPage().state,'login_required');
 controls=[element('Minha conta',account.getAttribute('href'),false)];assert.equal(readMercadoPage().state,'unverified');
 controls=[account];const observed=readMercadoPage();assert.equal(observed.state,'ready');assert(observed.text.includes('Lâmpada S41+'));
 assert(!observed.text.includes('Rua Particular'));assert(!observed.text.includes('Nome Privado'));assert(!observed.text.includes('pessoal@'));
+controls=[{...element('Usuário autenticado','https://myaccount.mercadolivre.com.br/summary'),className:'nav-header-user-myml'}];assert.equal(readMercadoPage().state,'ready','current Mercado Livre account marker');
+controls=[{...element('Usuário autenticado','https://myaccount.mercadolivre.com.br.evil.example/summary'),className:'nav-header-user-myml'}];assert.equal(readMercadoPage().state,'unverified');
 location.hostname='evil.example';assert.equal(readMercadoPage().state,'login_required');
 delete globalThis.document;delete globalThis.location;
 console.log('DOM reader: visible auth signals, redirect guard and personal-data minimization passed.');
