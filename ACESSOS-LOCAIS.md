@@ -19,7 +19,7 @@ O nome visível Master corresponde ao código `admin`, preservando as regras de 
 - `setor.teste`: Setor de teste, vinculado inicialmente a Administrativo.
 - `diretoria.geral`: Franciluce Lima, perfil Diretoria Geral.
 
-As senhas iniciais são aleatórias e temporárias. Não ficam no Git nem nesta documentação. O responsável usa o mesmo usuário Windows para abrir a janela de acesso:
+As novas senhas temporárias são aleatórias e têm 8 caracteres. Senhas já emitidas continuam válidas até a troca; elas não são truncadas nem alteradas automaticamente. Não ficam no Git nem nesta documentação. O responsável usa o mesmo usuário Windows para abrir a janela de acesso:
 
 ```powershell
 powershell.exe -NoProfile -File ./integrations/local-auth/show-initial-access.ps1
@@ -31,7 +31,7 @@ Não enviar senhas no chat. Não são enviados e-mails ou mensagens WhatsApp par
 
 ## Proteções e operação
 
-- Senhas com pelo menos 12 e até 128 caracteres, preservadas exatamente como digitadas. Hash scrypt com salt aleatório por senha, N=16384, r=8, p=5. Senhas em texto não são armazenadas no D1.
+- Senhas com pelo menos 8 e até 128 caracteres, preservadas exatamente como digitadas. Hash scrypt com salt aleatório por senha, N=16384, r=8, p=5. Senhas em texto não são armazenadas no D1.
 - Sessões aleatórias de oito horas: apenas o hash do token fica no banco. Cookie de produção `__Host-estrelas_session`, Secure, HttpOnly, SameSite=Strict e Path=/, sem Domain. O ambiente de desenvolvimento usa um cookie diferente, aceito apenas em desenvolvimento.
 - Troca obrigatória da senha temporária antes de acessar dados. Logout revoga a sessão; troca de senha, redefinição, alteração de perfil e desativação invalidam sessões anteriores.
 - Limites persistentes de tentativas por login e IP; verificação de origem nas operações autenticadas; cabeçalhos ChatGPT não autenticam o usuário.

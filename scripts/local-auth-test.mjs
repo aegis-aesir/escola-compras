@@ -31,14 +31,15 @@ try {
  assert.match(login.headers.get('set-cookie'),/HttpOnly/);assert.match(login.headers.get('set-cookie'),/Secure/);assert.match(login.headers.get('set-cookie'),/SameSite=Strict/);
  let me=await auth.readSession(db,cookie);assert.equal(me.username,'master');assert.equal(me.mustChangePassword,true);
  assert.equal((await post('users',{username:'x',name:'Test',role:'admin',department:'Administrativo'},{Cookie:cookie})).status,403,'forced password change precedes admin access');
- const changed=await post('password',{currentPassword:users[0].password,newPassword:'New-FAKE-test-password-2026!'},{Cookie:cookie});assert.equal(changed.status,200);
+ const tooShort=await post('password',{currentPassword:users[0].password,newPassword:'Fake123'},{Cookie:cookie});assert.equal(tooShort.status,400,'seven characters remain invalid');
+ const changed=await post('password',{currentPassword:users[0].password,newPassword:'Fake123!'},{Cookie:cookie});assert.equal(changed.status,200,'eight characters are accepted');
  assert.equal(await auth.readSession(db,cookie),null,'password change revokes previous sessions');
  const masterCookie=changed.headers.get('set-cookie').split(';')[0];
  me=await auth.readSession(db,masterCookie);assert.equal(me.mustChangePassword,false);
  const token=masterCookie.split('=')[1];assert.ok(!(JSON.stringify((await db.prepare("SELECT data FROM records WHERE kind='local_session'").all()).results)).includes(token));
  assert.equal((await post('login',{username:'master',password:users[0].password})).status,401,'old password is invalid');
  const created=await post('users',{username:'master.dois',name:'Segundo master',role:'admin',department:'Administrativo'},{Cookie:masterCookie});assert.equal(created.status,200);
- const createdData=await created.json();assert.ok(createdData.temporaryPassword?.length>=20);
+ const createdData=await created.json();assert.equal(createdData.temporaryPassword?.length,8,'new temporary passwords have eight characters');
  assert.equal((await post('users',{username:'master.dois',name:'Duplicado',role:'admin',department:'Administrativo'},{Cookie:masterCookie})).status,409);
  assert.equal((await post('users/update',{id:me.id,version:me.version,name:me.name,role:'geral',department:me.department,active:true},{Cookie:masterCookie})).status,400,'master cannot remove own master access');
  const sectorLogin=await post('login',{username:'setor.teste',password:users[1].password});const sectorCookie=sectorLogin.headers.get('set-cookie').split(';')[0];
@@ -48,6 +49,8 @@ try {
  assert.equal((await post('users',{}, {Cookie:sectorReadyCookie})).status,403,'sector never becomes admin after password change');
  const sector=await auth.readSession(db,sectorReadyCookie);
  const reset=await post('users/reset',{id:sector.id,version:sector.version},{Cookie:masterCookie});assert.equal(reset.status,200);
+ const resetData=await reset.json();assert.equal(resetData.temporaryPassword?.length,8,'reset passwords have eight characters');
+ assert.equal((await post('login',{username:'setor.teste',password:resetData.temporaryPassword})).status,200,'eight-character reset password authenticates');
  assert.equal(await auth.readSession(db,sectorReadyCookie),null,'reset revokes user sessions');
  assert.equal((await post('logout',{}, {Cookie:masterCookie})).status,200);assert.equal(await auth.readSession(db,masterCookie),null);
  for(let i=0;i<6;i++)await post('login',{username:'unknown',password:'wrong'});
@@ -58,7 +61,7 @@ try {
  assert.equal(access.canCreateRequest('geral'),false);assert.equal(access.canCreateRequest('admin'),true);
  const sectorRequests=access.visibleRequests([own,pending],{id:'sector',role:'solicitante'});assert.equal(sectorRequests.length,1);assert.equal(sectorRequests[0].estimate,undefined);assert.equal(sectorRequests[0].executionNotes,undefined);assert.deepEqual(sectorRequests[0].quotes,[]);
  const generalRequests=access.visibleRequests([own,pending],{id:'dg',role:'geral'});assert.equal(generalRequests.length,1);assert.equal(generalRequests[0].adminReview,pending.adminReview);assert.deepEqual(generalRequests[0].quotes,[]);
- const again=await post('login',{username:'master',password:'New-FAKE-test-password-2026!'});const cookieA=again.headers.get('set-cookie').split(';')[0];
+ const again=await post('login',{username:'master',password:'Fake123!'});const cookieA=again.headers.get('set-cookie').split(';')[0];
  const second=await post('login',{username:'master.dois',password:createdData.temporaryPassword});
  const secondChanged=await post('password',{currentPassword:createdData.temporaryPassword,newPassword:'Second-FAKE-master-password!'},{Cookie:second.headers.get('set-cookie').split(';')[0]});const cookieB=secondChanged.headers.get('set-cookie').split(';')[0];
  const a=await auth.readSession(db,cookieA),b=await auth.readSession(db,cookieB);

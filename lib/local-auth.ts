@@ -7,7 +7,7 @@ export type LocalUser={id:string;version:number;username:string;name:string;role
 type AuthEnv={DB?:D1Database;INTEGRATION_SECRET?:string};
 export class AuthError extends Error {constructor(message:string,public status=400){super(message)}}
 const lifetime=8*60*60*1000;
-const passwordSchema=z.string().min(12,'Use pelo menos 12 caracteres.').max(128,'Use no máximo 128 caracteres.');
+const passwordSchema=z.string().min(8,'Use pelo menos 8 caracteres.').max(128,'Use no máximo 128 caracteres.');
 const usernameSchema=z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,39}$/,'Use de 3 a 40 letras, números, ponto, hífen ou sublinhado.');
 const userInput=z.object({username:usernameSchema,name:z.string().trim().min(2).max(100),role:z.enum(['admin','administrativo','geral','solicitante']),department:z.string().trim().min(2).max(80)});
 const sha=(s:string)=>createHash('sha256').update(s).digest('hex');
@@ -145,7 +145,7 @@ export async function authEndpoint(req:Request,env:AuthEnv) {
     const settings=JSON.parse((await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>())!.data) as Settings;
     if(path==='users') {
       const input=userInput.parse(b);if(!settings.departments.includes(input.department))throw new AuthError('Setor não cadastrado.');
-      const password=randomBytes(18).toString('base64url');
+      const password=randomBytes(6).toString('base64url');
       const next:LocalUser={...input,id:'user:'+input.username,version:1,active:true,mustChangePassword:true,passwordHash:await hashPassword(password),createdAt:now};
       const result=await db.batch([db.prepare("INSERT OR IGNORE INTO records(id,kind,data,version) SELECT ?,'local_user',?,1 WHERE EXISTS(SELECT 1 FROM records WHERE id=? AND version=?)").bind(next.id,JSON.stringify(next),user.id,user.version),log(db,next.id,user.name,'Usuário local criado: '+next.username+' · '+next.role,now)]);
       if(result[0].meta.changes!==1)throw new AuthError('Esse login já está cadastrado.',409);
@@ -167,7 +167,7 @@ export async function authEndpoint(req:Request,env:AuthEnv) {
     }
     if(path==='users/reset') {
       if(target.id===user.id)throw new AuthError('Para sua própria senha, use Alterar senha.');
-      const password=randomBytes(18).toString('base64url');
+      const password=randomBytes(6).toString('base64url');
       const result=await db.batch([db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=? AND EXISTS(SELECT 1 FROM records AS actor WHERE actor.id=? AND actor.version=?)').bind(JSON.stringify({...target,passwordHash:await hashPassword(password),mustChangePassword:true}),target.id,target.version,user.id,user.version),log(db,target.id,user.name,'Senha temporária emitida; sessões revogadas: '+target.username,now)]);
       if(result[0].meta.changes!==1)throw new AuthError('Usuário atualizado por outro processo.',409);
       await db.prepare('DELETE FROM records WHERE id=?').bind('auth-rate:'+sha('login:'+target.username)).run();

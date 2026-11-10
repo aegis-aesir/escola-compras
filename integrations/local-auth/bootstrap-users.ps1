@@ -34,7 +34,7 @@ try {
             @{username='setor.teste';name='Setor de teste';role='solicitante';department='Administrativo'},
             @{username='diretoria.geral';name='Franciluce Lima';role='geral';department='Administrativo'}
         )
-        foreach($seed in $userSeeds){$bytes=New-Object byte[] 18;$rng.GetBytes($bytes);$seed.password=[Convert]::ToBase64String($bytes)}
+        foreach($seed in $userSeeds){$bytes=New-Object byte[] 6;$rng.GetBytes($bytes);$seed.password=[Convert]::ToBase64String($bytes)}
         $rng.Dispose()
         $bundle=@{batchId=[guid]::NewGuid().ToString();users=$userSeeds;site=$siteOrigin;createdAt=[DateTime]::UtcNow.ToString('o')}
         $json=$bundle | ConvertTo-Json -Depth 8 -Compress
