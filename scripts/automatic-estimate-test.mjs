@@ -43,5 +43,15 @@ try {
  await db.prepare('UPDATE records SET data=? WHERE id=?').bind(JSON.stringify({...legacyJob,state:'review',sources:[source]}),legacyJob.id).run();
  await api.enqueueSearch(db,legacy,'test',now);
  assert.equal((await api.rows(db,'integration_job')).find(j=>j.id===legacyJob.id).state,'queued','old bridge result without agent analysis is reprocessed');
+ const digital={...request,id:'digital-term',form:{kind:'digital',fields:{referenceMonth:'2026-12'},references:[],accepted:true}};
+ await db.prepare('INSERT INTO records VALUES (?,?,?,1)').bind(digital.id,'request',JSON.stringify(digital)).run();
+ await api.enqueueSearch(db,digital,'test',now);
+ const digitalJob=(await api.rows(db,'integration_job')).find(j=>j.requestId===digital.id);
+ await db.prepare('UPDATE records SET data=? WHERE id=?').bind(JSON.stringify({...digitalJob,state:'review',researchedAt:now,priceEvidence:result.priceEvidence}),digitalJob.id).run();
+ await api.tick(db,{},now);
+ assert.equal((await api.rows(db,'request')).find(r=>r.id===digital.id).status,'estimating','a price per cycle must never silently become a whole-term digital estimate');
+ const revision={...request,id:'revised',estimateRevision:now};await db.prepare('INSERT INTO records VALUES (?,?,?,1)').bind(revision.id,'request',JSON.stringify(revision)).run();
+ await api.enqueueSearch(db,revision,'test',now);await api.enqueueSearch(db,{...revision,estimateRevision:now+'-next'},'test',now);
+ assert.equal((await api.rows(db,'integration_job')).filter(j=>j.requestId==='revised').length,2,'resubmission with identical items receives a fresh research generation');
  console.log('Automatic estimate: item snapshot, verified source, quantities, administrative review and replay passed.');
 }finally{await mf.dispose();}

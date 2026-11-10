@@ -30,15 +30,16 @@ async function insert(db:D1Database,id:string,kind:string,data:object,entity:str
   return result[0].meta.changes===1;
 }
 async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[]) {
-  const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('');
-  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
+  const openMonth=" AND NOT EXISTS(SELECT 1 FROM records AS target JOIN records AS closing ON closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(json_extract(target.data,'$.management.referenceMonth'),json_extract(target.data,'$.form.fields.referenceMonth')) WHERE target.id=? AND target.kind='request' AND json_extract(closing.data,'$.status')='Concluído')";
+  const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+openMonth+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('');
+  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,old.id,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
 export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'>,suppliers:Supplier[]) {
-  if(j.type==='estimate_search')return ['estimating','pending'].includes(r.status);
+function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>,suppliers:Supplier[]) {
+  if(j.type==='estimate_search')return ['estimating','pending'].includes(r.status)&&(j.estimateRevision||'')===(r.estimateRevision||'');
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   const s=suppliers.find(s=>s.id===j.supplierId);
@@ -47,12 +48,12 @@ function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category
 export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   if(['quoting','national'].includes(r.status))return enqueueSupplierSearch(db,r,actor,now);
   const type=r.status==='national'?'national_search':'estimate_search';
-  if(!eligible(r,{type},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
+  if(!eligible(r,{type,estimateRevision:r.estimateRevision},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
   let created=0;
   for(const [itemIndex,item] of r.items.entries()) {
     const query=`${item.name} ${item.spec} ${item.unit} ${type==='estimate_search'?'preço comprar Brasil':'fornecedor entrega Manaus AM Brasil'}`.slice(0,380);
-    const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item]));
-    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+    const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
+    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
     const existing=await row<IntegrationJob>(db,id,jobKind);
     if(existing?.state==='review'&&existing.item&&!existing.analysisReason&&!existing.priceEvidence) {
       if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise operacional reenfileirada',now))created++;
@@ -161,10 +162,12 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
 async function projectAutomaticEstimates(db:D1Database,now:string) {
   const jobs=await rows<IntegrationJob>(db,jobKind);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(!['estimating','pending'].includes(r.status)||r.estimate)continue;
+    // The evidence protocol has no verified billing-period field. Digital sources
+    // remain available for review; never multiply an ambiguous monthly price as a term total.
+    if(!['estimating','pending'].includes(r.status)||r.estimate||r.form?.kind==='digital')continue;
     const selected:IntegrationJob[]=[];
     for(const [i,item] of r.items.entries()) {
-      const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item]));
+      const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
       const j=jobs.find(j=>j.id===id&&j.state==='review'&&j.priceEvidence&&j.researchedAt);
       if(!j||!extractReference(item,j.priceEvidence!))break;
       selected.push(j);

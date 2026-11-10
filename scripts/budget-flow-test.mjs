@@ -1,0 +1,18 @@
+import {build} from 'esbuild';import assert from 'node:assert/strict';
+await build({entryPoints:['app/workflow.ts','app/access.ts'],outdir:'outputs/budget-flow',bundle:true,platform:'node',format:'esm',outExtension:{'.js':'.mjs'}});
+const {transition}=await import('../outputs/budget-flow/workflow.mjs');const {visibleRequests}=await import('../outputs/budget-flow/access.mjs');
+const now='2026-11-10T15:00:00.000Z',settings={minQuotes:3,holidays:[]};const admin={id:'master',role:'admin',name:'Master'},dg={id:'dg',role:'geral',name:'DG'},sector={id:'setor',role:'solicitante',name:'Setor'};
+const original={id:'r',version:1,authorId:'setor',status:'general_review',title:'Teste',department:'Administrativo',neededBy:'2026-12-01',reason:'Justificativa teste',priority:'Essencial',quotes:[],items:[{name:'Item A',quantity:2,unit:'un',spec:'teste',estimatedUnitPrice:10},{name:'Item B',quantity:1,unit:'un',spec:'teste',estimatedUnitPrice:30}],form:{kind:'monthly',fields:{referenceMonth:'2026-12'},references:[],accepted:true},estimate:{total:50,references:[{unitPrice:10},{unitPrice:30}],freight:0},adminReview:'Conferido'};
+assert.throws(()=>transition(original,{action:'approve',reason:'Necessidade conferida'},dg,[],settings,now),/decisão|estruturad|formulário/i,'new forms use structured decision');
+const partial=transition(original,{action:'decide_need',choice:'partial',itemIndexes:[1],reason:'Apenas segundo item necessário'},dg,[],settings,now).data;
+assert.equal(partial.status,'quoting');assert.equal(partial.items.length,1);assert.equal(partial.items[0].name,'Item B');assert.equal(partial.originalScope.items.length,2);assert.equal(partial.estimate.total,30);
+assert.throws(()=>transition(original,{action:'decide_need',choice:'partial',itemIndexes:[8],reason:'Indevido'},dg,[],settings,now));
+assert.throws(()=>transition(original,{action:'decide_need',choice:'approve',reason:'Indevido'},sector,[],settings,now));
+const returned=transition(original,{action:'return_request',reason:'Detalhar especificação',due:'2026-11-20'},admin,[],settings,now).data;assert.equal(returned.status,'correction');
+assert.throws(()=>transition({...original,status:'quoting',generalApproval:{actor:'DG',at:now,reason:'Aprovado'}},{action:'return_request',reason:'Alteração indevida',due:'2026-11-20'},admin,[],settings,now));
+const deferred=transition(original,{action:'decide_need',choice:'defer',reason:'Adiar para outro período',due:'2026-12-01'},dg,[],settings,now).data;assert.equal(deferred.status,'deferred');
+const resumed=transition(deferred,{action:'resume_request',reason:'Retomar novo período',referenceMonth:'2027-01'},admin,[],settings,now).data;assert.equal(resumed.status,'estimating');assert.equal(resumed.form.fields.referenceMonth,'2026-12');assert.equal(resumed.management.referenceMonth,'2027-01');assert.equal(resumed.generalApproval,undefined);assert.equal(resumed.estimate,undefined);
+const sectorView=visibleRequests([{...original,management:{financialNotes:'interno'},returnForCorrection:returned.returnForCorrection}],sector)[0];assert.ok(sectorView.form);assert.equal(sectorView.management,undefined);assert.ok(sectorView.returnForCorrection);
+const ready=partial;assert.throws(()=>transition(ready,{action:'budget_management',data:{realizedAmount:45}},dg,[],settings,now),e=>e.status===403);
+const savedManagement=transition(resumed,{action:'budget_management',data:{analysis:'Análise atualizada'}},admin,[],settings,now).data;assert.equal(savedManagement.management.referenceMonth,'2027-01','saving other controls preserves effective competence');
+console.log('PASS: structured decisions, effective partial scope, return/defer/resume, no approval reuse and scoped form privacy.');

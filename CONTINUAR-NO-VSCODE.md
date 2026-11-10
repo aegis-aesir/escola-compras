@@ -38,8 +38,12 @@ Credenciais não ficam neste projeto. O Site usa variáveis de servidor; o launc
 
 ## Hospedagem atual
 
-Site privado: https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site
+Entrada pública com login local; dados protegidos: https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site
 
 O projeto está vinculado a Sites pelo arquivo `.openai/hosting.json` e pelo Git remoto existente. Não recriar a hospedagem. A integração OpenClaw foi publicada em 08/11/2026 pelo fluxo oficial. Consultar o Git e as versões Sites para identificar o último commit publicado, em vez de assumir o estado antigo do piloto.
 
 As ferramentas e plugins disponíveis na extensão podem diferir dos disponíveis no app. Se a publicação Sites não estiver disponível na extensão, a edição e os testes continuam locais; a publicação pode ser realizada pelo app no mesmo projeto. Não copiar credenciais entre ferramentas.
+
+## Formulários estruturados e controles
+
+O escopo de compatibilidade de 10/11/2026 foi aprovado pelo usuário. Consulte `FORMULARIOS-E-CONTROLES.md` para operar os três modelos, complementações, cotações comparáveis, documentos privados e fechamento. Rodar os testes `budget-test`, `budget-flow-test`, `budget-files-test`, `budget-records-test`, `quote-comparison-test` e, com servidor local, `budget-http-test` e `smoke-test`. Todos os dados dos scripts são fictícios e apenas locais.

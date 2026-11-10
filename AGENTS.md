@@ -34,3 +34,9 @@ A hospedagem Sites tem entrada pública na tela de login, por decisão do usuár
 - Usar o fluxo oficial Sites para publicar quando suas ferramentas estiverem disponíveis. A extensão VS Code pode não fornecer as ferramentas do app; nesse caso preparar o código local e informar o bloqueio de publicação. Não tentar `wrangler deploy` para substituir a hospedagem atual.
 - Não guardar tokens em código, arquivos de configuração compartilhados, logs, commits ou arquivos de passagem de contexto.
 - Preservar alterações do usuário. Nunca limpar o banco ou apagar arquivos para resolver um erro sem avaliar o conteúdo e o escopo.
+
+## Compatibilidade com os formulários anteriores
+
+Escopo aprovado em 10/11/2026: consultar `FORMULARIOS-E-CONTROLES.md` e `docs/superpowers/specs/2026-11-10-compatibilidade-formularios-design.md`. Setores têm apenas formulários mensal/emergencial/assinaturas digitais e próprias complementações. Administração mantém conferência, financeiro informativo, mapa de cotações, execução, documentos fiscais e fechamento. DG decide necessidade integral/parcial, medida provisória emergencial, adiamento ou rejeição; nunca teto de valor. Preserve `originalScope`, competência original e histórico nas reduções/transferências.
+
+Anexos privados usam R2 `BUCKET`, sem mudar D1 `DB` ou project_id. Não disponibilizar documentos originais ou arquivos internos como assets públicos. O envio de mensagens continua desativado nos testes. A pesquisa de assinaturas reúne fontes, mas preços de referência por licença para a vigência são conferidos pela administração; o protocolo automático atual não comprova ciclo/vigência.
