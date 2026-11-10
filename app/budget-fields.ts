@@ -76,8 +76,23 @@ const digitalSections: FieldSection[] = [
   ] },
 ];
 
-export function requestSections(kind: BudgetKind): FieldSection[] {
+export const requestClassifications = ['Prevista recorrente', 'Prevista pontual', 'Não prevista recorrente', 'Não prevista pontual'];
+const simplifiedIdentification: FieldSection = { title: 'Responsável pela solicitação', fields: [
+  field('responsible', 'Responsável pela solicitação', 'text', true), field('role', 'Cargo / função', 'text', true),
+] };
+const simplifiedNeed: FieldSection = { ...need, fields: need.fields
+  .filter(f => !['nature', 'budgetForecast', 'connection', 'connectionOther'].includes(f.key))
+  .flatMap(f => f.key === 'requestPriority' ? [f, choice('classification', 'Classificação da necessidade', requestClassifications, true)] : [f]),
+};
+const simplifiedChecks: FieldSection = { ...checks, title: 'Verificações do setor', fields: checks.fields.filter(f => !['documentsAvailable', 'documentsReason', 'noReferencesReason'].includes(f.key)) };
+
+/** Ausência de versão representa o formulário original, preservado para consulta e validação. */
+export function requestSections(kind: BudgetKind, version?: 2): FieldSection[] {
   if (!['monthly', 'emergency', 'digital'].includes(kind)) throw new Error('Modelo de formulário inválido.');
+  if (version === 2) return [simplifiedIdentification, simplifiedNeed,
+    ...(kind === 'emergency' ? emergencySections.map(section => ({ ...section, fields: section.fields.filter(f => f.key !== 'linkedEmergencyId') })) : kind === 'digital' ? digitalSections : []),
+    simplifiedChecks,
+  ];
   return [identification, need, ...(kind === 'emergency' ? emergencySections : kind === 'digital' ? digitalSections : []), checks];
 }
 

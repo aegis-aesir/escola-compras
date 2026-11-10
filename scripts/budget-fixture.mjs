@@ -31,3 +31,12 @@ export function budgetFixture(kind = 'monthly') {
     items, form: { kind, fields, references: [], accepted: true },
   };
 }
+
+export function simplifiedBudgetFixture(kind = 'monthly') {
+  const value = budgetFixture(kind);
+  const removed = ['externalProtocol', 'originalRequestId', 'relatedRequestCode', 'correctionResponse', 'referenceMonth', 'situation', 'contact', 'costCenter', 'connection', 'connectionOther', 'documentsAvailable', 'documentsReason', 'noReferencesReason', 'origin', 'nature', 'budgetForecast', 'linkedEmergencyId'];
+  for (const key of removed) delete value.form.fields[key];
+  value.form.version = 2;
+  value.form.fields.classification = 'Prevista pontual';
+  return value;
+}

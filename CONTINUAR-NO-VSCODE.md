@@ -47,3 +47,5 @@ As ferramentas e plugins disponíveis na extensão podem diferir dos disponívei
 ## Formulários estruturados e controles
 
 O escopo de compatibilidade de 10/11/2026 foi aprovado pelo usuário. Consulte `FORMULARIOS-E-CONTROLES.md` para operar os três modelos, complementações, cotações comparáveis, documentos privados e fechamento. Rodar os testes `budget-test`, `budget-flow-test`, `budget-files-test`, `budget-records-test`, `quote-comparison-test` e, com servidor local, `budget-http-test` e `smoke-test`. Todos os dados dos scripts são fictícios e apenas locais.
+
+O formulário simplificado (`version: 2`) usa competência automática do primeiro envio em Manaus, classificação única e referências/anexos opcionais. Não recuperar os campos removidos no preenchimento do setor. Preservar competência e respostas originais de registros antigos. Validar também `budget-simplification-test` e `budget-simplification-http-test`.

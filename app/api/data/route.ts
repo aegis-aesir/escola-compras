@@ -61,7 +61,7 @@ export async function POST(req:Request){try{
   let id:string=crypto.randomUUID(),kind='',data:any,action='',old:any;
   if(b.action==='request'){
     if(!canCreateRequest(me.role))throw new AppError('Seu perfil permite apenas aprovar ou recusar pedidos.',403);
-    const input=requestSchema.parse(b.data);const form=parseBudgetForm(b.data?.form,input.items);if(closedBudgetMonth(budgetRecords,String(form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de incluir solicitações.');if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
+    const input=requestSchema.parse(b.data);const form=parseBudgetForm(b.data?.form,input.items,{at:now});if(closedBudgetMonth(budgetRecords,String(form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de incluir solicitações.');if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
     if(me.role==='solicitante'&&input.department!==me.department)throw new AppError('Você só pode solicitar para seu setor.',403);
     kind='request';data={...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'estimating',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada';
   }else if(b.action==='resubmit_request'){
@@ -70,7 +70,7 @@ export async function POST(req:Request){try{
     if(old.status!=='correction'||old.generalApproval)throw new AppError('Aguarde a devolução para complementar.');
     if(b.version!==old.version)throw new AppError('Solicitação atualizada. Recarregue.',409);
     const input=requestSchema.parse(b.data);if(!settings.departments.includes(input.department)||(me.role==='solicitante'&&input.department!==me.department))throw new AppError('Setor inválido.',403);
-    const form=parseBudgetForm({...b.data.form,fields:{...b.data.form?.fields,referenceMonth:old.form?.fields.referenceMonth||b.data.form?.fields.referenceMonth,situation:'Complementação',originalRequestId:old.code}},input.items);
+    const form=parseBudgetForm({...b.data.form,fields:{...b.data.form?.fields,referenceMonth:old.form?.fields.referenceMonth||b.data.form?.fields.referenceMonth,situation:'Complementação',originalRequestId:old.code}},input.items,{at:now,previous:old.form,createdAt:old.createdAt,requestCode:old.code});
     if(!form.fields.correctionResponse)throw new AppError('Responda às pendências da complementação.');
     if(closedBudgetMonth(budgetRecords,String(old.management?.referenceMonth||form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
     id=old.id;kind='request';data={...old,...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},status:'estimating',updatedAt:now,estimateRevision:now,correctionHistory:[...(old.correctionHistory||[]),{at:now,actor:me.name,reason:String(form.fields.correctionResponse),previous:{form:old.form,items:old.items,estimate:old.estimate,adminReview:old.adminReview,management:old.management,title:old.title,reason:old.reason,neededBy:old.neededBy}}]};

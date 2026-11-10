@@ -59,3 +59,5 @@ Fora desta versão: envio automático do pedido e acompanhamento da execução p
 ## Formulários e controles anteriores
 
 Compatibilidade com os nove arquivos de referência: três formulários estruturados, referências preliminares separadas, declaração autenticada, correções com histórico, conferência/parecer/financeiro, decisões de escopo, comparativo de propostas, execução, matriz fiscal e fechamento mensal. Consultar `FORMULARIOS-E-CONTROLES.md`. Os dois pedidos preenchidos na planilha antiga não foram importados automaticamente. Registros legados não recebem campos ou declarações inventadas.
+
+Simplificação de 10/11/2026: novos formulários usam classificação única em vez de origem/natureza/previsão e retiram códigos, contato, centro de custo, vínculo e declarações de disponibilidade/ausência de referências. Referências e anexos são opcionais. Competência calculada pelo servidor no mês do primeiro envio em America/Manaus, preservada nas complementações. Formulários anteriores mantêm sua leitura original e histórico. Testes adicionais: `budget-simplification-test` e, com servidor local, `budget-simplification-http-test`.

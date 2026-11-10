@@ -15,7 +15,7 @@ export type PreliminaryReference = {
   validUntil?: string;
   reference: string;
 };
-export type BudgetForm = { kind: BudgetKind; fields: Record<string, FieldValue>; references: PreliminaryReference[]; accepted: boolean };
+export type BudgetForm = { version?: 2; kind: BudgetKind; fields: Record<string, FieldValue>; references: PreliminaryReference[]; accepted: boolean };
 export type ManagementData = Record<string, FieldValue>;
 export type BudgetManagement = ManagementData;
 const MAX_UNIT_AMOUNT = 10_000_000;
@@ -53,6 +53,7 @@ const referenceSchema = z.object({
   }, 'Links devem usar uma URL HTTP ou HTTPS válida.'),
 }).strict();
 const formSchema = z.object({
+  version: z.literal(2).optional(),
   kind: z.enum(['monthly', 'emergency', 'digital']), fields: z.record(z.union([z.string(), z.number().finite(), z.boolean()])),
   references: z.array(referenceSchema).max(100), accepted: z.literal(true),
 }).strict();
@@ -110,9 +111,31 @@ type BudgetPurchase = {
 };
 
 /** Envio do setor: valida integralmente o modelo novo e rejeita campos administrativos. */
-export function parseBudgetForm(input: unknown, items: BudgetItem[]): BudgetForm {
+export type BudgetSubmission = { at: string; previous?: BudgetForm; createdAt?: string; requestCode?: string };
+/** A competência nova usa a data do primeiro envio em Manaus, nunca a data necessária. */
+export function submissionMonth(at: string): string {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) invalid('Data de envio inválida.');
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Manaus', year: 'numeric', month: '2-digit' }).formatToParts(date);
+  return `${parts.find(p => p.type === 'year')!.value}-${parts.find(p => p.type === 'month')!.value}`;
+}
+export function parseBudgetForm(input: unknown, items: BudgetItem[], submission?: BudgetSubmission): BudgetForm {
   const base = parse(formSchema, input);
-  const fields = parseFields(base.fields, requestSections(base.kind).flatMap(section => section.fields), true);
+  const editable = { ...base.fields };
+  if (base.version === 2) {
+    for (const key of ['referenceMonth', 'originalRequestId', 'situation']) delete editable[key];
+  }
+  const definitions = requestSections(base.kind, base.version).flatMap(section => section.fields);
+  if (base.version === 2) definitions.push({ key: 'correctionResponse', label: 'Resposta às pendências', type: 'textarea' });
+  const fields = parseFields(editable, definitions, true);
+  if (base.version === 2 && !submission) return invalid('A data de envio deve ser registrada pelo servidor.');
+  if (submission) {
+    const previousMonth = submission.previous?.fields.referenceMonth;
+    fields.referenceMonth = typeof previousMonth === 'string' && validMonth(previousMonth) ? previousMonth : submissionMonth(submission.createdAt || submission.at);
+    fields.situation = submission.requestCode ? 'Complementação' : 'Nova';
+    delete fields.originalRequestId;
+    if (submission.requestCode) fields.originalRequestId = submission.requestCode;
+  }
   if (!Array.isArray(items) || items.length < 1 || items.length > 50) invalid('Informe de 1 a 50 itens.');
   for (const item of items) {
     if (!item || !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 100000) invalid('Quantidade de item inválida.');
@@ -138,15 +161,15 @@ export function parseBudgetForm(input: unknown, items: BudgetItem[]): BudgetForm
     const risks = ['riskSafety', 'riskStructural', 'riskElectrical', 'riskHydraulic', 'riskOperational', 'riskPedagogical', 'riskTechnological'];
     if (!risks.some(key => fields[key] === true)) invalid('Indique ao menos uma natureza de risco da emergência.');
     requireDetail(fields.planningFailure === 'Sim', 'planningFailureReason', 'Explique o indício de falha de planejamento / manutenção.');
-    requireDetail(base.references.length === 0, 'noReferencesReason', 'Justifique a ausência de referência preliminar na emergência.');
+    requireDetail(base.version !== 2 && base.references.length === 0, 'noReferencesReason', 'Justifique a ausência de referência preliminar na emergência.');
     if (String(fields.safeDeadline) < String(fields.occurrenceAt)) invalid('O prazo seguro não pode anteceder a ocorrência.');
   }
   if (base.kind === 'digital') {
     requireDetail(fields.integrations === 'Sim', 'integrationDetails', 'Descreva as integrações necessárias.');
     requireDetail(fields.equivalentLicense === 'Sim', 'equivalentLicenseReason', 'Justifique a solicitação diante da licença equivalente ativa.');
-    requireDetail(items.some((_, index) => !base.references.some(reference => reference.itemIndex === index)), 'noReferencesReason', 'Informe uma referência para cada assinatura ou justifique a ausência.');
+    requireDetail(base.version !== 2 && items.some((_, index) => !base.references.some(reference => reference.itemIndex === index)), 'noReferencesReason', 'Informe uma referência para cada assinatura ou justifique a ausência.');
   }
-  return { kind: base.kind, fields, references: base.references, accepted: true };
+  return { ...(base.version === 2 ? { version: 2 as const } : {}), kind: base.kind, fields, references: base.references, accepted: true };
 }
 
 /** Salvar progresso não equivale a emitir parecer nem a liberar execução/pagamento. */

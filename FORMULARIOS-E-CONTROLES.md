@@ -4,11 +4,13 @@ O sistema incorpora os três modelos e os controles da documentação anterior, 
 
 ## Setores
 
-Em Solicitações → Nova solicitação, escolha Orçamento mensal, Solicitação emergencial ou Assinaturas digitais. Preencha identificação, competência, finalidade, classificação, itens, verificações, referências disponíveis e declaração. O número, autor e data/hora são registrados pelo servidor.
+Em Solicitações → Nova solicitação, escolha Orçamento mensal, Solicitação emergencial ou Assinaturas digitais. Preencha identificação, finalidade, classificação, itens, verificações e declaração. A classificação reúne previsão e recorrência em um único campo: Prevista recorrente, Prevista pontual, Não prevista recorrente ou Não prevista pontual.
+
+O número, autor, data/hora e mês de referência são registrados pelo servidor. Nos novos envios, o mês é o do primeiro preenchimento/envio em America/Manaus, e não o da data necessária para entrega. Complementações mantêm o mês original. Protocolo, códigos/vínculos de complementação, contato, centro de custo e vínculo operacional/pedagógico não são solicitados ao setor. Formulários anteriores continuam consultáveis com suas respostas originais; não há reclassificação automática.
 
 O emergencial pede ocorrência, riscos, justificativa da imprevisibilidade e solução. Assinaturas aceitam várias plataformas com plano, quantidade de licenças, ciclo e vigência. O preço é por licença e por ciclo; o total considera licenças e ciclos. Câmbio exige taxa e data/base explícitas; valores ausentes são apresentados como incompletos.
 
-O setor pode informar preços e documentos já disponíveis como referências preliminares, separadas da estimativa pesquisada e da cotação oficial. A declaração não representa aprovação da despesa. O setor consulta somente suas solicitações e não recebe propostas oficiais, cadastro interno de fornecedores, financeiro ou fechamento.
+O setor pode informar preços e documentos já disponíveis como referências preliminares, separadas da estimativa pesquisada e da cotação oficial. Referências e anexos são opcionais nos três modelos: não é necessário declarar disponibilidade nem justificar ausência. A declaração não representa aprovação da despesa. O setor consulta somente suas solicitações e não recebe propostas oficiais, cadastro interno de fornecedores, financeiro ou fechamento.
 
 Após salvar, o pedido abre para envio de anexos. Quando a administração devolver com motivo e prazo, use Complementar e reenviar formulário, responda às pendências e confirme novamente a declaração. O histórico anterior é preservado; o pedido volta à estimativa. O setor não altera pedido já aprovado.
 
