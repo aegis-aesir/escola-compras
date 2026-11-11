@@ -70,3 +70,5 @@ Anexos no preenchimento do setor (11/11/2026): seção opcional antes do aceite 
 
 
 Conferência administrativa simplificada (11/11/2026): retirar da interface e dos bloqueios completude, necessidade/finalidade, estoque, duplicidade, compatibilidade com mercado, fornecedor/condições, prioridade adequada e prazos de análise. Quantidades e possibilidade de reduzir/adiar permanecem. Prioridade validada inicia com a prioridade do pedido, preserva escolha já salva e pode ser alterada. Documentos suficientes e observações ficam em avaliação opcional junto aos anexos; não exigir anexos ou cotação pelo setor. Conferências técnicas específicas, parecer e aprovação da necessidade permanecem. Manter campos antigos no contrato de armazenamento e nos registros, sem migrar ou apagar dados históricos.
+
+Botão Meus rascunhos somente na aba Solicitações. Visão geral mantém Nova solicitação. Ações do cabeçalho usam page-actions, com altura uniforme, espaçamento e disposição vertical em telas pequenas.

@@ -19,3 +19,7 @@ dialog{position:fixed;inset:0;width:760px;max-width:calc(100% - 32px);max-height
 /* Request actions and immediately visible archive confirmation. */
 .detail-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}.detail-heading{flex:1;min-width:220px}.detail-title>.button{flex-shrink:0;margin-top:2px;white-space:nowrap}.request-archive-dialog{width:500px}.request-archive-dialog .modal-head h2{font-size:18px}.archive-request-name{margin:0 0 14px;overflow-wrap:anywhere}.archive-request-name small{display:block;color:var(--muted);margin-top:6px}.archive-explanation{font-size:13px;line-height:1.65;color:var(--muted);margin:0 0 20px}.archive-confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.request-archive-dialog textarea{min-height:90px;max-height:30vh;resize:vertical}
 @media(max-width:520px){.detail-title{gap:14px}.detail-heading{flex-basis:100%;min-width:0}.detail-title>.button{margin:0}.request-archive-dialog .modal-head h2{font-size:16px}.archive-confirm-actions{display:grid;grid-template-columns:1fr}.archive-confirm-actions .primary{grid-row:1}.archive-confirm-actions .button{width:100%;justify-content:center}}
+
+.page-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-shrink:0}.page-actions>.button{height:40px;margin:0}
+@media(max-width:740px){.page-actions{flex-wrap:wrap;justify-content:flex-start}}
+@media(max-width:520px){.page-actions{width:100%;flex-direction:column;align-items:stretch;gap:10px}.page-actions>.button{width:100%}}
