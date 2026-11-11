@@ -24,6 +24,8 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 ## Integração atual e próximos passos
 
+- Análise administrativa simplificada em 11/11/2026: sem avaliação financeira informativa ou exigência desses dados para encaminhar à DG. Comparação/escolha comercial apenas após a aprovação da necessidade e propostas reais recebidas; estimativa não habilita comparação. Históricos e regras da seleção preservados. Teste: `node scripts/administrative-stages-test.mjs`.
+
 - Pesquisa no Mercado Livre pelo perfil dedicado `compras` do OpenClaw, com login manual do usuário. Abrir com `integrations/openclaw/open-shopping-browser.ps1`. Verificar login real antes de afirmar que a pesquisa autenticada está operacional. O painel informa sessão expirada/bloqueada e permite refazer a pesquisa. Frete sem quantidade/destino conferidos continua fora do total.
 
 - Estimativa automática: pesquisas novas e pedidos ainda em estimativa usam o agente `coordinator` do OpenClaw para analisar páginas e extrair evidências estruturadas. Todos os itens precisam de preço validável para encaminhar à análise administrativa. Frete desconhecido não entra no total. A administração pode corrigir a estimativa antes de encaminhar à diretoria geral.

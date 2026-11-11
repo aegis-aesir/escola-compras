@@ -21,7 +21,7 @@ await action('approve',{reason:'Tentativa sem análise'},400);
 await action('estimate',{data:{references:[{unitPrice:10,sourceName:'Fonte fictícia de teste',sourceUrl:'https://example.com/papel',researchedOn:'2026-01-01'}],freight:0,notes:'Teste de referência, sem pesquisa real.'}});
 assert.equal((await current()).status,'admin_review');
 const management=Object.fromEntries(managementSections('monthly').flatMap(s=>s.fields).filter(f=>f.key.startsWith('review')&&f.type==='select').map(f=>[f.key,'Sim']));
-Object.assign(management,{recommendation:'Aprovar integralmente',validatedPriority:'Essencial',recommendedScope:'Todos os itens do pedido',analysis:'Conferência fictícia administrativa',opinionReason:'Necessidade do teste validada',financialAvailability:'Integral',cashImpact:'Baixo',financialOwner:'Responsável fictício',financialDate:'2026-11-10'});
+Object.assign(management,{recommendation:'Aprovar integralmente',validatedPriority:'Essencial',recommendedScope:'Todos os itens do pedido',analysis:'Conferência fictícia administrativa',opinionReason:'Necessidade do teste validada'});
 await action('budget_management',{data:management});
 await action('admin_review',{reason:'Necessidade conferida pela administração'});
 await action('decide_need',{choice:'approve',reason:'Necessidade aprovada, sem aprovação de valor'});

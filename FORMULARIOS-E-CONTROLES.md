@@ -16,7 +16,7 @@ Após salvar, o pedido abre para envio de anexos. Quando a administração devol
 
 ## Administração
 
-Os detalhes do pedido reúnem conferência, parecer, avaliação financeira informativa, escolha de fornecedor, exceção documentada à quantidade configurada de propostas, execução, conferência de recebimento e encaminhamento financeiro. Salve os controles antes de encaminhar o parecer. O servidor exige as conferências e os dados do parecer/financeiro; dados pessoais ou integrações em assinaturas exigem validação técnica concluída.
+Os detalhes do pedido reúnem conferência e parecer da necessidade, execução, conferência de recebimento e encaminhamento documental ao financeiro. A avaliação financeira informativa foi retirada em 11/11/2026: disponibilidade, impacto no caixa, responsável e data financeiros não são mais exigidos para encaminhar à Diretoria Geral. Salve a conferência e o parecer antes de encaminhar; dados pessoais ou integrações em assinaturas continuam exigindo validação técnica concluída. Os dados financeiros antigos ficam preservados no armazenamento e histórico, sem campos de preenchimento ou exposição à DG.
 
 Devolver exige motivo e prazo. Adiar não transfere o mês automaticamente. Retomar exige justificativa e competência efetiva; a original fica preservada e o pedido exige nova estimativa/análise/decisão da necessidade. A área mensal identifica entradas e saídas sem repetir o valor nas duas competências. Pedidos antigos permanecem sem competência até classificação administrativa explícita.
 
@@ -24,11 +24,13 @@ Devolver exige motivo e prazo. Adiar não transfere o mês automaticamente. Reto
 
 Aprova a necessidade integral, parte identificada de itens/quantidades, medida provisória emergencial, adia ou rejeita, com motivo e condições. A aprovação parcial reduz efetivamente o escopo que segue às cotações; o pedido original permanece no histórico. A medida provisória não autoriza a solução definitiva, que precisa de solicitação vinculada e fluxo próprio.
 
-Não há campo de teto financeiro, aprovação de valor ou reaprovação por preço real acima da estimativa. Parecer, disponibilidade e estimativa são contexto informativo. O perfil não administra fornecedores, compras ou pagamentos.
+Não há campo de teto financeiro, aprovação de valor ou reaprovação por preço real acima da estimativa. Parecer e estimativa são contexto informativo. O perfil não administra fornecedores, compras ou pagamentos.
 
 ## Pesquisa e propostas
 
 A pesquisa continua integrada ao OpenClaw e separada das referências do setor. Para assinaturas, o protocolo atual de evidências não comprova o período de cobrança: as fontes são levantadas, e a administração registra a referência por licença para toda a vigência após conferência. Um preço mensal nunca é projetado silenciosamente como preço da vigência.
+
+A comparação e escolha comercial administrativa, originadas do mapa de cotações, aparecem somente após aprovação da necessidade e recebimento de propostas reais, inclusive em pedidos legados. Não são preenchidas durante a análise inicial nem com base apenas nas estimativas. O servidor impede alterações comerciais antecipadas; valores históricos inalterados são preservados. A origem automática ou o registro administrativo de uma proposta recebida não altera essas regras.
 
 As propostas oficiais registram quantidades ofertadas, moeda, base por ciclo ou por vigência, conversão quando aplicável, condições, garantia, documentos e avaliação comparativa. Propostas parciais, tecnicamente incomparáveis ou com conversão pendente não podem ser selecionadas como atendimento integral. A quantidade mínima de propostas continua configurável, com exceção justificada, evidência e autoria registradas. Escolha de preço superior exige justificativa objetiva.
 
@@ -52,6 +54,6 @@ O calendário usa America/Manaus e os feriados cadastrados: prazos fixos do mês
 
 ## Verificação local
 
-Testes isolados: `node scripts/budget-test.mjs`, `node scripts/budget-flow-test.mjs`, `node scripts/budget-files-test.mjs`, `node scripts/budget-records-test.mjs`, `node scripts/quote-comparison-test.mjs`. Com servidor apenas em 127.0.0.1:5173: `node scripts/budget-http-test.mjs` e `node scripts/smoke-test.mjs`.
+Testes isolados: `node scripts/administrative-stages-test.mjs`, `node scripts/budget-test.mjs`, `node scripts/budget-flow-test.mjs`, `node scripts/budget-files-test.mjs`, `node scripts/budget-records-test.mjs`, `node scripts/quote-comparison-test.mjs`. Com servidor apenas em 127.0.0.1:5173: `node scripts/budget-http-test.mjs` e `node scripts/smoke-test.mjs`.
 
 Os testes usam dados fictícios, armazenamento local/temporário e não chamam fornecedores. Verificação de tipos e build continuam nos comandos existentes.

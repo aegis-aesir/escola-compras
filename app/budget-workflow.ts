@@ -2,7 +2,7 @@ import {z} from 'zod';
 import type {Purchase,Member,Settings} from './model';
 import {quoteTotal} from './model';
 import {parseManagement} from './budget';
-import {managementSections} from './budget-fields';
+import {managementSections,canCompareCommercial,commercialFieldKeys} from './budget-fields';
 import {FlowError,todayManaus} from './workflow';
 
 const reasonSchema=z.string().trim().min(5,'Informe uma justificativa de pelo menos 5 caracteres.').max(2000);
@@ -14,13 +14,17 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   const preApproval=()=>{if(old.generalApproval||!['estimating','pending','admin_review','general_review','correction'].includes(old.status))throw new FlowError('A ação exige pedido ainda sem aprovação da necessidade.');};
   if(b.action==='budget_management'){
     permit('administrativo');
-    data.management=parseManagement(b.data,old.form?.kind||'monthly');
+    const parsed=parseManagement(b.data,old.form?.kind||'monthly');
+    if(!canCompareCommercial(old)&&commercialFieldKeys.some(key=>Object.hasOwn(b.data,key)&&parsed[key]!==old.management?.[key]))throw new FlowError('A comparação comercial exige aprovação da necessidade e propostas reais recebidas.');
+    data.management={...old.management,...parsed};
+    // Omitted fields retain historical data; an explicitly blank field still clears its value.
+    for(const key of Object.keys(b.data))if(parsed[key]===undefined)delete data.management[key];
     if(data.management.referenceMonth&&(old.management?.referenceMonth||old.form?.fields.referenceMonth)&&data.management.referenceMonth!==(old.management?.referenceMonth||old.form?.fields.referenceMonth))throw new FlowError('Altere a competência somente ao retomar pedido adiado.');
     if(old.management?.referenceMonth)data.management.referenceMonth=old.management.referenceMonth;
     const m=data.management;
     if((Number(m.contractedAmount)>0||Number(m.realizedAmount)>0)&&(!old.generalApproval||!['execution','ordered','received','approved'].includes(old.status)))throw new FlowError('Contratado/realizado exigem aprovação da necessidade e seleção administrativa.');
     if(m.executionStatus==='Concluída'&&(m.receiptStatus!=='Recebido e aceito'||!m.financeForwardedAt))throw new FlowError('Para concluir, registre recebimento/aceite e encaminhamento ao financeiro.');
-    return {data,action:'Controles administrativos, financeiros e de execução atualizados'};
+    return {data,action:'Controles administrativos e de execução atualizados'};
   }
   const reason=reasonSchema.parse(b.reason);
   if(b.action==='return_request'){
@@ -72,7 +76,7 @@ export function ensureAdministrativeReview(r:Purchase){
   if(!r.form)return;
   const m=r.management||{},fields=managementSections(r.form.kind).flatMap(s=>s.fields);
   if(fields.filter(f=>f.key.startsWith('review')&&f.type==='select').some(f=>!m[f.key]))throw new FlowError('Preencha a conferência administrativa antes de encaminhar.');
-  if(m.reviewComplete!=='Sim'||!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.analysis||!m.opinionReason||!m.validatedPriority||!m.recommendedScope||!m.financialAvailability||!m.cashImpact||!m.financialOwner||!m.financialDate)throw new FlowError('Registre conferência completa, recomendação, análise e justificativa no parecer.');
+  if(m.reviewComplete!=='Sim'||!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.analysis||!m.opinionReason||!m.validatedPriority||!m.recommendedScope)throw new FlowError('Registre conferência completa, recomendação, análise e justificativa no parecer.');
   if(fields.some(f=>m[f.key]==='Não')&&!m.reviewNotes)throw new FlowError('Explique os itens de conferência marcados Não.');
   if(r.form.kind==='digital'&&(r.form.fields.personalData==='Sim'||r.form.fields.integrations==='Sim')&&(m.technicalReview!=='Concluída'||!m.technicalReviewer||!m.technicalReviewDate))throw new FlowError('Conclua a validação técnica e de privacidade antes de encaminhar.');
 }

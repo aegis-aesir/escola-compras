@@ -16,4 +16,4 @@ export function visibleRequests(requests:Purchase[],me:{id:string;role:Member['r
   }));
 }
 
-function generalContext(m:Purchase['management']){if(!m)return undefined;const allowed=['recommendation','recommendedScope','recommendedAmount','analysis','opinionReason','adjustments','validatedPriority','financialAvailability','availableAmount','cashImpact','financialNotes','technicalReview','validatedEmergency'];return Object.fromEntries(allowed.filter(k=>m[k]!==undefined).map(k=>[k,m[k]]));}
+function generalContext(m:Purchase['management']){if(!m)return undefined;const allowed=['recommendation','recommendedScope','recommendedAmount','analysis','opinionReason','adjustments','validatedPriority','technicalReview','validatedEmergency'];return Object.fromEntries(allowed.filter(k=>m[k]!==undefined).map(k=>[k,m[k]]));}

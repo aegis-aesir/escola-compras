@@ -170,10 +170,17 @@ const digitalManagement: FieldSection[] = [
   ] },
 ];
 
-/** Dados administrativos são salvos parcialmente. Encaminhar exige validação do fluxo. */
-export function managementSections(kind: BudgetKind): FieldSection[] {
+export type ManagementStage = {status:string;quotes:readonly unknown[];generalApproval?:unknown};
+export const commercialFieldKeys = commercial.fields.map(f=>f.key);
+export function canCompareCommercial(request:ManagementStage) {
+  return !!request.generalApproval && request.quotes.length>0 && ['quoting','national','execution','ordered','received','approved'].includes(request.status);
+}
+
+/** Sem etapa, mantém o contrato de armazenamento dos registros anteriores. A interface sempre informa a etapa. */
+export function managementSections(kind: BudgetKind, stage?:ManagementStage): FieldSection[] {
   if (!['monthly', 'emergency', 'digital'].includes(kind)) throw new Error('Modelo de formulário inválido.');
   const specific = kind === 'emergency' ? emergencyManagement : kind === 'digital' ? digitalManagement : [];
   const opinionSection = kind === 'emergency' ? { ...opinion, fields: opinion.fields.map(f => f.key === 'recommendation' ? { ...f, options: [...f.options!, 'Medida provisória'] } : f) } : opinion;
-  return [review, opinionSection, finance, ...specific, commercial, execution, followup];
+  const sections=[review, opinionSection, finance, ...specific, commercial, execution, followup];
+  return stage?sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))):sections;
 }
