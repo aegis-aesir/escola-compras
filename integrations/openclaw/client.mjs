@@ -3,6 +3,7 @@ import {analyzePages} from './agent-estimator.mjs';
 import {extractReference} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
 import { isGoogleMapsUrl } from './search-utils.mjs';
+import { routeTool } from './agent-routing.mjs';
 
 export const ACCOUNT = 'operacional';
 export const SCHOOL_PHONE = '+559292017107';
@@ -57,12 +58,13 @@ export function searchSources(result) {
 }
 export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) {
   const result={jobId:job.id,leaseToken:job.leaseToken};
+  const invokeJob=body=>invoke(config,routeTool(job,body),fetcher);
   if(job.type==='whatsapp_quote') {
     // Never rely on OpenClaw's HTTP dryRun flag: that flag is ignored by the
     // installed gateway. Two independent switches are required before claim/send.
     if(!config.canSend||job.accountId!==ACCOUNT||job.schoolPhone!==SCHOOL_PHONE||!/^\+[1-9]\d{9,14}$/.test(job.target)||!job.message)throw new Error('Envio bloqueado.');
     try {
-      const reply=structured(await invoke(config,{tool:'message',args:{action:'send',channel:'whatsapp',accountId:ACCOUNT,target:job.target,message:job.message},idempotencyKey:job.id},fetcher));
+      const reply=structured(await invokeJob({tool:'message',args:{action:'send',channel:'whatsapp',accountId:ACCOUNT,target:job.target,message:job.message},idempotencyKey:job.id}));
       const messageId=reply?.messageId||reply?.result?.messageId;
       if(typeof messageId!=='string'||!messageId)throw new Error('Sem identificador de envio.');
       return {...result,outcome:'success',providerMessageId:messageId,sentAt:new Date().toISOString()};
@@ -72,20 +74,20 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
   try {
     if(job.type==='local_supplier_search') {
       try {
-        const maps=await invoke(config,{tool:'web_search',args:{query:`${job.query} (site:google.com/maps OR site:google.com.br/maps OR site:maps.google.com)`,count:5},idempotencyKey:job.id+':maps'},fetcher);
+        const maps=await invokeJob({tool:'web_search',args:{query:`${job.query} (site:google.com/maps OR site:google.com.br/maps OR site:maps.google.com)`,count:5},idempotencyKey:job.id+':maps'});
         const sources=searchSources(maps).filter(s=>isGoogleMapsUrl(s.url));
         if(sources.length)return {...result,outcome:'success',sources};
       }catch{/* Maps may be unavailable or unindexed; use local web sources. */}
     }
     let browserPages=[],browserSources=[],browserResearch;
     if(job.type==='estimate_search'&&job.item&&config.browserResearch) {
-      const browsing=await researchMercadoLivre(job.item,async args=>structured(await invoke(config,{tool:'browser',args},fetcher)));
+      const browsing=await researchMercadoLivre(job.item,async args=>structured(await invokeJob({tool:'browser',args})));
       browserPages=browsing.pages;browserSources=browsing.sources;
       browserResearch={state:browsing.state,detail:browsing.detail,profile:'compras',checkedAt:new Date().toISOString()};
     }
     let webSources=[];
     try {
-      const response=await invoke(config,{tool:'web_search',args:{query:job.query,count:5},idempotencyKey:job.id},fetcher);
+      const response=await invokeJob({tool:'web_search',args:{query:job.query,count:5},idempotencyKey:job.id});
       webSources=searchSources(response);
     }catch{if(!browserResearch)throw new Error('Pesquisa indisponível.');}
     // Mercado Livre must use its authenticated browser when this mode is enabled.
@@ -94,7 +96,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
     if(job.type==='estimate_search'&&job.item) {
       const pages=await Promise.all(webSources.slice(0,Math.max(0,3-browserPages.length)).map(async source=>{
         try {
-          const page=structured(await invoke(config,{tool:'web_fetch',args:{url:source.url,extractMode:'text',maxChars:12000}},fetcher));
+          const page=structured(await invokeJob({tool:'web_fetch',args:{url:source.url,extractMode:'text',maxChars:12000}}));
           if(page.error||typeof page.text!=='string'||typeof page.title!=='string')return null;
           return {url:source.url,title:page.title.slice(0,300),text:page.text.slice(0,5000),truncated:!!page.truncated||page.text.length>5000,origin:'public'};
         }catch{return null;}

@@ -26,10 +26,11 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 - Pesquisa no Mercado Livre pelo perfil dedicado `compras` do OpenClaw, com login manual do usuário. Abrir com `integrations/openclaw/open-shopping-browser.ps1`. Verificar login real antes de afirmar que a pesquisa autenticada está operacional. O painel informa sessão expirada/bloqueada e permite refazer a pesquisa. Frete sem quantidade/destino conferidos continua fora do total.
 
-- Estimativa automática: pesquisas novas e pedidos ainda em estimativa usam o agente `operacional` do OpenClaw para analisar páginas e extrair evidências estruturadas. Todos os itens precisam de preço validável para encaminhar à análise administrativa. Frete desconhecido não entra no total. A administração pode corrigir a estimativa antes de encaminhar à diretoria geral.
+- Estimativa automática: pesquisas novas e pedidos ainda em estimativa usam o agente `coordinator` do OpenClaw para analisar páginas e extrair evidências estruturadas. Todos os itens precisam de preço validável para encaminhar à análise administrativa. Frete desconhecido não entra no total. A administração pode corrigir a estimativa antes de encaminhar à diretoria geral.
 
 - Ponte OpenClaw implementada em `integrations/openclaw/`: pesquisa de fontes, cotações e recebimento para revisão, com monitoramento de prazos. Leia `INTEGRACOES.md` e confira o contato recente no painel antes de afirmar que está conectada.
 - Conta `operacional`, número +55 92 9201-7107. Envio real desativado inicialmente; não enviar mensagens de teste sem autorização específica.
+- Separação atual: pesquisa web, fornecedores, páginas e estimativas com `coordinator`; WhatsApp e seus anexos com `operacional`. A conta pessoal `default` está desativada e despareada; não reativar ou usar como alternativa. A ponte importa apenas texto do WhatsApp para revisão no painel.
 - Interpretação de propostas e acompanhamento da execução ainda dependem da administração.
 - Busca de fornecedores por categoria: cadastro interno primeiro, web/Google Maps para categorias sem fornecedor local. A etapa nacional consulta primeiro os fornecedores nacionais cadastrados. Pedidos antigos precisam ter suas categorias definidas no painel. Resultados externos exigem conferência e podem ser cadastrados com fonte/data.
 - Usuários locais: master, setor.teste e diretoria.geral (Franciluce Lima). Senhas temporárias ficam no cofre Windows DPAPI, fora do projeto, e exigem troca no primeiro login. Consulte ACESSOS-LOCAIS.md. Masters podem criar outros acessos no painel.

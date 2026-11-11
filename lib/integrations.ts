@@ -56,7 +56,7 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
     const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
     const existing=await row<IntegrationJob>(db,id,jobKind);
     if(existing?.state==='review'&&existing.item&&!existing.analysisReason&&!existing.priceEvidence) {
-      if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise operacional reenfileirada',now))created++;
+      if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise estruturada reenfileirada',now))created++;
     }else if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
   }
   return created;
@@ -174,7 +174,7 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     }
     if(!selected.length||selected.length!==r.items.length)continue;
     const references=selected.map((j,i)=>({unitPrice:extractReference(r.items[i],j.priceEvidence!)!.unitPrice,sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!))}));
-    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente operacional do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
+    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
     result.data.estimate!.method='automatic';
     result.data.estimate!.freightKnown=false;
     await update(db,r,result.data,r.id,'Sistema','Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
