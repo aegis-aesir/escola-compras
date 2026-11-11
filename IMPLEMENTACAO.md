@@ -18,6 +18,8 @@ Não existe reaprovação de valor. A proposta real pode superar a estimativa se
 
 ## Implementado no piloto
 
+Arquivar/restaurar solicitação: ação junto ao título dos detalhes, com confirmação em janela própria e foco no motivo. Cancelar ou Escape retorna ao pedido sem gravar; durante o envio, os controles ficam desativados. A confirmação não fica escondida no final de formulários longos.
+
 Estados e permissões de cada etapa, estimativa automática pelo agente coordinator, com fonte HTTP/HTTPS e data por item, e correção manual na análise administrativa, parecer administrativo obrigatório antes da aprovação geral, registro separado da aprovação da necessidade, fornecedores locais/nacionais, propostas reais registradas manualmente, seleção administrativa e acompanhamento da execução.
 
 O prazo local começa no primeiro contato registrado como realizado ou confirmado pelo OpenClaw. Dias úteis são segunda a sexta, excluindo feriados e dias sem expediente cadastrados em Configurações. A ponte local verifica os prazos a cada ciclo, mesmo com o painel fechado, enquanto estiver em execução. A atualização do painel também mantém essa verificação. Pedidos vencidos sem proposta válida passam à etapa nacional, com histórico e proteção contra concorrência; a ponte enfileira e executa a pesquisa de fontes.

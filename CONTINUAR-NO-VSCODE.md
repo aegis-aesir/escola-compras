@@ -24,6 +24,8 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 ## Integração atual e próximos passos
 
+- Confirmação de arquivamento corrigida: botão junto ao título da solicitação; janela curta própria com motivo, foco imediato, Cancelar/Escape e erro no mesmo local. Não usar o formulário de decisões no final dos detalhes para arquivar/restaurar, pois ficava fora da área visível em pedidos longos. Regras, permissões e histórico permanecem iguais.
+
 - Novidades de 11/11/2026: perfil Financeiro somente consulta (Master atribui em Pessoas e acessos), sem gravações fiscais/de compras ou integração. Arquivamento da solicitação inteira, exclusivo do Master, com motivo, autoria e histórico/restauração. Preservar o mesmo pedido, etapa, aprovações, formulário, propostas, notas, anexos e todos os históricos. Retirar das filas ativas, bloquear edições e pausar novas tarefas automáticas. A aba Arquivadas permite consultar e restaurar a etapa original. Não há mais arquivamento individual de propostas; metadados antigos são apenas históricos. Valores e fechamentos mensais não são apagados. Tema escuro em cinza-carvão. Testes: `finance-profile-test`, `finance-profile-http-test`, `request-archive-test`, `request-archive-storage-test` e `request-archive-http-test`.
 
 - Reabrir para análise: disponível a Master/Administrativo nos detalhes de pedidos Não aprovados, com justificativa e preservação da recusa anterior. Com estimativa, retorna à análise; sem ela, pesquisa primeiro. Requer novo parecer e decisão da DG. Testes: `reopen-request-test` e `reopen-request-http-test`. Aparência inclui as dez cores de referência e mantém Verde, com preferência pessoal no mesmo armazenamento local.

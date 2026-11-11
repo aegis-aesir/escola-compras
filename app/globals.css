@@ -15,3 +15,7 @@ dialog{position:fixed;inset:0;width:760px;max-width:calc(100% - 32px);max-height
 .research-source{margin:12px 0;padding-left:12px;border-left:2px solid #d6d0f0}
 .research-source p{white-space:pre-wrap;overflow-wrap:anywhere}
 .integration-message{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;padding:12px;background:#f8f8fb;border-radius:8px}
+
+/* Request actions and immediately visible archive confirmation. */
+.detail-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}.detail-heading{flex:1;min-width:220px}.detail-title>.button{flex-shrink:0;margin-top:2px;white-space:nowrap}.request-archive-dialog{width:500px}.request-archive-dialog .modal-head h2{font-size:18px}.archive-request-name{margin:0 0 14px;overflow-wrap:anywhere}.archive-request-name small{display:block;color:var(--muted);margin-top:6px}.archive-explanation{font-size:13px;line-height:1.65;color:var(--muted);margin:0 0 20px}.archive-confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.request-archive-dialog textarea{min-height:90px;max-height:30vh;resize:vertical}
+@media(max-width:520px){.detail-title{gap:14px}.detail-heading{flex-basis:100%;min-width:0}.detail-title>.button{margin:0}.request-archive-dialog .modal-head h2{font-size:16px}.archive-confirm-actions{display:grid;grid-template-columns:1fr}.archive-confirm-actions .primary{grid-row:1}.archive-confirm-actions .button{width:100%;justify-content:center}}
