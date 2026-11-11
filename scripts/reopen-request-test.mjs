@@ -28,7 +28,7 @@ test('setor e DG não reabrem, e justificativa/etapa são obrigatórias',()=>{
 });
 test('recusa administrativa legada sem estimativa retorna à pesquisa sem fabricar aprovação',()=>{
  const r=request();delete r.form;delete r.estimate;delete r.needDecision;
- const opened=reopen(r).data;assert.equal(opened.status,'estimating');assert.equal(opened.estimateRevision,now);assert.equal(opened.estimate,undefined);assert.equal(opened.reopeningHistory[0].previous.decision,r.decision);
+ const opened=reopen(r).data;assert.equal(opened.status,'pending');assert.equal(opened.estimateRevision,now);assert.equal(opened.estimate,undefined);assert.equal(opened.reopeningHistory[0].previous.decision,r.decision);
 });
 test('nova recusa e reabertura acumulam histórico sem reutilizar a decisão anterior',()=>{
  const first=reopen(request()).data;

@@ -7,7 +7,7 @@ import { visibleRequests, canCreateRequest } from '../../access';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
-import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier } from '../../../lib/integrations';
+import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
@@ -66,7 +66,7 @@ export async function POST(req:Request){try{
       if(!r)throw new AppError('Solicitação não encontrada.',404);
       if(r.version!==b.version)throw new AppError('Solicitação atualizada. Recarregue.',409);
       if(b.action==='supplier_categories')await setSupplierCategories(db,r,b.categories,me.name,now);
-      else if(b.action==='research')await enqueueSearch(db,r,me.name,now);
+      else if(b.action==='research'){if(r.status==='pending')await startEstimateSearch(db,r,me.name,now);else await enqueueSearch(db,r,me.name,now)}
       else {const s=all.find(s=>s.id===b.supplierId&&s.kind==='supplier');if(!s)throw new AppError('Fornecedor não encontrado.');await enqueueQuotation(db,r,s,me.name,now,env)}
     }
     return Response.json({ok:true});
@@ -83,7 +83,7 @@ export async function POST(req:Request){try{
     }
     const input=requestSchema.parse(b.data);const form=parseBudgetForm(b.data?.form,input.items,{at:now});if(closedBudgetMonth(budgetRecords,String(form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de incluir solicitações.');if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
     if(me.role==='solicitante'&&input.department!==me.department)throw new AppError('Você só pode solicitar para seu setor.',403);
-    kind='request';data={...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'estimating',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada';
+    kind='request';data={...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'pending',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada; aguardando a Diretoria Administrativa iniciar a estimativa';
   }else if(b.action==='resubmit_request'){
     old=target;if(!old)throw new AppError('Solicitação não encontrada.',404);
     if(!canCreateRequest(me.role)||(me.role==='solicitante'&&old.authorId!==me.id))throw new AppError('Seu perfil não permite complementar este pedido.',403);
@@ -93,12 +93,12 @@ export async function POST(req:Request){try{
     const form=parseBudgetForm({...b.data.form,fields:{...b.data.form?.fields,referenceMonth:old.form?.fields.referenceMonth||b.data.form?.fields.referenceMonth,situation:'Complementação',originalRequestId:old.code}},input.items,{at:now,previous:old.form,createdAt:old.createdAt,requestCode:old.code});
     if(!form.fields.correctionResponse)throw new AppError('Responda às pendências da complementação.');
     if(closedBudgetMonth(budgetRecords,String(old.management?.referenceMonth||form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
-    id=old.id;kind='request';data={...old,...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},status:'estimating',updatedAt:now,estimateRevision:now,management:{...old.management},correctionHistory:[...(old.correctionHistory||[]),{at:now,actor:me.name,reason:String(form.fields.correctionResponse),previous:{form:old.form,items:old.items,estimate:old.estimate,adminReview:old.adminReview,management:old.management,title:old.title,reason:old.reason,neededBy:old.neededBy}}]};
+    id=old.id;kind='request';data={...old,...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},status:'pending',updatedAt:now,estimateRevision:now,management:{...old.management},correctionHistory:[...(old.correctionHistory||[]),{at:now,actor:me.name,reason:String(form.fields.correctionResponse),previous:{form:old.form,items:old.items,estimate:old.estimate,adminReview:old.adminReview,management:old.management,title:old.title,reason:old.reason,neededBy:old.neededBy}}]};
     const sameQuantities=old.items.length===input.items.length&&old.items.every((item:Purchase['items'][number],index:number)=>item.quantity===input.items[index]?.quantity);
     for(const key of ['additionalDataStatus','reviewNotes','complementDeadline','reviewOwner','reviewDate'])delete data.management[key];
     if(!sameQuantities)for(const key of ['quantityAssessment',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
     if(!Object.keys(data.management).length)delete data.management;
-    delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.returnForCorrection;delete data.needDecision;delete data.deferred;action='Solicitação complementada pelo setor; encaminhada para nova estimativa';
+    delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.returnForCorrection;delete data.needDecision;delete data.deferred;action='Solicitação complementada pelo setor; aguardando a Diretoria Administrativa iniciar nova estimativa';
   }else if(b.action==='supplier'){
     permit(['admin','administrativo']);kind='supplier';data=supplierSchema.parse(b.data);action='Fornecedor cadastrado';
   }else if(b.action==='member'){

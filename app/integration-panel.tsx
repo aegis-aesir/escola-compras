@@ -10,7 +10,8 @@ export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purcha
   if(!jobs.length&&!['estimating','pending'].includes(r.status))return null;
   return <section className="integration-research"><h3>Pesquisa automática · OpenClaw</h3>
     <p className="muted">O agente coordinator do OpenClaw analisa as páginas, identifica produto, unidade e preço e devolve as referências para o sistema preencher a estimativa. Quando todos os itens têm referência, calcula o total e encaminha para análise administrativa. Valores ambíguos ficam pendentes; estimativas não são propostas comerciais.</p>
-    {['estimating','pending'].includes(r.status)&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Colocar pesquisa na fila</button>}
+    {r.status==='pending'&&<button className="button primary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Iniciar estimativa automática</button>}
+    {r.status==='pending'&&<p className="note">A pesquisa ainda não começou. A Diretoria Administrativa deve iniciar a estimativa automática.</p>}
     {!data.integrations.bridgeConfigured&&<p className="note">A ponte ainda precisa ser configurada. As pesquisas ficam guardadas na fila.</p>}
     {jobs.map(j=><div className="source-row" key={j.id}><strong>{r.items[j.itemIndex??0]?.name} · {jobLabels[j.state]}</strong><small>{j.type==='national_search'?'Fornecedores nacionais':'Referências de preço'} · {j.researchedAt?date(j.researchedAt):date(j.createdAt)}</small>
       {j.error&&<p className="muted">{j.error}</p>}

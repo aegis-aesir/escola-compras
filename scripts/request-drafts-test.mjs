@@ -19,5 +19,5 @@ const submitted=await call('/api/data',{action:'request',draftId:id,draftVersion
 assert.equal((await call('/api/drafts')).data.drafts.some(d=>d.id===id),false);
 assert.equal((await call('/api/drafts',{id,version:1,values})).status,409);
 const repeated=await call('/api/data',{action:'request',draftId:id,draftVersion:1,data:fixture});assert.equal(repeated.data.id,id);
-const request=(await call('/api/data')).data.requests.find(d=>d.id===id);assert.equal(request.neededBy,'');assert.equal(request.status,'estimating');assert.equal(request.items[0].quantity,fixture.items[0].quantity);
+const request=(await call('/api/data')).data.requests.find(d=>d.id===id);assert.equal(request.neededBy,'');assert.equal(request.status,'pending');assert.equal(request.items[0].quantity,fixture.items[0].quantity);
 console.log('PASS: rascunho incompleto e privado, permissões, conflito de versões, fora das filas, envio validado com data vazia, quantidades inteiras e repetição sem duplicar.');

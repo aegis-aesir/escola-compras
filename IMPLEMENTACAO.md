@@ -14,6 +14,8 @@ Diretora Geral: Franciluce Lima. Responsável pela diretoria administrativa: ain
 7. A diretoria administrativa compara os preços reais e gerencia a execução de cada compra pelo agente WhatsApp.
 8. Pedido, acompanhamento e recebimento ficam registrados no histórico.
 
+O envio do setor não inicia a pesquisa sozinho. A solicitação fica aguardando a Diretoria Administrativa, que aciona a estimativa automática pela internet. A ponte processa somente pedidos já iniciados pela administração. Depois do resultado, a administração confere os dados e usa **Salvar e enviar para Diretoria Geral**; essa ação salva a conferência, registra a aprovação administrativa e libera o pedido para a decisão da Diretoria Geral.
+
 Não existe reaprovação de valor. A proposta real pode superar a estimativa sem voltar à diretoria geral. A estimativa e o preço real permanecem separados e identificados.
 
 ## Implementado no piloto

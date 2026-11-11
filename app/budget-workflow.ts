@@ -25,6 +25,13 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     const m=data.management;
     if((Number(m.contractedAmount)>0||Number(m.realizedAmount)>0)&&(!old.generalApproval||!['execution','ordered','received','approved'].includes(old.status)))throw new FlowError('Contratado/realizado exigem aprovação da necessidade e seleção administrativa.');
     if(m.executionStatus==='Concluída'&&(m.receiptStatus!=='Recebido e aceito'||!m.financeForwardedAt))throw new FlowError('Para concluir, registre recebimento/aceite e encaminhamento ao financeiro.');
+    if(b.submitToGeneral===true){
+      if(old.status!=='admin_review'||!old.estimate||!old.form)throw new FlowError('Conclua a estimativa da internet antes de enviar para a Diretoria Geral.');
+      ensureAdministrativeReview(data);
+      data.adminReview=`${String(m.recommendation)}. Prioridade validada: ${String(m.validatedPriority)}.`;
+      data.status='general_review';
+      return {data,action:'Conferência salva; Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview};
+    }
     return {data,action:'Controles administrativos e de execução atualizados'};
   }
   const reason=reasonSchema.parse(b.reason);
@@ -36,9 +43,9 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     data.management={...old.management};
     for(const key of ['recommendation','analysis','opinionReason','reviewOwner','reviewDate','quantityAssessment','additionalDataStatus','additionalDataNotes','reviewNotes',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
     delete data.decision;delete data.needDecision;delete data.adminReview;delete data.returnForCorrection;delete data.deferred;
-    data.status=old.estimate?'admin_review':'estimating';
+    data.status=old.estimate?'admin_review':'pending';
     if(!old.estimate)data.estimateRevision=now;
-    return {data,action:'Solicitação reaberta para '+(old.estimate?'nova análise administrativa':'estimativa e nova análise administrativa')+'; exige nova decisão da necessidade: '+reason};
+    return {data,action:'Solicitação reaberta para '+(old.estimate?'nova aprovação administrativa':'início de nova estimativa pela Diretoria Administrativa')+'; exige nova decisão da necessidade: '+reason};
   }
   if(b.action==='return_request'){
     permit('administrativo');preApproval();const due=date.parse(b.due);
@@ -58,10 +65,10 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     permit('administrativo');if(old.status!=='deferred')throw new FlowError('Somente pedidos adiados podem ser retomados.');
     const month=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).parse(b.referenceMonth);
     data.correctionHistory=[...(old.correctionHistory||[]),{at:now,actor:me.name,reason,previous:{form:old.form,management:old.management,needDecision:old.needDecision,estimate:old.estimate,referenceMonth:old.form?.fields.referenceMonth}}];
-    data.management={...old.management,referenceMonth:month};data.status='estimating';
+    data.management={...old.management,referenceMonth:month};data.status='pending';
     delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.needDecision;delete data.deferred;
     data.estimateRevision=now;
-    return {data,action:'Pedido adiado retomado para '+month+'; requer nova estimativa e análises: '+reason};
+    return {data,action:'Pedido adiado retomado para '+month+'; aguarda a Diretoria Administrativa iniciar nova estimativa: '+reason};
   }
   if(b.action==='defer_request'){
     if(me.role==='geral'){if(old.status!=='general_review')throw new FlowError('Aguarde o encaminhamento administrativo.');}else permit('administrativo');preApproval();

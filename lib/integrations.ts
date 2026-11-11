@@ -40,7 +40,7 @@ export async function digest(value:string) {
 }
 function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>,suppliers:Supplier[]) {
   if(r.archived)return false;
-  if(j.type==='estimate_search')return ['estimating','pending'].includes(r.status)&&(j.estimateRevision||'')===(r.estimateRevision||'');
+  if(j.type==='estimate_search')return r.status==='estimating'&&(j.estimateRevision||'')===(r.estimateRevision||'');
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   const s=suppliers.find(s=>s.id===j.supplierId);
@@ -61,6 +61,13 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
     }else if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
   }
   return created;
+}
+
+export async function startEstimateSearch(db:D1Database,r:Purchase,actor:string,now:string) {
+  if(r.archived||r.status!=='pending'||r.estimate)throw new FlowError('A estimativa só pode ser iniciada pela Diretoria Administrativa antes da pesquisa.',409);
+  const next:Purchase={...r,status:'estimating',updatedAt:now};
+  if(!await update(db,r,next,r.id,actor,'Diretoria administrativa iniciou a estimativa automática na internet',now))throw new FlowError('Solicitação atualizada. Recarregue.',409);
+  return enqueueSearch(db,{...next,version:r.version+1},actor,now);
 }
 export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   const type=r.status==='national'?'national_search':'local_supplier_search';
@@ -166,7 +173,7 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
   for(const r of await rows<Purchase>(db,'request')) {
     // The evidence protocol has no verified billing-period field. Digital sources
     // remain available for review; never multiply an ambiguous monthly price as a term total.
-    if(r.archived||!['estimating','pending'].includes(r.status)||r.estimate||r.form?.kind==='digital')continue;
+    if(r.archived||r.status!=='estimating'||r.estimate||r.form?.kind==='digital')continue;
     const selected:IntegrationJob[]=[];
     for(const [i,item] of r.items.entries()) {
       const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
@@ -189,7 +196,7 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   await advanceDeadlines(db,now);
   await projectAutomaticEstimates(db,now);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(!r.archived&&(['estimating','pending'].includes(r.status)||(['quoting','national'].includes(r.status)&&r.generalApproval)))await enqueueSearch(db,r,'Sistema',now);
+    if(!r.archived&&(r.status==='estimating'||(['quoting','national'].includes(r.status)&&r.generalApproval)))await enqueueSearch(db,r,'Sistema',now);
   }
   // Expired search leases are safe to retry. Message leases are not: the remote
   // gateway may have sent the message before the connection was interrupted.
