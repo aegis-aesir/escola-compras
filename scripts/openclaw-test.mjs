@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, readdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { bridgeConfig, executeJob, searchSources } from '../integrations/openclaw/client.mjs';
@@ -46,6 +46,13 @@ test('local test can never send and disabled send never calls gateway',async()=>
   const config=bridgeConfig({ESTRELAS_SITE_URL:'http://127.0.0.1:5173',ESTRELAS_LOCAL_TEST:'true',INTEGRATION_SECRET:'x'.repeat(32),ESTRELAS_ENABLE_SEND:'true'});
   assert.equal(config.canSend,false);
   await assert.rejects(executeJob(config,{type:'whatsapp_quote'},()=>{throw new Error('Must not call');}),/bloqueado/);
+});
+test('production bridge uses the current Site origin without a redirect',async()=>{
+  const config=bridgeConfig({INTEGRATION_SECRET:'x'.repeat(32),ESTRELAS_SITES_SERVICE_TOKEN:'FAKE-TEST-ONLY'});
+  assert.equal(config.site,'https://ceea.colegioestrelas.com');
+  const launcher=await readFile(new URL('../integrations/openclaw/start-windows.ps1',import.meta.url),'utf8');
+  assert.match(launcher,/ESTRELAS_SITE_URL = 'https:\/\/ceea\.colegioestrelas\.com'/);
+  assert.doesNotMatch(launcher,/compras-escola-aegis/);
 });
 const event={type:'message',action:'received',timestamp:'2026-11-08T18:00:00.000Z',context:{channelId:'whatsapp',accountId:'operacional',from:'+5592999990000',messageId:'test-message',content:'CE-12345678 proposta',metadata:{to:'+559292017107'}}};
 test('hook accepts only operational direct text with valid timestamp',()=>{

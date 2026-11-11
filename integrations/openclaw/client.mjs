@@ -8,7 +8,7 @@ import { routeTool } from './agent-routing.mjs';
 export const ACCOUNT = 'operacional';
 export const SCHOOL_PHONE = '+559292017107';
 export function bridgeConfig(env=process.env) {
-  const site=new URL(env.ESTRELAS_SITE_URL||'https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site');
+  const site=new URL(env.ESTRELAS_SITE_URL||'https://ceea.colegioestrelas.com');
   const local=env.ESTRELAS_LOCAL_TEST==='true'&&['127.0.0.1','localhost'].includes(site.hostname);
   if(site.username||site.password||site.search||site.hash||site.pathname!=='/'||(!local&&site.protocol!=='https:'))throw new Error('Endereço do Site inválido.');
   if((env.INTEGRATION_SECRET||'').length<32)throw new Error('Configure INTEGRATION_SECRET no ambiente seguro.');

@@ -45,7 +45,7 @@ sem telefone identificável exigem consulta no WhatsApp. O hook não responde
 nem muda os demais agentes existentes. Mensagens recebidas não autorizam ações.
 A proposta só passa a valer depois do registro pela administração.
 
-A ponte verifica prazos mesmo com o painel fechado, enquanto o computador
+A ponte usa diretamente `https://ceea.colegioestrelas.com`; não usar o endereço antigo, pois ele responde com redirecionamento e o cliente bloqueia redirecionamentos por segurança. A ponte verifica prazos mesmo com o painel fechado, enquanto o computador
 estiver ligado, conectado e com a ponte em execução. Após um dia útil sem
 proposta válida, libera a etapa nacional e enfileira a pesquisa. Usa o calendário
 da escola e o fuso America/Manaus.

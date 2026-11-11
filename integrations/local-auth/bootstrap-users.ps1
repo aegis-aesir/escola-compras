@@ -21,7 +21,7 @@ try {
         $serviceCredentials=[System.Net.NetworkCredential]::new('', $protected).Password | ConvertFrom-Json
         $integrationSecret=$serviceCredentials.integrationSecret
         $serviceToken=$serviceCredentials.serviceToken
-        $siteOrigin='https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site'
+        $siteOrigin='https://ceea.colegioestrelas.com'
     }
     if (-not $integrationSecret -or $integrationSecret.Length -lt 32) { throw 'Segredo de inicialização indisponível.' }
     if (Test-Path -LiteralPath $accessPath) {

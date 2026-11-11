@@ -50,7 +50,7 @@ Credenciais não ficam neste projeto. O Site usa variáveis de servidor; o launc
 
 ## Hospedagem atual
 
-Entrada pública com login local; dados protegidos: https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site
+Entrada pública com login local; dados protegidos: https://ceea.colegioestrelas.com
 
 O projeto está vinculado a Sites pelo arquivo `.openai/hosting.json` e pelo Git remoto existente. Não recriar a hospedagem. A integração OpenClaw foi publicada em 08/11/2026 pelo fluxo oficial. Consultar o Git e as versões Sites para identificar o último commit publicado, em vez de assumir o estado antigo do piloto.
 
