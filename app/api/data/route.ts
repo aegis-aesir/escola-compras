@@ -13,7 +13,6 @@ const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
 async function context(){
   const user=await currentLocalUser(); if(!user)throw new AppError('Entre com seu usuário e senha.',401);
-  if(user.mustChangePassword)throw new AppError('Altere sua senha temporária antes de continuar.',403);
   const db=env.DB!;
   const school=await db.prepare('SELECT * FROM school WHERE id=1').first<{owner:string;data:string}>();
   if(!school)throw new AppError('A escola ainda não foi inicializada.',503);

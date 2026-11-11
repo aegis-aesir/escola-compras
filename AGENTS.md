@@ -20,7 +20,7 @@ Leia `INTEGRACOES.md` para operar e validar a integração. Credenciais ficam no
 
 Separação dos agentes: pesquisa web, fornecedores, páginas, navegador `compras` e estimativas usam `coordinator`, explicitamente por sessão. O agente `operacional` fica com o WhatsApp da conta `operacional`, inclusive respostas/anexos no canal. A ponte importa texto para revisão; anexos do WhatsApp não são enviados à pesquisa. A conta pessoal `default` foi desativada e despareada: não reativar nem usar como fallback. Preservar modelos e credenciais existentes.
 
-A hospedagem Sites tem entrada pública na tela de login, por decisão do usuário para permitir contas locais sem ChatGPT. Dados e operações exigem sessão local e permissões no servidor. Contas iniciais: master, setor.teste e diretoria.geral. Senhas temporárias ficam no cofre DPAPI fora do projeto; a troca é obrigatória no primeiro acesso. Leia `ACESSOS-LOCAIS.md`.
+A hospedagem Sites tem entrada pública na tela de login, por decisão do usuário para permitir contas locais sem ChatGPT. Dados e operações exigem sessão local e permissões no servidor. Contas iniciais: master, setor.teste e diretoria.geral. Senhas de acesso ficam no cofre DPAPI fora do projeto; a troca é opcional, inclusive para contas antigas e senhas redefinidas. Masters podem excluir acessos de outros usuários; preservar identidade/histórico, reservar o login e proteger o próprio acesso e o último Master. Leia `ACESSOS-LOCAIS.md`.
 
 ## Código, validação e publicação
 

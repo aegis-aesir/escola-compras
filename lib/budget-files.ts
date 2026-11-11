@@ -38,7 +38,6 @@ export async function filesEndpoint(req:Request,env:FileEnv){
     const db=env.DB,url=new URL(req.url),local=url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname);
     const user=await readSession(db,req.headers.get('cookie')||'',local);
     if(!user)throw new FileError('Entre com seu usuário e senha.',401);
-    if(user.mustChangePassword)throw new FileError('Altere sua senha temporária.',403);
     if(req.method==='GET'){
       const id=url.pathname.slice('/api/files/'.length);
       if(url.pathname==='/api/files'||url.pathname==='/api/files/'){
