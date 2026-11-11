@@ -31,7 +31,7 @@ test('parecer segue à DG sem avaliação financeira; conferências e validaçã
   const r={...purchase(kind),management:review(kind)};
   const next=transition(r,{action:'admin_review',reason:'Encaminhar necessidade conferida'},admin,[],settings,now).data;
   assert.equal(next.status,'general_review');assert.equal(next.management.financialAvailability,undefined);
-  assert.throws(()=>transition({...r,management:{...r.management,reviewComplete:'Não'}},{action:'admin_review',reason:'Tentativa sem completude'},admin,[],settings,now));
+  assert.throws(()=>transition({...r,management:{...r.management,reviewQuantity:''}},{action:'admin_review',reason:'Tentativa sem conferir quantidades'},admin,[],settings,now));
  }
  const digital=purchase('digital');digital.form.fields.personalData='Sim';
  assert.throws(()=>transition({...digital,management:{...review('digital'),technicalReview:'Pendente'}},{action:'admin_review',reason:'Tentativa sem validação técnica'},admin,[],settings,now),/validação técnica/);
@@ -47,7 +47,7 @@ test('salvar parecer preserva dados financeiros e comerciais antigos sem exigir 
  const management={financialAvailability:'Integral',cashImpact:'Baixo',financialOwner:'Registro antigo',financialDate:'2026-11-10',financialNotes:'Histórico',selectionReason:'Escolha histórica',analysis:'Análise antiga'};
  const r={...purchase(),management};
  const saved=save(r,{analysis:'Análise revisada'});
- assert.deepEqual(saved.management,{...management,analysis:'Análise revisada'});
+ assert.deepEqual(saved.management,{...management,analysis:'Análise revisada',validatedPriority:r.priority});
  assert.equal(save(saved,{analysis:''}).management.analysis,undefined,'campo explicitamente limpo continua podendo ser apagado');
  assert.equal(save(r,management).management.selectionReason,management.selectionReason,'abas antigas podem reenviar o mesmo valor preservado');
  const general=visibleRequests([{...r,status:'general_review',adminReview:'Conferido'}],{id:'dg',role:'geral'})[0];

@@ -21,6 +21,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     for(const key of Object.keys(b.data))if(parsed[key]===undefined)delete data.management[key];
     if(data.management.referenceMonth&&(old.management?.referenceMonth||old.form?.fields.referenceMonth)&&data.management.referenceMonth!==(old.management?.referenceMonth||old.form?.fields.referenceMonth))throw new FlowError('Altere a competência somente ao retomar pedido adiado.');
     if(old.management?.referenceMonth)data.management.referenceMonth=old.management.referenceMonth;
+    if(!Object.hasOwn(b.data,'validatedPriority')&&!data.management.validatedPriority)data.management.validatedPriority=old.priority;
     const m=data.management;
     if((Number(m.contractedAmount)>0||Number(m.realizedAmount)>0)&&(!old.generalApproval||!['execution','ordered','received','approved'].includes(old.status)))throw new FlowError('Contratado/realizado exigem aprovação da necessidade e seleção administrativa.');
     if(m.executionStatus==='Concluída'&&(m.receiptStatus!=='Recebido e aceito'||!m.financeForwardedAt))throw new FlowError('Para concluir, registre recebimento/aceite e encaminhamento ao financeiro.');
@@ -86,9 +87,9 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
 
 export function ensureAdministrativeReview(r:Purchase){
   if(!r.form)return;
-  const m=r.management||{},fields=managementSections(r.form.kind).flatMap(s=>s.fields);
+  const m=r.management||{},fields=managementSections(r.form.kind,r).flatMap(s=>s.fields);
   if(fields.filter(f=>f.key.startsWith('review')&&f.type==='select').some(f=>!m[f.key]))throw new FlowError('Preencha a conferência administrativa antes de encaminhar.');
-  if(m.reviewComplete!=='Sim'||!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.analysis||!m.opinionReason||!m.validatedPriority||!m.recommendedScope)throw new FlowError('Registre conferência completa, recomendação, análise e justificativa no parecer.');
+  if(!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.analysis||!m.opinionReason||!m.validatedPriority||!m.recommendedScope)throw new FlowError('Registre recomendação, prioridade validada, escopo, análise e justificativa no parecer.');
   if(fields.some(f=>m[f.key]==='Não')&&!m.reviewNotes)throw new FlowError('Explique os itens de conferência marcados Não.');
   if(r.form.kind==='digital'&&(r.form.fields.personalData==='Sim'||r.form.fields.integrations==='Sim')&&(m.technicalReview!=='Concluída'||!m.technicalReviewer||!m.technicalReviewDate))throw new FlowError('Conclua a validação técnica e de privacidade antes de encaminhar.');
 }

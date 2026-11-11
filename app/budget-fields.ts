@@ -103,12 +103,12 @@ const review: FieldSection = { title: 'Conferência administrativa', fields: [
     ['reviewMarket', 'Compatibilidade com o mercado'], ['reviewPriority', 'Prioridade adequada'], ['reviewDeferral', 'Possibilidade de reduzir / adiar'],
     ['reviewSupplier', 'Fornecedor e condições informados'],
   ].map(([key, label]) => choice(key, label, reviewOptions)),
-  field('reviewNotes', 'Pendências e esclarecimentos', 'textarea'), field('complementDeadline', 'Prazo para complementação', 'date'),
+  field('documentReviewNotes', 'Observações sobre os anexos', 'textarea'), field('reviewNotes', 'Pendências e esclarecimentos', 'textarea'), field('complementDeadline', 'Prazo para complementação', 'date'),
   field('reviewOwner', 'Responsável pela conferência'), field('reviewDate', 'Data da conferência', 'date'), field('reviewDeadline', 'Prazo da análise', 'date'),
 ] };
 const opinion: FieldSection = { title: 'Parecer e escopo recomendado', fields: [
   choice('recommendation', 'Recomendação administrativa', ['Aprovar integralmente', 'Aprovar parcialmente', 'Complementar', 'Adiar', 'Rejeitar']),
-  choice('validatedPriority', 'Prioridade validada', ['Essencial', 'Importante', 'Adiável']), field('recommendedScope', 'Itens, quantidades e escopo recomendado', 'textarea'),
+  choice('validatedPriority', 'Prioridade validada', ['Essencial', 'Importante', 'Adiável', 'Emergencial', 'Normal', 'Alta', 'Urgente']), field('recommendedScope', 'Itens, quantidades e escopo recomendado', 'textarea'),
   field('recommendedAmount', 'Valor recomendado informativo (R$)', 'number'), field('analysis', 'Análise administrativa', 'textarea'), field('opinionReason', 'Justificativa do parecer', 'textarea'),
   field('adjustments', 'Condições e ajustes recomendados', 'textarea'), field('opinionNotes', 'Observações do parecer', 'textarea'), field('opinionDeadline', 'Prazo de análise / validade do contexto', 'date'),
 ] };
@@ -171,6 +171,7 @@ const digitalManagement: FieldSection[] = [
 ];
 
 export type ManagementStage = {status:string;quotes:readonly unknown[];generalApproval?:unknown};
+const hiddenReviewKeys=new Set(['reviewComplete','reviewNeed','reviewStock','reviewDuplication','reviewMarket','reviewPriority','reviewSupplier','reviewEmergencySupplier','reviewDeadline','opinionDeadline','reviewDocuments','documentReviewNotes']);
 export const commercialFieldKeys = commercial.fields.map(f=>f.key);
 export function canCompareCommercial(request:ManagementStage) {
   return !!request.generalApproval && request.quotes.length>0 && ['quoting','national','execution','ordered','received','approved'].includes(request.status);
@@ -182,5 +183,5 @@ export function managementSections(kind: BudgetKind, stage?:ManagementStage): Fi
   const specific = kind === 'emergency' ? emergencyManagement : kind === 'digital' ? digitalManagement : [];
   const opinionSection = kind === 'emergency' ? { ...opinion, fields: opinion.fields.map(f => f.key === 'recommendation' ? { ...f, options: [...f.options!, 'Medida provisória'] } : f) } : opinion;
   const sections=[review, opinionSection, finance, ...specific, commercial, execution, followup];
-  return stage?sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))):sections;
+  return stage?sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))).map(section=>({...section,fields:section.fields.filter(field=>!hiddenReviewKeys.has(field.key))})):sections;
 }
