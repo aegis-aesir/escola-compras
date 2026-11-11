@@ -9,6 +9,11 @@ const sections=managementSections('monthly',r),keys=sections.flatMap(s=>s.fields
 assert.equal(sections.filter(s=>['Conferência administrativa','Parecer e escopo recomendado'].includes(s.title)).length,0);
 assert.equal(sections.filter(s=>s.title==='Conferência e parecer administrativo').length,1);
 assert.ok(keys.includes('recommendation'));assert.ok(keys.includes('validatedPriority'));
+assert.equal(sections.some(s=>s.title==='Execução e prestação de contas'),false);
+const execution=sections.find(s=>s.title==='Execução'),accountability=sections.find(s=>s.title==='Prestação de contas');
+assert.ok(execution);assert.ok(accountability);
+assert.ok(execution.fields.some(f=>f.key==='contractedAmount'));assert.ok(execution.fields.some(f=>f.key==='executionNotes'));assert.ok(!execution.fields.some(f=>f.key==='realizedAmount'));
+for(const key of ['realizedAmount','receiptStatus','invoiceReference','financeForwardedAt','differenceReason'])assert.ok(accountability.fields.some(f=>f.key===key),key);
 assert.doesNotThrow(()=>ensureAdministrativeReview(r));
 assert.doesNotThrow(()=>ensureAdministrativeReview({...r,management:{...r.management,...Object.fromEntries(removed.map(k=>[k,'Não']))}}));
 assert.throws(()=>ensureAdministrativeReview({...r,management:{...r.management,quantityAssessment:''}}));
@@ -17,4 +22,8 @@ const saved=budgetTransition(old,{action:'budget_management',data:{analysis:'An�
 assert.equal(saved.management.validatedPriority,'Importante');assert.equal(saved.management.reviewComplete,'Não');
 const changed=budgetTransition(saved,{action:'budget_management',data:{validatedPriority:'Essencial'}},{role:'admin',name:'Teste'}, {},'2026-11-11T12:00:00Z').data;
 assert.equal(changed.management.validatedPriority,'Essencial');
+const correctionData={additionalDataStatus:'Complementação necessária',reviewNotes:'Informar a medida exata do espaço',complementDeadline:'2026-11-12'};
+const returned=budgetTransition(r,{action:'return_request',reason:correctionData.reviewNotes,due:correctionData.complementDeadline,data:correctionData},{role:'admin',name:'Teste'}, {},'2026-11-11T12:00:00Z').data;
+assert.equal(returned.status,'correction');assert.equal(returned.management.reviewNotes,correctionData.reviewNotes);assert.equal(returned.returnForCorrection.reason,correctionData.reviewNotes);assert.equal(returned.returnForCorrection.due,correctionData.complementDeadline);
+assert.throws(()=>budgetTransition(r,{action:'return_request',reason:'Outro texto que não veio da conferência',due:correctionData.complementDeadline,data:correctionData},{role:'admin',name:'Teste'}, {},'2026-11-11T12:00:00Z'),/conferência administrativa/i);
 console.log('PASS: conferência e parecer integrados, campos redundantes retirados, histórico preservado e prioridade explícita.');

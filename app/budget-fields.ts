@@ -133,14 +133,18 @@ const commercial: FieldSection = { title: 'Comparação e escolha comercial admi
   ...[['assessmentPrice', 'Preço'], ['assessmentQuality', 'Qualidade / adequação'], ['assessmentDelivery', 'Prazo'], ['assessmentPayment', 'Pagamento'], ['assessmentSupport', 'Garantia / suporte'], ['assessmentHistory', 'Histórico / confiabilidade']]
     .map(([key, label]) => choice(key, `Avaliação: ${label}`, ['Favorável', 'Regular', 'Desfavorável'])),
 ] };
-const execution: FieldSection = { title: 'Execução e prestação de contas', fields: [
+const execution: FieldSection = { title: 'Execução', fields: [
   field('communicatedAt', 'Comunicação ao setor em', 'date'), field('communicatedBy', 'Responsável pela comunicação'), field('executionSupplier', 'Fornecedor utilizado'),
-  field('contractedAmount', 'Valor contratado (R$)', 'number'), field('realizedAmount', 'Valor realizado (R$)', 'number'), field('contractedAt', 'Data da contratação / compra', 'date'),
+  field('contractedAmount', 'Valor contratado (R$)', 'number'), field('contractedAt', 'Data da contratação / compra', 'date'),
   field('executionDate', 'Data da execução', 'date'), field('executionOwner', 'Responsável pela execução'), choice('executionStatus', 'Situação da execução', ['Pendente', 'Parcial', 'Concluída']),
+  field('executionNotes', 'Observações de execução', 'textarea'),
+] };
+const accountability: FieldSection = { title: 'Prestação de contas', fields: [
+  field('realizedAmount', 'Valor realizado (R$)', 'number'),
   choice('receiptStatus', 'Recebimento / aceite', ['Pendente', 'Parcial', 'Recebido e aceito', 'N/A']), field('receiptDate', 'Data de recebimento / aceite', 'date'),
   field('receiptOwner', 'Responsável pela conferência / aceite'), field('receiptExceptionReason', 'Justificativa de recebimento N/A', 'textarea'),
   field('invoiceReference', 'NF / documento de execução'), field('financeForwardedAt', 'Encaminhamento ao financeiro em (Manaus)', 'datetime-local'),
-  field('differenceReason', 'Justificativa das diferenças entre estimativa, contratado e realizado', 'textarea'), field('executionNotes', 'Observações de execução', 'textarea'),
+  field('differenceReason', 'Justificativa das diferenças entre estimativa, contratado e realizado', 'textarea'),
 ] };
 const followup: FieldSection = { title: 'Acompanhamento e retomada', fields: [
   field('nextOwner', 'Responsável pela próxima ação'), field('nextAction', 'Próxima ação / encaminhamento', 'textarea'), field('nextDeadline', 'Prazo da próxima ação', 'date'),
@@ -191,7 +195,7 @@ export function managementSections(kind: BudgetKind, stage?:ManagementStage): Fi
   if (!['monthly', 'emergency', 'digital'].includes(kind)) throw new Error('Modelo de formulário inválido.');
   const specific = kind === 'emergency' ? emergencyManagement : kind === 'digital' ? digitalManagement : [];
   const reviewSection = kind === 'emergency' ? { ...review, fields: review.fields.map(f => f.key === 'recommendation' ? { ...f, options: [...f.options!, 'Medida provisória'] } : f) } : review;
-  const sections=[reviewSection, finance, ...specific, commercial, execution, followup];
-  if(!stage)return [reviewSection,legacyOpinion,finance,...specific,commercial,execution,followup];
+  const sections=[reviewSection, finance, ...specific, commercial, execution, accountability, followup];
+  if(!stage)return [reviewSection,legacyOpinion,finance,...specific,commercial,execution,accountability,followup];
   return sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))).map(section=>({...section,fields:section.fields.filter(field=>!hiddenReviewKeys.has(field.key)).flatMap(field=>field.key==='quantityAssessment'?[field,...recommendedQuantityFields(stage.originalScope?.items||stage.items||[])]:[field])}));
 }

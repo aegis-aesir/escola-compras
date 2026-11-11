@@ -42,6 +42,14 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   }
   if(b.action==='return_request'){
     permit('administrativo');preApproval();const due=date.parse(b.due);
+    if(b.data){
+      const parsed=parseManagement(b.data,old.form?.kind||'monthly',old.originalScope?.items||old.items);
+      data.management={...old.management,...parsed};
+      for(const key of Object.keys(b.data))if(parsed[key]===undefined)delete data.management[key];
+      const reviewReason=reasonSchema.parse(data.management.reviewNotes);
+      if(data.management.additionalDataStatus!=='Complementação necessária')throw new FlowError('Marque Complementação necessária na conferência administrativa.');
+      if(reviewReason!==reason||data.management.complementDeadline!==due)throw new FlowError('Use as pendências e o prazo registrados na conferência administrativa.');
+    }
     if(due<todayManaus(now))throw new FlowError('O prazo de complementação não pode estar no passado.');
     data.returnForCorrection={reason,due,at:now,actor:me.name};data.status='correction';
     return {data,action:'Devolvido ao setor para complementação até '+due+': '+reason};

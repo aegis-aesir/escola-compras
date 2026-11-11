@@ -72,6 +72,8 @@ Compatibilidade com os nove arquivos de referência: três formulários estrutur
 
 Em 11/11/2026, a conferência e o parecer administrativos foram reunidos em um único bloco. Antes da Diretoria Geral, a administração registra avaliação das quantidades, completude adicional, pendências, recomendação e prioridade validada. Foram retirados da interface e dos bloqueios o escopo recomendado em texto, valor recomendado, análise administrativa, justificativa, condições/ajustes e observações do parecer; seus valores anteriores permanecem preservados no histórico.
 
+Também em 11/11/2026, o painel passou a separar Conferência administrativa, Execução e Prestação de contas. A devolução para complementação usa diretamente as pendências e o prazo da conferência e salva ambos junto com a mudança para correção. Execução e prestação mantêm as mesmas chaves históricas, apenas distribuídas em blocos próprios.
+
 Simplificação de 10/11/2026: novos formulários usam classificação única em vez de origem/natureza/previsão e retiram códigos, contato, centro de custo, vínculo e declarações de disponibilidade/ausência de referências. Referências e anexos são opcionais. Competência calculada pelo servidor no mês do primeiro envio em America/Manaus, preservada nas complementações. Formulários anteriores mantêm sua leitura original e histórico. Testes adicionais: `budget-simplification-test` e, com servidor local, `budget-simplification-http-test`.
 
 
