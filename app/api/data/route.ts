@@ -26,9 +26,13 @@ export async function GET(req:Request){try{
   let {db,all,me,settings}=await context();
   const historyFor=new URL(req.url).searchParams.get('historyFor');
   if(historyFor){
-    if(!['admin','administrativo','financeiro'].includes(me.role))throw new AppError('Seu perfil não permite consultar este histórico.',403);
-    if(!all.some(r=>r.kind==='request'&&r.id===historyFor))throw new AppError('Solicitação não encontrada.',404);
-    const history=await db.prepare("SELECT * FROM audit WHERE entity=? OR entity IN (SELECT id FROM records WHERE kind='budget_invoice' AND json_extract(data,'$.requestId')=?) ORDER BY at DESC,id DESC").bind(historyFor,historyFor).all();
+    const historyRequest=all.find(r=>r.kind==='request'&&r.id===historyFor) as Purchase|undefined;
+    if(!historyRequest)throw new AppError('Solicitação não encontrada.',404);
+    const full=['admin','administrativo','financeiro'].includes(me.role);
+    if(!full&&!visibleRequests([historyRequest],me).some(r=>r.id===historyFor))throw new AppError('Seu perfil não permite consultar este histórico.',403);
+    const history=full
+      ?await db.prepare("SELECT * FROM audit WHERE entity=? OR entity IN (SELECT id FROM records WHERE kind='budget_invoice' AND json_extract(data,'$.requestId')=?) ORDER BY at DESC,id DESC").bind(historyFor,historyFor).all()
+      :await db.prepare("SELECT * FROM audit WHERE entity=? AND action NOT LIKE '% · internal' ORDER BY at DESC,id DESC").bind(historyFor).all();
     return Response.json({activity:history.results},{headers:{'Cache-Control':'no-store'}});
   }
   if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
@@ -89,8 +93,12 @@ export async function POST(req:Request){try{
     const form=parseBudgetForm({...b.data.form,fields:{...b.data.form?.fields,referenceMonth:old.form?.fields.referenceMonth||b.data.form?.fields.referenceMonth,situation:'Complementação',originalRequestId:old.code}},input.items,{at:now,previous:old.form,createdAt:old.createdAt,requestCode:old.code});
     if(!form.fields.correctionResponse)throw new AppError('Responda às pendências da complementação.');
     if(closedBudgetMonth(budgetRecords,String(old.management?.referenceMonth||form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
-    id=old.id;kind='request';data={...old,...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},status:'estimating',updatedAt:now,estimateRevision:now,correctionHistory:[...(old.correctionHistory||[]),{at:now,actor:me.name,reason:String(form.fields.correctionResponse),previous:{form:old.form,items:old.items,estimate:old.estimate,adminReview:old.adminReview,management:old.management,title:old.title,reason:old.reason,neededBy:old.neededBy}}]};
-    delete data.estimate;delete data.adminReview;delete data.management;if(old.management?.referenceMonth)data.management={referenceMonth:old.management.referenceMonth};delete data.generalApproval;delete data.returnForCorrection;delete data.needDecision;delete data.deferred;action='Solicitação complementada pelo setor; encaminhada para nova estimativa';
+    id=old.id;kind='request';data={...old,...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},status:'estimating',updatedAt:now,estimateRevision:now,management:{...old.management},correctionHistory:[...(old.correctionHistory||[]),{at:now,actor:me.name,reason:String(form.fields.correctionResponse),previous:{form:old.form,items:old.items,estimate:old.estimate,adminReview:old.adminReview,management:old.management,title:old.title,reason:old.reason,neededBy:old.neededBy}}]};
+    const sameQuantities=old.items.length===input.items.length&&old.items.every((item:Purchase['items'][number],index:number)=>item.quantity===input.items[index]?.quantity);
+    for(const key of ['additionalDataStatus','reviewNotes','complementDeadline','reviewOwner','reviewDate'])delete data.management[key];
+    if(!sameQuantities)for(const key of ['quantityAssessment',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
+    if(!Object.keys(data.management).length)delete data.management;
+    delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.returnForCorrection;delete data.needDecision;delete data.deferred;action='Solicitação complementada pelo setor; encaminhada para nova estimativa';
   }else if(b.action==='supplier'){
     permit(['admin','administrativo']);kind='supplier';data=supplierSchema.parse(b.data);action='Fornecedor cadastrado';
   }else if(b.action==='member'){

@@ -14,6 +14,8 @@ O setor pode informar preços e documentos já disponíveis como referências pr
 
 Após salvar, o pedido abre para envio de anexos. Quando a administração devolver com motivo e prazo, use Complementar e reenviar formulário, responda às pendências e confirme novamente a declaração. O histórico anterior é preservado; o pedido volta à estimativa. O setor não altera pedido já aprovado.
 
+Na complementação, os anexos opcionais aparecem dentro da mesma janela e permanecem vinculados à solicitação original. O setor pode acompanhar o histórico da própria solicitação; eventos fiscais e documentos marcados para uso interno continuam restritos. A avaliação das quantidades permanece quando o setor não altera as quantidades; a completude e a identificação da conferência são preenchidas novamente depois da resposta.
+
 ## Administração
 
 Os detalhes do pedido reúnem conferência e parecer da necessidade em um único bloco, além de execução, conferência de recebimento e encaminhamento documental ao financeiro. A avaliação financeira informativa foi retirada em 11/11/2026: disponibilidade, impacto no caixa, responsável e data financeiros não são mais exigidos para encaminhar à Diretoria Geral. Salve a conferência e a recomendação antes de encaminhar; dados pessoais ou integrações em assinaturas continuam exigindo validação técnica concluída. Os dados financeiros antigos ficam preservados no armazenamento e histórico, sem campos de preenchimento ou exposição à DG.

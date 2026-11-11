@@ -39,6 +39,13 @@ try{
  assert.equal((await post('archive_request',2)).status,200,'arquivamento permitido sem editar o mês financeiro fechado');
  assert.equal((await post('archive_request',2)).status,409,'versão antiga não duplica histórico');
  const final=await integration.row(db,request.id,'request');assert.equal(final.archiveHistory.length,2);assert.deepEqual((await integration.row(db,'closed','budget_closing')).snapshot,{totals:{realized:12.5}});assert.equal((await integration.row(db,'invoice','budget_invoice')).amount,12.5);
- globalThis.archiveTestUser={id:'setor',name:'TESTE Setor',role:'solicitante'};assert.equal((await api.GET(new Request('https://example.com/api/data?historyFor='+request.id))).status,403,'não expõe histórico interno ao setor');
+ await put('sector-own','request',{...request,id:'sector-own',authorId:'setor',archived:undefined});
+ await db.batch([
+  db.prepare('INSERT INTO audit VALUES(?,?,?,?,?)').bind('sector-public','sector-own','TESTE Setor','Solicitação criada',now),
+  db.prepare('INSERT INTO audit VALUES(?,?,?,?,?)').bind('sector-internal','sector-own','TESTE Master','Documento anexado: parecer.pdf · internal',now),
+ ]);
+ globalThis.archiveTestUser={id:'setor',name:'TESTE Setor',role:'solicitante'};
+ const sectorHistory=await api.GET(new Request('https://example.com/api/data?historyFor=sector-own'));assert.equal(sectorHistory.status,200,'setor consulta o histórico da própria solicitação');assert.deepEqual((await sectorHistory.json()).activity.map(event=>event.id),['sector-public'],'documentos internos não aparecem no histórico do setor');
+ assert.equal((await api.GET(new Request('https://example.com/api/data?historyFor='+request.id))).status,403,'setor não consulta histórico de outra solicitação');
  console.log('PASS storage: filas e prazo pausados, sem mensagens, 225 eventos/fiscal completos, arquivo/restauração em mês fechado e concorrência preservam dados.');
 }finally{await mf.dispose();delete globalThis.archiveTestEnv;delete globalThis.archiveTestUser}

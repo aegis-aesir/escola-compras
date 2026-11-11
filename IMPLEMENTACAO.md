@@ -76,6 +76,8 @@ Também em 11/11/2026, o painel passou a separar Conferência administrativa, Ex
 
 Nos pedidos estruturados, a consulta do formulário enviado e os anexos foram reunidos em um único cartão. A ordem é formulário, anexos e avaliação documental opcional; permissões e arquivos privados permanecem inalterados.
 
+Na devolução ao setor, a janela Complementar solicitação também lista e envia anexos opcionais antes do novo aceite. Os arquivos usam o mesmo ID do pedido. O histórico da própria solicitação fica visível ao setor, sem documentos internos ou eventos fiscais vinculados; a gestão e o Financeiro mantêm a auditoria completa autorizada. Quando o setor não altera as quantidades, a avaliação e as quantidades recomendadas da conferência permanecem preenchidas. Completude adicional, pendências, prazo, responsável e data são limpos para a nova conferência; mudança de quantidade também exige nova avaliação quantitativa.
+
 Simplificação de 10/11/2026: novos formulários usam classificação única em vez de origem/natureza/previsão e retiram códigos, contato, centro de custo, vínculo e declarações de disponibilidade/ausência de referências. Referências e anexos são opcionais. Competência calculada pelo servidor no mês do primeiro envio em America/Manaus, preservada nas complementações. Formulários anteriores mantêm sua leitura original e histórico. Testes adicionais: `budget-simplification-test` e, com servidor local, `budget-simplification-http-test`.
 
 
