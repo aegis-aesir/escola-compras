@@ -178,7 +178,7 @@ const digitalManagement: FieldSection[] = [
 type QuantityItem={name?:string;quantity:number;unit?:string};
 export function recommendedQuantityFields(items:readonly QuantityItem[]):FieldDef[]{return items.map((item,index)=>({key:'recommendedQuantity_'+index,label:'Quantidade recomendada · '+(index+1)+'. '+(item.name||'Item')+' (solicitado: '+item.quantity+' '+(item.unit||'un.')+')',type:'number',integer:true,max:100000}));}
 export type ManagementStage = {status:string;quotes:readonly unknown[];generalApproval?:unknown;items?:readonly QuantityItem[];originalScope?:{items:readonly QuantityItem[]}};
-const hiddenReviewKeys=new Set(['reviewQuantity','reviewDeferral','reviewComplete','reviewNeed','reviewStock','reviewDuplication','reviewMarket','reviewPriority','reviewSupplier','reviewEmergencySupplier','reviewDeadline','opinionDeadline','reviewDocuments','documentReviewNotes']);
+const hiddenReviewKeys=new Set(['reviewQuantity','reviewDeferral','reviewComplete','reviewNeed','reviewStock','reviewDuplication','reviewMarket','reviewPriority','reviewSupplier','reviewEmergencySupplier','reviewDeadline','opinionDeadline','reviewDocuments','documentReviewNotes','additionalDataNotes']);
 export const commercialFieldKeys = commercial.fields.map(f=>f.key);
 export function canCompareCommercial(request:ManagementStage) {
   return !!request.generalApproval && request.quotes.length>0 && ['quoting','national','execution','ordered','received','approved'].includes(request.status);

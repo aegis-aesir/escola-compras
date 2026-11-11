@@ -82,3 +82,5 @@ Conferência administrativa simplificada (11/11/2026): retirar da interface e do
 
 
 Avaliação unificada de quantidades (11/11/2026): substitui Quantidades adequadas e Possibilidade de reduzir/adiar por Avaliação das quantidades (Adequadas/Inadequadas/Podem ser reduzidas), com quantidade recomendada inteira por item. Branco mantém o solicitado; zero não recomenda o item. Redução não permite aumento; alteração exige recomendação diferente e preserva itens originais. DG recebe as recomendações como contexto, mantendo sua decisão de escopo. A completude das informações adicionais admite Suficientes, Complementação necessária ou Não necessárias; pendências impedem encaminhamento até complementação. Dados opcionais não se tornam globalmente obrigatórios. Campos anteriores preservados no armazenamento; reabertura exige nova avaliação, com a anterior no histórico.
+
+O campo Pendências e esclarecimentos concentra o detalhamento das informações adicionais ausentes. A opção Complementação necessária exige esse texto e deve ser resolvida pela devolução ao setor antes do encaminhamento à Diretoria Geral.

@@ -34,7 +34,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     if(old.generalApproval||old.selectedQuoteId||old.quotes.length)throw new FlowError('Este pedido possui aprovação ou propostas de compra. Confira seu histórico antes de prosseguir.');
     data.reopeningHistory=[...(old.reopeningHistory||[]),{at:now,actor:me.name,reason,previous:{decision:old.decision,needDecision:old.needDecision,adminReview:old.adminReview,management:old.management,estimate:old.estimate}}];
     data.management={...old.management};
-    for(const key of ['recommendation','analysis','opinionReason','reviewOwner','reviewDate','quantityAssessment','additionalDataStatus','additionalDataNotes',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
+    for(const key of ['recommendation','analysis','opinionReason','reviewOwner','reviewDate','quantityAssessment','additionalDataStatus','additionalDataNotes','reviewNotes',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
     delete data.decision;delete data.needDecision;delete data.adminReview;delete data.returnForCorrection;delete data.deferred;
     data.status=old.estimate?'admin_review':'estimating';
     if(!old.estimate)data.estimateRevision=now;
@@ -90,7 +90,8 @@ export function ensureAdministrativeReview(r:Purchase){
   const m=r.management||{},fields=managementSections(r.form.kind,r).flatMap(s=>s.fields);
   if(fields.filter(f=>f.key.startsWith('review')&&f.type==='select').some(f=>!m[f.key]))throw new FlowError('Preencha a conferência administrativa antes de encaminhar.');
   if(!['Adequadas','Inadequadas','Podem ser reduzidas'].includes(String(m.quantityAssessment)))throw new FlowError('Avalie as quantidades antes de encaminhar.');
-  if(!['Suficientes','Não necessárias'].includes(String(m.additionalDataStatus)))throw new FlowError('Confira as informações adicionais; se houver complementação necessária, devolva ao setor antes de encaminhar.');
+  if(m.additionalDataStatus==='Complementação necessária'&&!m.reviewNotes)throw new FlowError('Descreva as informações necessárias em Pendências e esclarecimentos.');
+  if(!['Suficientes','Não necessárias'].includes(String(m.additionalDataStatus)))throw new FlowError('Há complementação necessária. Devolva a solicitação ao setor antes de encaminhar.');
   const items=r.originalScope?.items||r.items;
   const recommended=items.map((item,index)=>m['recommendedQuantity_'+index]??item.quantity);
   if(recommended.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>100000))throw new FlowError('Confira as quantidades recomendadas.');

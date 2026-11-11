@@ -7,9 +7,10 @@ const {ensureAdministrativeReview,budgetTransition}=await import('../outputs/qua
 const {visibleRequests}=await import('../outputs/quantity-review/access.mjs');
 const items=[{name:'Item A',quantity:10,unit:'un.',spec:''},{name:'Item B',quantity:4,unit:'un.',spec:''}];
 const r={id:'r',authorId:'s',priority:'Essencial',status:'admin_review',quotes:[],items,form:{kind:'monthly',fields:{},references:[],accepted:true},management:{quantityAssessment:'Adequadas',additionalDataStatus:'Suficientes',recommendation:'Aprovar integralmente',validatedPriority:'Essencial',recommendedScope:'Todos os itens',analysis:'Análise necessária',opinionReason:'Necessidade confirmada'}};
-const keys=managementSections('monthly',r).flatMap(s=>s.fields).map(f=>f.key);assert.ok(!keys.includes('reviewQuantity'));assert.ok(!keys.includes('reviewDeferral'));assert.ok(keys.includes('recommendedQuantity_0'));assert.ok(keys.includes('additionalDataStatus'));
+const keys=managementSections('monthly',r).flatMap(s=>s.fields).map(f=>f.key);assert.ok(!keys.includes('reviewQuantity'));assert.ok(!keys.includes('reviewDeferral'));assert.ok(!keys.includes('additionalDataNotes'));assert.ok(keys.includes('reviewNotes'));assert.ok(keys.includes('recommendedQuantity_0'));assert.ok(keys.includes('additionalDataStatus'));
 assert.doesNotThrow(()=>ensureAdministrativeReview(r));
-assert.throws(()=>ensureAdministrativeReview({...r,management:{...r.management,additionalDataStatus:'Complementação necessária'}}),/complement/i);
+assert.throws(()=>ensureAdministrativeReview({...r,management:{...r.management,additionalDataStatus:'Complementação necessária'}}),/Pendências e esclarecimentos/i);
+assert.throws(()=>ensureAdministrativeReview({...r,management:{...r.management,additionalDataStatus:'Complementação necessária',reviewNotes:'Informar medida do espaço'}}),/Devolva.*setor/i);
 for(const value of [1.001,-1,100001])assert.throws(()=>parseManagement({recommendedQuantity_0:value},'monthly',items));
 assert.throws(()=>parseManagement({recommendedQuantity_2:1},'monthly',items));
 const reduced={...r,management:{...r.management,quantityAssessment:'Podem ser reduzidas',recommendedQuantity_0:6}};
