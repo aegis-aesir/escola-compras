@@ -10,7 +10,7 @@ const now='2026-11-11T15:00:00.000Z',admin={role:'admin',name:'TESTE LOCAL Maste
 const approval={actor:'DG fictícia',at:now,reason:'Necessidade aprovada'};
 const commercialTitle='Comparação e escolha comercial administrativa';
 const purchase=(kind='monthly')=>({...budgetFixture(kind),id:'TESTE LOCAL etapas',version:1,authorId:'setor',status:'admin_review',quotes:[],estimate:{total:30,freight:0,references:[{unitPrice:10}]}});
-const review=kind=>({...Object.fromEntries(managementSections(kind).flatMap(s=>s.fields).filter(f=>f.key.startsWith('review')&&f.type==='select').map(f=>[f.key,'Sim'])),recommendation:'Aprovar integralmente',validatedPriority:'Essencial',recommendedScope:'Todos os itens necessários',analysis:'Necessidade e quantidades conferidas',opinionReason:'Pedido justificado',technicalReview:'Concluída',technicalReviewer:'TI fictícia',technicalReviewDate:'2026-11-11'});
+const review=kind=>({...Object.fromEntries(managementSections(kind).flatMap(s=>s.fields).filter(f=>f.key.startsWith('review')&&f.type==='select').map(f=>[f.key,'Sim'])),quantityAssessment:'Adequadas',additionalDataStatus:'Não necessárias',recommendation:'Aprovar integralmente',validatedPriority:'Essencial',recommendedScope:'Todos os itens necessários',analysis:'Necessidade e quantidades conferidas',opinionReason:'Pedido justificado',technicalReview:'Concluída',technicalReviewer:'TI fictícia',technicalReviewDate:'2026-11-11'});
 const save=(r,data)=>transition(r,{action:'budget_management',data},admin,[],settings,now).data;
 
 test('avaliação financeira sai da interface dos três modelos em todas as etapas',()=>{
@@ -31,7 +31,7 @@ test('parecer segue à DG sem avaliação financeira; conferências e validaçã
   const r={...purchase(kind),management:review(kind)};
   const next=transition(r,{action:'admin_review',reason:'Encaminhar necessidade conferida'},admin,[],settings,now).data;
   assert.equal(next.status,'general_review');assert.equal(next.management.financialAvailability,undefined);
-  assert.throws(()=>transition({...r,management:{...r.management,reviewQuantity:''}},{action:'admin_review',reason:'Tentativa sem conferir quantidades'},admin,[],settings,now));
+  assert.throws(()=>transition({...r,management:{...r.management,quantityAssessment:''}},{action:'admin_review',reason:'Tentativa sem conferir quantidades'},admin,[],settings,now));
  }
  const digital=purchase('digital');digital.form.fields.personalData='Sim';
  assert.throws(()=>transition({...digital,management:{...review('digital'),technicalReview:'Pendente'}},{action:'admin_review',reason:'Tentativa sem validação técnica'},admin,[],settings,now),/validação técnica/);

@@ -15,7 +15,7 @@ export function BudgetFields({sections,values,onChange,readOnly=false,required=t
  if(f.type==='checkbox')return <input {...props} type="checkbox" checked={value===true} onChange={e=>onChange?.(f.key,e.target.checked)}/>;
  if(f.type==='textarea')return <textarea {...props} rows={3} maxLength={5000} value={String(value??'')} onChange={e=>onChange?.(f.key,e.target.value)}/>;
  if(f.type==='select')return <select {...props} value={String(value??'')} onChange={e=>onChange?.(f.key,e.target.value)}><option value="">Selecione…</option>{f.options?.map(o=><option key={o}>{o}</option>)}</select>;
- return <input {...props} type={f.type} min={f.type==='number'?0:undefined} step={f.type==='number'?'0.01':undefined} maxLength={f.type==='text'?500:undefined} value={typeof value==='boolean'?'':value??''} onChange={e=>onChange?.(f.key,f.type==='number'&&e.target.value!==''?Number(e.target.value):e.target.value)}/>;
+ return <input {...props} type={f.type} min={f.type==='number'?0:undefined} step={f.type==='number'?(f.integer?'1':'0.01'):undefined} max={f.max} maxLength={f.type==='text'?500:undefined} value={typeof value==='boolean'?'':value??''} onChange={e=>onChange?.(f.key,f.type==='number'&&e.target.value!==''?Number(e.target.value):e.target.value)}/>;
  };
  return <>{sections.map(section=><fieldset className="budget-section" key={section.title}><legend>{section.title}</legend><div className="budget-fields">{section.fields.map(f=><div key={f.key} className={f.type==='textarea'?'budget-wide':undefined}><BudgetField label={f.label+(f.required&&!readOnly?' *':'')}>{control(f)}</BudgetField></div>)}</div></fieldset>)}</>;
 }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestSections, managementSections, type BudgetKind, type FieldDef } from './budget-fields';
+import { requestSections, managementSections, recommendedQuantityFields, type BudgetKind, type FieldDef } from './budget-fields';
 export { requestSections, managementSections } from './budget-fields';
 export type { BudgetKind, FieldDef, FieldSection } from './budget-fields';
 
@@ -81,7 +81,8 @@ function parseFields(input: unknown, definitions: FieldDef[], required: boolean)
       if (typeof value !== 'boolean' || (required && definition.required && !value)) fail();
     } else if (definition.type === 'number') {
       if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1_000_000_000) fail();
-      value = rounded(value as number);
+      if(definition.integer&&(!Number.isInteger(value)||(definition.max!==undefined&&(value as number)>definition.max)))fail();
+      value = definition.integer?value:rounded(value as number);
     } else {
       if (typeof value !== 'string') fail();
       const text = value as string;
@@ -173,8 +174,8 @@ export function parseBudgetForm(input: unknown, items: BudgetItem[], submission?
 }
 
 /** Salvar progresso não equivale a emitir parecer nem a liberar execução/pagamento. */
-export function parseManagement(input: unknown, kind: BudgetKind): ManagementData {
-  return parseFields(input, managementSections(kind).flatMap(section => section.fields), false);
+export function parseManagement(input: unknown, kind: BudgetKind, items:readonly {name?:string;quantity:number;unit?:string}[]=[]): ManagementData {
+  return parseFields(input, [...managementSections(kind).flatMap(section => section.fields),...recommendedQuantityFields(items)], false);
 }
 
 const rounded = roundMoney;

@@ -6,6 +6,8 @@ export type FieldDef = {
   type: 'text' | 'textarea' | 'select' | 'date' | 'month' | 'datetime-local' | 'number' | 'checkbox';
   options?: string[];
   required?: boolean;
+  integer?: boolean;
+  max?: number;
 };
 export type FieldSection = { title: string; fields: FieldDef[] };
 const field = (key: string, label: string, type: FieldDef['type'] = 'text', required = false, options?: string[]): FieldDef => ({ key, label, type, ...(required ? { required } : {}), ...(options ? { options } : {}) });
@@ -97,6 +99,9 @@ export function requestSections(kind: BudgetKind, version?: 2): FieldSection[] {
 }
 
 const review: FieldSection = { title: 'Conferência administrativa', fields: [
+  choice('quantityAssessment', 'Avaliação das quantidades', ['Adequadas', 'Inadequadas', 'Podem ser reduzidas']),
+  choice('additionalDataStatus', 'Completude das informações adicionais', ['Suficientes', 'Complementação necessária', 'Não necessárias']),
+  field('additionalDataNotes', 'Informações adicionais necessárias / observações', 'textarea'),
   ...[
     ['reviewComplete', 'Completude do formulário'], ['reviewNeed', 'Necessidade e finalidade'], ['reviewQuantity', 'Quantidades adequadas'],
     ['reviewStock', 'Estoque e disponibilidade'], ['reviewDuplication', 'Ausência de duplicidade'], ['reviewDocuments', 'Documentos suficientes'],
@@ -170,8 +175,10 @@ const digitalManagement: FieldSection[] = [
   ] },
 ];
 
-export type ManagementStage = {status:string;quotes:readonly unknown[];generalApproval?:unknown};
-const hiddenReviewKeys=new Set(['reviewComplete','reviewNeed','reviewStock','reviewDuplication','reviewMarket','reviewPriority','reviewSupplier','reviewEmergencySupplier','reviewDeadline','opinionDeadline','reviewDocuments','documentReviewNotes']);
+type QuantityItem={name?:string;quantity:number;unit?:string};
+export function recommendedQuantityFields(items:readonly QuantityItem[]):FieldDef[]{return items.map((item,index)=>({key:'recommendedQuantity_'+index,label:'Quantidade recomendada · '+(index+1)+'. '+(item.name||'Item')+' (solicitado: '+item.quantity+' '+(item.unit||'un.')+')',type:'number',integer:true,max:100000}));}
+export type ManagementStage = {status:string;quotes:readonly unknown[];generalApproval?:unknown;items?:readonly QuantityItem[];originalScope?:{items:readonly QuantityItem[]}};
+const hiddenReviewKeys=new Set(['reviewQuantity','reviewDeferral','reviewComplete','reviewNeed','reviewStock','reviewDuplication','reviewMarket','reviewPriority','reviewSupplier','reviewEmergencySupplier','reviewDeadline','opinionDeadline','reviewDocuments','documentReviewNotes']);
 export const commercialFieldKeys = commercial.fields.map(f=>f.key);
 export function canCompareCommercial(request:ManagementStage) {
   return !!request.generalApproval && request.quotes.length>0 && ['quoting','national','execution','ordered','received','approved'].includes(request.status);
@@ -183,5 +190,5 @@ export function managementSections(kind: BudgetKind, stage?:ManagementStage): Fi
   const specific = kind === 'emergency' ? emergencyManagement : kind === 'digital' ? digitalManagement : [];
   const opinionSection = kind === 'emergency' ? { ...opinion, fields: opinion.fields.map(f => f.key === 'recommendation' ? { ...f, options: [...f.options!, 'Medida provisória'] } : f) } : opinion;
   const sections=[review, opinionSection, finance, ...specific, commercial, execution, followup];
-  return stage?sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))).map(section=>({...section,fields:section.fields.filter(field=>!hiddenReviewKeys.has(field.key))})):sections;
+  return stage?sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))).map(section=>({...section,fields:section.fields.filter(field=>!hiddenReviewKeys.has(field.key)).flatMap(field=>field.key==='quantityAssessment'?[field,...recommendedQuantityFields(stage.originalScope?.items||stage.items||[])]:[field])})):sections;
 }

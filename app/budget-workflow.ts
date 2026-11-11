@@ -14,7 +14,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   const preApproval=()=>{if(old.generalApproval||!['estimating','pending','admin_review','general_review','correction'].includes(old.status))throw new FlowError('A ação exige pedido ainda sem aprovação da necessidade.');};
   if(b.action==='budget_management'){
     permit('administrativo');
-    const parsed=parseManagement(b.data,old.form?.kind||'monthly');
+    const parsed=parseManagement(b.data,old.form?.kind||'monthly',old.originalScope?.items||old.items);
     if(!canCompareCommercial(old)&&commercialFieldKeys.some(key=>Object.hasOwn(b.data,key)&&parsed[key]!==old.management?.[key]))throw new FlowError('A comparação comercial exige aprovação da necessidade e propostas reais recebidas.');
     data.management={...old.management,...parsed};
     // Omitted fields retain historical data; an explicitly blank field still clears its value.
@@ -34,7 +34,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     if(old.generalApproval||old.selectedQuoteId||old.quotes.length)throw new FlowError('Este pedido possui aprovação ou propostas de compra. Confira seu histórico antes de prosseguir.');
     data.reopeningHistory=[...(old.reopeningHistory||[]),{at:now,actor:me.name,reason,previous:{decision:old.decision,needDecision:old.needDecision,adminReview:old.adminReview,management:old.management,estimate:old.estimate}}];
     data.management={...old.management};
-    for(const key of ['recommendation','analysis','opinionReason','reviewOwner','reviewDate'])delete data.management[key];
+    for(const key of ['recommendation','analysis','opinionReason','reviewOwner','reviewDate','quantityAssessment','additionalDataStatus','additionalDataNotes',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
     delete data.decision;delete data.needDecision;delete data.adminReview;delete data.returnForCorrection;delete data.deferred;
     data.status=old.estimate?'admin_review':'estimating';
     if(!old.estimate)data.estimateRevision=now;
@@ -89,6 +89,17 @@ export function ensureAdministrativeReview(r:Purchase){
   if(!r.form)return;
   const m=r.management||{},fields=managementSections(r.form.kind,r).flatMap(s=>s.fields);
   if(fields.filter(f=>f.key.startsWith('review')&&f.type==='select').some(f=>!m[f.key]))throw new FlowError('Preencha a conferência administrativa antes de encaminhar.');
+  if(!['Adequadas','Inadequadas','Podem ser reduzidas'].includes(String(m.quantityAssessment)))throw new FlowError('Avalie as quantidades antes de encaminhar.');
+  if(!['Suficientes','Não necessárias'].includes(String(m.additionalDataStatus)))throw new FlowError('Confira as informações adicionais; se houver complementação necessária, devolva ao setor antes de encaminhar.');
+  const items=r.originalScope?.items||r.items;
+  const recommended=items.map((item,index)=>m['recommendedQuantity_'+index]??item.quantity);
+  if(recommended.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>100000))throw new FlowError('Confira as quantidades recomendadas.');
+  for(const [index] of items.entries())if(m['recommendedQuantity_'+index]!==undefined&&!Number.isInteger(m['recommendedQuantity_'+index]))throw new FlowError('Informe quantidades recomendadas inteiras.');
+  const changed=items.some((item,index)=>recommended[index]!==item.quantity);
+  if(m.quantityAssessment==='Adequadas'&&changed)throw new FlowError('A quantidade recomendada é diferente da solicitada. Atualize a avaliação das quantidades.');
+  if(m.quantityAssessment!=='Adequadas'&&!changed)throw new FlowError('Informe ao menos uma quantidade recomendada diferente da solicitada.');
+  if(m.quantityAssessment==='Podem ser reduzidas'&&items.some((item,index)=>Number(recommended[index])>item.quantity))throw new FlowError('A recomendação de redução não pode aumentar quantidades.');
+  if(items.length&&!recommended.some(value=>Number(value)>0))throw new FlowError('A recomendação deve manter ao menos um item; caso contrário, rejeite ou adie a solicitação.');
   if(!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.analysis||!m.opinionReason||!m.validatedPriority||!m.recommendedScope)throw new FlowError('Registre recomendação, prioridade validada, escopo, análise e justificativa no parecer.');
   if(fields.some(f=>m[f.key]==='Não')&&!m.reviewNotes)throw new FlowError('Explique os itens de conferência marcados Não.');
   if(r.form.kind==='digital'&&(r.form.fields.personalData==='Sim'||r.form.fields.integrations==='Sim')&&(m.technicalReview!=='Concluída'||!m.technicalReviewer||!m.technicalReviewDate))throw new FlowError('Conclua a validação técnica e de privacidade antes de encaminhar.');
