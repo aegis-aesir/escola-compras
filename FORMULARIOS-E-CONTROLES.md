@@ -18,6 +18,8 @@ Após salvar, o pedido abre para envio de anexos. Quando a administração devol
 
 Os detalhes do pedido reúnem conferência e parecer da necessidade, execução, conferência de recebimento e encaminhamento documental ao financeiro. A avaliação financeira informativa foi retirada em 11/11/2026: disponibilidade, impacto no caixa, responsável e data financeiros não são mais exigidos para encaminhar à Diretoria Geral. Salve a conferência e o parecer antes de encaminhar; dados pessoais ou integrações em assinaturas continuam exigindo validação técnica concluída. Os dados financeiros antigos ficam preservados no armazenamento e histórico, sem campos de preenchimento ou exposição à DG.
 
+Para reavaliar uma solicitação **Não aprovada**, Master ou Diretoria Administrativa abre o pedido em Solicitações e usa **Reabrir para análise → Justificativa da reabertura → Confirmar reabertura**. A recusa e o parecer anteriores ficam no histórico; o pedido mantém seus itens, identidade e competência. Com estimativa existente, retorna à análise administrativa; sem ela, passa primeiro pela pesquisa. A recomendação e a análise do parecer devem ser novamente preenchidas antes de uma nova decisão da DG. O setor e a DG consultam o histórico da reabertura sem acesso aos controles internos anteriores. Pedidos com aprovação ou propostas de compra exigem conferência do histórico antes de qualquer reabertura; não são alterados por essa ação. Meses fechados continuam exigindo reabertura do mês.
+
 Devolver exige motivo e prazo. Adiar não transfere o mês automaticamente. Retomar exige justificativa e competência efetiva; a original fica preservada e o pedido exige nova estimativa/análise/decisão da necessidade. A área mensal identifica entradas e saídas sem repetir o valor nas duas competências. Pedidos antigos permanecem sem competência até classificação administrativa explícita.
 
 ## Diretoria Geral
@@ -53,6 +55,8 @@ O fechamento guarda a posição conhecida do mês e as ações/encaminhamentos. 
 O calendário usa America/Manaus e os feriados cadastrados: prazos fixos do mês anterior são antecipados ao dia útil anterior, e o relatório vence no quinto dia útil do mês seguinte. O sistema avisa atrasos e não muda a competência por conta própria.
 
 ## Verificação local
+
+Testes da reabertura: `node scripts/reopen-request-test.mjs`; com servidor local, `node scripts/reopen-request-http-test.mjs`.
 
 Testes isolados: `node scripts/administrative-stages-test.mjs`, `node scripts/budget-test.mjs`, `node scripts/budget-flow-test.mjs`, `node scripts/budget-files-test.mjs`, `node scripts/budget-records-test.mjs`, `node scripts/quote-comparison-test.mjs`. Com servidor apenas em 127.0.0.1:5173: `node scripts/budget-http-test.mjs` e `node scripts/smoke-test.mjs`.
 

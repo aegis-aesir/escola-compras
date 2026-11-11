@@ -46,7 +46,7 @@ Pedidos do fluxo anterior preservam seu histórico. Pedidos antigos em cotação
 
 ## Validação
 
-Aparência: o botão **Aparência** no cabeçalho está disponível para todos os perfis. Oferece tema claro, escuro ou automático (acompanha o dispositivo) e destaques em violeta, azul, verde, rosa e laranja. A escolha é pessoal, salva neste navegador e sincronizada entre abas; não altera configurações da escola nem registros de compras.
+Aparência: o botão **Aparência** no cabeçalho está disponível para todos os perfis. Oferece tema claro, escuro ou automático (acompanha o dispositivo) e destaques em Preto, Roxo, Azul, Rosa, Violeta, Anil, Laranja, Azul-petróleo, Bronze, Menta e Verde. A seleção usa opções retangulares em três colunas, com indicador marcado e foco de teclado; mantém os identificadores das preferências anteriores. A escolha é pessoal, salva neste navegador e sincronizada entre abas; não altera configurações da escola nem registros de compras.
 
 React/Vinext, Cloudflare Workers, D1, autenticação local e hospedagem Sites. Dados locais de teste não são publicados. Nenhum banco ou credencial está no pacote de produção.
 
@@ -59,6 +59,8 @@ Cobertura: acesso anônimo negado, entradas inválidas, sequência obrigatória,
 Fora desta versão: envio automático do pedido e acompanhamento da execução pelo agente, interpretação automática de propostas, execução de pagamentos bancários, estoque e compras divididas entre fornecedores. Anexos, registro documental de pagamentos/notas e complementação de pedidos devolvidos estão implementados; não executam transferências financeiras. Usuários locais podem ser desativados, excluídos e ter suas senhas redefinidas por um Master. A exclusão encerra sessões, oculta a conta e preserva identidade, pedidos e auditoria; o login fica reservado. O próprio acesso e o último Master são protegidos. A troca de senha é opcional no primeiro acesso e após redefinição, inclusive para contas antigas, sem alterar credenciais existentes. Validação específica: `node --test scripts/openclaw-test.mjs` e `node scripts/integration-test.mjs`, com banco isolado e sem mensagens reais.
 
 ## Formulários e controles anteriores
+
+Reabertura de não aprovação (11/11/2026): em Solicitações, Master ou Diretoria Administrativa abre o pedido Não aprovado, expande Reabrir para análise, informa justificativa e confirma. Mantém identidade, itens e competência. Com estimativa, retorna à análise administrativa; sem estimativa, retorna à pesquisa. Exige novo parecer e nova decisão da DG. Recusa, parecer e controles anteriores ficam em reopeningHistory e na auditoria; o histórico público do pedido não expõe controles internos anteriores. Somente pedidos rejeitados sem aprovação/propostas de compra podem ser reabertos; versão e mês fechado continuam protegidos. Testes: `node scripts/reopen-request-test.mjs` e, com servidor local, `node scripts/reopen-request-http-test.mjs`.
 
 Ajuste de 11/11/2026: avaliação financeira informativa retirada do painel e da exigência de encaminhamento. Dados anteriores preservados, sem exposição à DG. Comparação e escolha comercial administrativa somente após a aprovação da necessidade e o recebimento de propostas reais; estimativas não habilitam essa etapa. A escolha continua administrativa, com propostas válidas/comparáveis, quantidade configurada, exceção documentada e justificativa de preço superior. Não altera as chaves de envio nem automatiza a interpretação de propostas. Validação: `node scripts/administrative-stages-test.mjs`.
 

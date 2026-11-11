@@ -25,6 +25,12 @@ function Attachments({request,data,busy}:{request:Purchase;data:Snapshot;busy:bo
 }
 
 type PanelProps={request:Purchase;data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>;onEdit?:()=>void};
+function RequestReopening({request:r,admin,busy,onReopen}:{request:Purchase;admin:boolean;busy:boolean;onReopen:(reason:string)=>Promise<boolean>}){
+ return <>
+ {r.reopeningHistory?.length?<details className="budget-details"><summary>Histórico de reaberturas ({r.reopeningHistory.length})</summary>{r.reopeningHistory.map((entry,index)=><div className="note" key={index}><b>Reaberto por {entry.actor} · {date(entry.at)}</b><p>{entry.reason}</p><p>Recusa anterior: {entry.previous.needDecision?.reason||entry.previous.decision||'Consulte os registros do pedido.'}</p>{entry.previous.needDecision&&<small>{entry.previous.needDecision.actor} · {date(entry.previous.needDecision.at)}</small>}</div>)}</details>:null}
+ {admin&&r.status==='rejected'&&<details className="budget-details"><summary>Reabrir para análise</summary><form className="decision-box" onSubmit={async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'');await onReopen(reason)}}><h3>Reavaliar solicitação não aprovada</h3><p className="muted">A recusa anterior será preservada. {r.estimate?'O pedido voltará à análise administrativa.':'O pedido voltará à pesquisa de estimativa e depois à análise administrativa.'} Será necessário um novo parecer e uma nova decisão da Diretoria Geral.</p>{r.decision&&<p className="note">Motivo da recusa: {r.decision}</p>}<BudgetField label="Justificativa da reabertura *"><textarea name="reason" required minLength={5} maxLength={2000} rows={3} disabled={busy}/></BudgetField><button type="submit" className="button secondary" disabled={busy}>Confirmar reabertura</button></form></details>}
+ </>;
+}
 export function BudgetRecordPanel(props:PanelProps){return <BudgetRecordContent key={`${props.request.id}:${props.request.version}`} {...props}/>}
 function BudgetRecordContent({request:r,data,busy,onSave,onEdit}:PanelProps){
  const [management,setManagement]=useState<Record<string,string|number|boolean>>({...r.management});
@@ -33,16 +39,18 @@ function BudgetRecordContent({request:r,data,busy,onSave,onEdit}:PanelProps){
  const admin=['admin','administrativo'].includes(data.me.role),general=['admin','geral'].includes(data.me.role);
  async function send(action:string,extra:Record<string,unknown>={}){setNotice('');setLocalError('');const saved=await onSave({action,id:r.id,version:r.version,...extra});if(saved)setNotice('Registro salvo.');else setLocalError('Não foi possível salvar. Confira a mensagem do sistema e tente novamente.');return saved}
  const form=r.form,total=requestedTotal(r);
+ const reopening=<RequestReopening request={r} admin={admin} busy={busy} onReopen={reason=>send('reopen_request',{reason})}/>;
  if(!form){
-  if(!admin)return null;
+  if(!admin)return reopening;
   const legacySections=managementSections('monthly',r).map(section=>({...section,fields:section.fields.filter(field=>field.key!=='referenceMonth')}));
   return <section className="budget-record"><h3>Controles administrativos do pedido legado</h3><div className="note">Este pedido foi registrado antes dos formulários estruturados. Os campos não informados no legado permanecem em branco. Não há formulário original completo ou aceite de declaração registrado neste painel. Informe somente os dados conferidos, com suas fontes.</div>
    <form onSubmit={async e=>{e.preventDefault();await send('budget_management',{data:management})}}><fieldset className="budget-section"><legend>Competência do pedido legado</legend><BudgetField label="Mês de referência *"><input type="month" required value={String(management.referenceMonth??'')} readOnly={!!r.management?.referenceMonth} onChange={e=>setManagement(current=>({...current,referenceMonth:e.target.value}))}/></BudgetField><p className="muted">{r.management?.referenceMonth?'A competência já foi registrada. Alterações de competência exigem adiamento e retomada justificados.':'A competência inicial exige conferência administrativa e não será deduzida automaticamente da data do pedido.'}</p></fieldset><BudgetFields sections={legacySections} values={management} onChange={(key,value)=>setManagement(current=>({...current,[key]:value}))} required={false}/><button className="button primary" disabled={busy}>{busy?'Salvando…':'Salvar controles do pedido legado'}</button></form>
-   <Attachments request={r} data={data} busy={busy}/>{localError&&<p className="alert error" role="alert">{localError}</p>}{notice&&<p className="alert success" role="status">{notice}</p>}</section>;
+   {reopening}<Attachments request={r} data={data} busy={busy}/>{localError&&<p className="alert error" role="alert">{localError}</p>}{notice&&<p className="alert success" role="status">{notice}</p>}</section>;
  }
  const contextSections=managementSections(form.kind,r).filter(section=>['Conferência administrativa','Parecer e escopo recomendado','Conferência técnica e financeira das assinaturas','Avaliação específica da emergência'].includes(section.title));
  return <section className="budget-record">
  <div className="section-line"><h3>{budgetKindLabels[form.kind]}</h3><span className="badge neutral">Registro do formulário</span></div>
+ {reopening}
  {r.effectiveReferenceMonth&&r.effectiveReferenceMonth!==r.form?.fields.referenceMonth&&<div className="note">Competência efetiva do orçamento: <b>{r.effectiveReferenceMonth}</b>. O mês original do formulário permanece no histórico.</div>}
  {r.returnForCorrection&&<div className="note"><b>Devolvido para complementação</b><p>{r.returnForCorrection.reason}</p><p>Prazo: {r.returnForCorrection.due?.split('-').reverse().join('/')||'Não informado'}</p>{r.status==='correction'&&onEdit&&(admin||r.authorId===data.me.id)&&<button type="button" className="button primary" disabled={busy} onClick={onEdit}>Complementar e reenviar formulário</button>}</div>}
  {r.deferred&&<div className="note"><b>Pedido adiado</b><p>{r.deferred.reason}</p><small>Registrado em {date(r.deferred.at)} por {r.deferred.actor}</small></div>}

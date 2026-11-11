@@ -8,7 +8,7 @@ import {FlowError,todayManaus} from './workflow';
 const reasonSchema=z.string().trim().min(5,'Informe uma justificativa de pelo menos 5 caracteres.').max(2000);
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,'Data inválida.');
 export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name:string},settings:Settings,now:string):{data:Purchase;action:string}|null{
-  if(!['budget_management','return_request','defer_request','resume_request','decide_need'].includes(b.action))return null;
+  if(!['budget_management','return_request','defer_request','resume_request','reopen_request','decide_need'].includes(b.action))return null;
   const data:Purchase={...old,updatedAt:now};
   const permit=(...roles:Member['role'][])=>{if(me.role!=='admin'&&!roles.includes(me.role))throw new FlowError('Seu perfil não permite esta ação.',403)};
   const preApproval=()=>{if(old.generalApproval||!['estimating','pending','admin_review','general_review','correction'].includes(old.status))throw new FlowError('A ação exige pedido ainda sem aprovação da necessidade.');};
@@ -27,6 +27,18 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     return {data,action:'Controles administrativos e de execução atualizados'};
   }
   const reason=reasonSchema.parse(b.reason);
+  if(b.action==='reopen_request'){
+    permit('administrativo');
+    if(old.status!=='rejected')throw new FlowError('Somente solicitações não aprovadas podem ser reabertas.');
+    if(old.generalApproval||old.selectedQuoteId||old.quotes.length)throw new FlowError('Este pedido possui aprovação ou propostas de compra. Confira seu histórico antes de prosseguir.');
+    data.reopeningHistory=[...(old.reopeningHistory||[]),{at:now,actor:me.name,reason,previous:{decision:old.decision,needDecision:old.needDecision,adminReview:old.adminReview,management:old.management,estimate:old.estimate}}];
+    data.management={...old.management};
+    for(const key of ['recommendation','analysis','opinionReason','reviewOwner','reviewDate'])delete data.management[key];
+    delete data.decision;delete data.needDecision;delete data.adminReview;delete data.returnForCorrection;delete data.deferred;
+    data.status=old.estimate?'admin_review':'estimating';
+    if(!old.estimate)data.estimateRevision=now;
+    return {data,action:'Solicitação reaberta para '+(old.estimate?'nova análise administrativa':'estimativa e nova análise administrativa')+'; exige nova decisão da necessidade: '+reason};
+  }
   if(b.action==='return_request'){
     permit('administrativo');preApproval();const due=date.parse(b.due);
     if(due<todayManaus(now))throw new FlowError('O prazo de complementação não pode estar no passado.');

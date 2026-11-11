@@ -1,11 +1,17 @@
 export const appearanceKey = 'estrelas-appearance-v1';
 export const modes = ['system', 'light', 'dark'] as const;
 export const accents = [
-  {id:'violet',label:'Violeta',color:'#6553bd'},
-  {id:'blue',label:'Azul',color:'#2563eb'},
+  {id:'black',label:'Preto',color:'#5b5d67'},
+  {id:'purple',label:'Roxo',color:'#8270f1'},
+  {id:'blue',label:'Azul',color:'#1195df'},
+  {id:'rose',label:'Rosa',color:'#ed539b'},
+  {id:'violet',label:'Violeta',color:'#b45bdd'},
+  {id:'indigo',label:'Anil',color:'#6579fa'},
+  {id:'orange',label:'Laranja',color:'#ed6b0f'},
+  {id:'teal',label:'Azul-petróleo',color:'#0ca4a6'},
+  {id:'bronze',label:'Bronze',color:'#a98a7c'},
+  {id:'mint',label:'Menta',color:'#35b78b'},
   {id:'green',label:'Verde',color:'#147d59'},
-  {id:'rose',label:'Rosa',color:'#be185d'},
-  {id:'orange',label:'Laranja',color:'#b45309'},
 ] as const;
 export type Appearance = {mode:typeof modes[number];accent:typeof accents[number]['id']};
 export const defaultAppearance:Appearance = {mode:'system',accent:'violet'};

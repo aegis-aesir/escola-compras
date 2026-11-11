@@ -24,6 +24,8 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 ## Integração atual e próximos passos
 
+- Reabrir para análise: disponível a Master/Administrativo nos detalhes de pedidos Não aprovados, com justificativa e preservação da recusa anterior. Com estimativa, retorna à análise; sem ela, pesquisa primeiro. Requer novo parecer e decisão da DG. Testes: `reopen-request-test` e `reopen-request-http-test`. Aparência inclui as dez cores de referência e mantém Verde, com preferência pessoal no mesmo armazenamento local.
+
 - Análise administrativa simplificada em 11/11/2026: sem avaliação financeira informativa ou exigência desses dados para encaminhar à DG. Comparação/escolha comercial apenas após a aprovação da necessidade e propostas reais recebidas; estimativa não habilita comparação. Históricos e regras da seleção preservados. Teste: `node scripts/administrative-stages-test.mjs`.
 
 - Pesquisa no Mercado Livre pelo perfil dedicado `compras` do OpenClaw, com login manual do usuário. Abrir com `integrations/openclaw/open-shopping-browser.ps1`. Verificar login real antes de afirmar que a pesquisa autenticada está operacional. O painel informa sessão expirada/bloqueada e permite refazer a pesquisa. Frete sem quantidade/destino conferidos continua fora do total.
