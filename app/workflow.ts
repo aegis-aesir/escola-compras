@@ -10,8 +10,17 @@ export function nextBusinessDay(at:string,holidays:string[]=[]){
   do{local.setUTCDate(local.getUTCDate()+1)}while([0,6].includes(local.getUTCDay())||holidays.includes(local.toISOString().slice(0,10)));
   return new Date(local.getTime()+4*60*60*1000).toISOString();
 }
-export function localExpired(r:Purchase,at:string){return r.status==='quoting'&&!!r.localDeadline&&r.localDeadline<=at&&!r.quotes.some(q=>q.validUntil>=todayManaus(at)&&quoteComparable(q,r));}
+export function localExpired(r:Purchase,at:string){return !r.archived&&r.status==='quoting'&&!!r.localDeadline&&r.localDeadline<=at&&!r.quotes.some(q=>q.validUntil>=todayManaus(at)&&quoteComparable(q,r));}
 export function transition(old:Purchase,b:any,me:{role:Member['role'];name:string},suppliers:Supplier[],settings:Settings,now:string){
+  if(['archive_request','restore_request'].includes(b.action)){
+    if(me.role!=='admin')throw new FlowError('Somente o Master pode arquivar ou restaurar solicitações.',403);
+    const reason=z.string().trim().min(5,'Informe uma justificativa com pelo menos 5 caracteres.').max(2000).parse(b.reason),archiving=b.action==='archive_request';
+    if(archiving===!!old.archived)throw new FlowError(archiving?'Esta solicitação já está arquivada.':'Esta solicitação já está ativa.',409);
+    const data:Purchase={...old,updatedAt:now,archiveHistory:[...(old.archiveHistory||[]),{action:archiving?'archive':'restore',actor:me.name,at:now,reason}]};
+    if(archiving)data.archived={actor:me.name,at:now,reason};else delete data.archived;
+    return {data,action:'Solicitação '+(archiving?'arquivada':'restaurada')+' pelo Master: '+reason};
+  }
+  if(old.archived)throw new FlowError('Solicitação arquivada. O Master deve restaurá-la antes de alterar.',409);
   const budget=budgetTransition(old,b,me,settings,now);if(budget)return budget;
   const data:Purchase={...old,updatedAt:now};let action='';
   const permit=(role:Member['role'])=>{if(me.role!=='admin'&&me.role!==role)throw new FlowError('Seu perfil não permite esta ação.',403)};
@@ -19,18 +28,6 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
   const reason=()=>z.string().trim().min(5,'Informe uma justificativa com pelo menos 5 caracteres.').max(2000).parse(b.reason);
   const validQuote=()=>{const q=old.quotes.find(q=>q.id===(b.quoteId||old.selectedQuoteId));if(!q)throw new FlowError('Selecione uma proposta.');if(q.validUntil<todayManaus(now))throw new FlowError('A proposta está vencida. Atualize a cotação.');if(!quoteComparable(q,old)||typeof q.total!=='number'||!Number.isFinite(q.total))throw new FlowError('A proposta precisa atender integralmente ao escopo, ser comparável e ter conversão para reais conferida.');return q};
   switch(b.action){
-    case 'archive_quote':case 'restore_quote':{
-      permit('admin');const note=reason(),index=old.quotes.findIndex(q=>q.id===b.quoteId);
-      if(index<0)throw new FlowError('Cotação não encontrada.',404);
-      const previous=old.quotes[index],archiving=b.action==='archive_quote';
-      if(archiving&&previous.id===old.selectedQuoteId)throw new FlowError('A cotação escolhida para a compra não pode ser arquivada.');
-      if(archiving===!!previous.archived)throw new FlowError(archiving?'Esta cotação já está arquivada.':'Esta cotação já está ativa.',409);
-      if(!archiving&&old.quotes.some(q=>q.id!==previous.id&&q.supplierId===previous.supplierId&&!q.archived))throw new FlowError('Já existe uma cotação ativa deste fornecedor. Arquive a atual antes de restaurar a anterior.');
-      const next={...previous,archiveHistory:[...(previous.archiveHistory||[]),{action:archiving?'archive' as const:'restore' as const,actor:me.name,at:now,reason:note}]};
-      if(archiving)next.archived={actor:me.name,at:now,reason:note};else delete next.archived;
-      data.quotes=old.quotes.map((q,i)=>i===index?next:q);
-      action='Cotação '+(archiving?'arquivada':'restaurada')+' pelo Master: '+previous.supplierName+' — '+note;break;
-    }
     case 'estimate':{
       permit('administrativo');stage('estimating','pending','admin_review');const e=estimateSchema.parse(b.data);
       if(e.freightKnown===false)e.freight=0;
@@ -56,7 +53,8 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       const q=quoteSchema.parse(b.data);const s=suppliers.find(s=>s.id===q.supplierId);if(!s)throw new FlowError('Fornecedor não encontrado.');
       if(old.status==='quoting'&&(s.scope||'local')!=='local')throw new FlowError('Nesta etapa, cote primeiro com fornecedores de Manaus.');
       const normalized=normalizeQuote(old,q);
-      data.quotes=[...old.quotes.filter(v=>v.supplierId!==q.supplierId||v.archived),{...normalized,id:crypto.randomUUID(),supplierName:s.name,createdAt:now}];action='Proposta real registrada: '+s.name;break;
+      data.quoteHistory=[...(old.quoteHistory||[]),...old.quotes.filter(v=>v.supplierId===q.supplierId)];
+      data.quotes=[...old.quotes.filter(v=>v.supplierId!==q.supplierId),{...normalized,id:crypto.randomUUID(),supplierName:s.name,createdAt:now}];action='Proposta real registrada: '+s.name;break;
     }
     case 'select':{
       permit('administrativo');stage('quoting','national');if(!old.generalApproval)throw new FlowError('O pedido precisa da aprovação da diretoria geral.');const q=validQuote();

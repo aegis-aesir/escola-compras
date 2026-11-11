@@ -6,7 +6,7 @@ import SupplierDiscoveryPanel from './supplier-discovery-panel';
 type Props={request:Purchase;data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>;onDecision:(value:{action:string;quoteId?:string})=>void};
 export default function WorkflowPanel({request:r,data,busy,onSave,onDecision}:Props){
  const [showEstimate,setShowEstimate]=useState(false),[showContact,setShowContact]=useState(false);
- const admin=['admin','administrativo'].includes(data.me.role),general=['admin','geral'].includes(data.me.role);
+ const admin=!r.archived&&['admin','administrativo'].includes(data.me.role),general=!r.archived&&['admin','geral'].includes(data.me.role);
  const send=(action:string,extra:object={})=>onSave({action,id:r.id,version:r.version,...extra});
  const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Manaus'});
  if(data.me.role==='solicitante')return null;

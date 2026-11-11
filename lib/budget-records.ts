@@ -27,6 +27,7 @@ export async function budgetRecordsAction(db:D1Database,payload:unknown,me:{id:s
   kind='budget_invoice';if(old&&old.kind!==kind)throw new FlowError('Tipo de registro inválido.');
   const additional=z.object({additionalScenarios:z.array(z.string().refine(v=>fiscalMatrix.some(s=>s.id===v),'Cenário adicional inválido.')).max(12).optional()}).parse(b.data);
   const n={...budgetInvoiceSchema.parse(b.data),additionalScenarios:additional.additionalScenarios||[]};request=requests.find(r=>r.id===n.requestId);if(!request)throw new FlowError('Solicitação não encontrada.',404);
+  if(request.archived)throw new FlowError('Solicitação arquivada. Restaure antes de alterar os documentos fiscais.',409);
   if(n.requestVersion!==request.version)throw new FlowError('A solicitação foi atualizada. Recarregue.',409);
   if(old?.kind==='budget_invoice'&&old.data.requestId!==n.requestId)throw new FlowError('A nota não pode ser transferida para outra solicitação.');
   if(closedBudgetMonth(records,n.month)||(old?.kind==='budget_invoice'&&closedBudgetMonth(records,old.data.month)))throw new FlowError('Reabra o fechamento mensal com justificativa antes de alterar a nota.');

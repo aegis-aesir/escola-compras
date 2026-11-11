@@ -61,6 +61,7 @@ export async function filesEndpoint(req:Request,env:FileEnv){
     const form=await boundedMultipart(req),requestId=String(form.get('requestId')||''),visibility=String(form.get('visibility')||'request');
     if(!['request','internal'].includes(visibility))throw new FileError('Visibilidade inválida.');
     const r=await accessible(db,requestId,user);
+    if(r.archived)throw new FileError('Solicitação arquivada. Restaure antes de enviar anexos.',409);
     if(!management(user)&&(visibility!=='request'||!['estimating','pending','correction'].includes(r.status)))throw new FileError('Seu perfil não pode alterar documentos nesta etapa.',403);
     const month=String(r.management?.referenceMonth||r.form?.fields.referenceMonth||'');
     if(await db.prepare("SELECT id FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month')=? AND json_extract(data,'$.status')='Concluído'").bind(month).first())throw new FileError('Reabra o fechamento mensal antes de anexar documentos.');

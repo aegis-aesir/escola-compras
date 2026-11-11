@@ -1,10 +1,10 @@
 import {money} from './model';
 import {invoiceBlockers,type BudgetInvoice,type BudgetClosing} from './budget-month';
 
-export function InvoiceReadOnly({invoice:n,onClose}:{invoice:BudgetInvoice;onClose:()=>void}){
+export function InvoiceReadOnly({invoice:n,onClose}:{invoice:BudgetInvoice;onClose?:()=>void}){
  const fields={'Fornecedor':n.supplier,'Tipo':n.documentType,'Emissão':n.issuedOn,'Valor':money(n.amount),'Vencimento':n.dueOn,'Pagamento':n.paymentStatus,'Pago em':n.paidOn,'Liberação':n.released?'Liberado':'Pendente','Recebimento / aceite':n.received.status,'CNPJ':n.correctCnpj.status,'XML / equivalente':n.xml.status,'Validação contábil':n.accountingStatus,'Orientação formal':n.accountingReference,'Responsável contábil':n.accountingResponsible,'Envio à Contabilidade':n.sentToAccountingOn,'Tributo / guia':n.taxGuide,'Vencimento do tributo':n.taxDueOn,'Observações':n.notes};
  const blockers=invoiceBlockers(n);
- return <section className="budget-section"><div className="section-line"><h3>Documento fiscal · {n.number}</h3><button type="button" className="button secondary" onClick={onClose}>Fechar consulta</button></div><dl className="budget-indicators">{Object.entries(fields).map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value||'Não informado'}</dd></div>)}</dl>
+ return <section className="budget-section"><div className="section-line"><h3>Documento fiscal · {n.number}</h3>{onClose&&<button type="button" className="button secondary" onClick={onClose}>Fechar consulta</button>}</div><dl className="budget-indicators">{Object.entries(fields).map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value||'Não informado'}</dd></div>)}</dl>
  {(['received','correctCnpj','xml'] as const).map(key=>n[key].reason&&<p className="muted" key={key}>Justificativa ({key==='received'?'aceite':key==='correctCnpj'?'CNPJ':'XML'}): {n[key].reason} {n[key].document} {n[key].authorization}</p>)}
  {n.accountingReason&&<p>Justificativa contábil: {n.accountingReason}</p>}
  <h4>Documentos e referências</h4>{n.documents.length?<ul>{n.documents.map((value,i)=><li key={i}>{value}</li>)}</ul>:<p className="muted">Nenhum documento vinculado.</p>}

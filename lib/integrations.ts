@@ -39,6 +39,7 @@ export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>,suppliers:Supplier[]) {
+  if(r.archived)return false;
   if(j.type==='estimate_search')return ['estimating','pending'].includes(r.status)&&(j.estimateRevision||'')===(r.estimateRevision||'');
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
@@ -63,7 +64,7 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
 }
 export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   const type=r.status==='national'?'national_search':'local_supplier_search';
-  if(!r.generalApproval||r.status!==(type==='national_search'?'national':'quoting'))throw new FlowError('A busca de fornecedores exige aprovação e a etapa correspondente.');
+  if(r.archived||!r.generalApproval||r.status!==(type==='national_search'?'national':'quoting'))throw new FlowError('A busca de fornecedores exige aprovação e a etapa correspondente.');
   const scope=type==='local_supplier_search'?'local':'national';
   const suppliers=await rows<Supplier>(db,'supplier');
   let created=0;
@@ -80,6 +81,7 @@ export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:strin
   return created;
 }
 export async function setSupplierCategories(db:D1Database,r:Purchase,input:unknown,actor:string,now:string) {
+  if(r.archived)throw new FlowError('Solicitação arquivada.',409);
   if(!['estimating','pending','admin_review','general_review','quoting','national'].includes(r.status))throw new FlowError('A etapa não permite alterar categorias.');
   const categories=z.array(categorySchema).length(r.items.length).parse(input);
   const next={...r,items:r.items.map((item,i)=>({...item,category:categories[i]})),updatedAt:now};
@@ -150,7 +152,7 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
   for(const j of (await rows<IntegrationJob>(db,jobKind)).filter(j=>j.type==='whatsapp_quote'&&j.state==='done'&&j.sentAt&&j.providerMessageId)) {
     const r=await row<Purchase>(db,j.requestId,'request');
-    if(!r||r.status!=='quoting'||!r.generalApproval||r.localAttempts?.some(a=>a.integrationJobId===j.id))continue;
+    if(!r||r.archived||r.status!=='quoting'||!r.generalApproval||r.localAttempts?.some(a=>a.integrationJobId===j.id))continue;
     if(!suppliers.some(s=>s.id===j.supplierId&&(s.scope||'local')==='local'))continue;
     const result=transition(r,{action:'local_contact',supplierId:j.supplierId,reason:`OpenClaw confirmou envio. Mensagem: ${j.providerMessageId}`},{role:'administrativo',name:'OpenClaw'},suppliers,settings,j.sentAt!);
     result.data.localAttempts![result.data.localAttempts!.length-1].integrationJobId=j.id;
@@ -164,7 +166,7 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
   for(const r of await rows<Purchase>(db,'request')) {
     // The evidence protocol has no verified billing-period field. Digital sources
     // remain available for review; never multiply an ambiguous monthly price as a term total.
-    if(!['estimating','pending'].includes(r.status)||r.estimate||r.form?.kind==='digital')continue;
+    if(r.archived||!['estimating','pending'].includes(r.status)||r.estimate||r.form?.kind==='digital')continue;
     const selected:IntegrationJob[]=[];
     for(const [i,item] of r.items.entries()) {
       const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
@@ -187,7 +189,7 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   await advanceDeadlines(db,now);
   await projectAutomaticEstimates(db,now);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(['estimating','pending'].includes(r.status)||(['quoting','national'].includes(r.status)&&r.generalApproval))await enqueueSearch(db,r,'Sistema',now);
+    if(!r.archived&&(['estimating','pending'].includes(r.status)||(['quoting','national'].includes(r.status)&&r.generalApproval)))await enqueueSearch(db,r,'Sistema',now);
   }
   // Expired search leases are safe to retry. Message leases are not: the remote
   // gateway may have sent the message before the connection was interrupted.
@@ -203,6 +205,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.state==='queued'&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
     const r=await row<Purchase>(db,j.requestId,'request');
+    if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
     const internalMatch=j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
     if(!r||!eligible(r,j,suppliers)||internalMatch) {
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;

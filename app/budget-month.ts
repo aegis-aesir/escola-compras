@@ -90,7 +90,7 @@ export function closingBlockers(requests:Purchase[],records:BudgetRecord[],c:Bud
   if((contracted!==null||realized!==null)&&!validNeed(r))errors.push(`${r.code}: execução/contratação sem aprovação válida da necessidade.`);
   if(((contracted!==null&&r.estimate&&contracted!==r.estimate.total)||(realized!==null&&((contracted!==null&&realized!==contracted)||(r.estimate&&realized!==r.estimate.total))))&&!present(m.differenceReason))errors.push(`${r.code}: explique a diferença financeira.`);
   if(r.status==='received'&&(m.receiptStatus!=='Recebido e aceito'||!m.financeForwardedAt))errors.push(`${r.code}: encerramento exige aceite e encaminhamento financeiro.`);
-  if(!['received','rejected'].includes(r.status)){
+  if(!r.archived&&!['received','rejected'].includes(r.status)){
    const f=c.followups.find(f=>f.requestId===r.id&&!f.invoiceId);
    if(!f)errors.push(`${r.code}: registre encaminhamento com responsável, próxima ação, valor/saldo a confirmar e prazo.`);
   }

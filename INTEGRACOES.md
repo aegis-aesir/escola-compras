@@ -212,6 +212,8 @@ A operação assinada `retry_estimate` recebe `jobId` e `version`, somente para 
 
 A análise respeita o runtime configurado do agente coordinator (inclusive Claude CLI). Não usa modelRun, pois esse modo força execução pela API e ignora o runtime CLI, exigindo outra credencial. As instruções de análise são enviadas também como contexto de sistema. Frete numérico só é extraído quando há valor completo com centavos; spans fragmentados não geram um valor parcial.
 
-## Cotações arquivadas
+## Solicitações arquivadas
 
-Propostas individuais arquivadas pelo Master não contam como propostas locais válidas nem no mínimo configurado. Sem proposta local ativa após 1 dia útil, o monitor pode avançar para a busca nacional. O arquivamento não altera credenciais, idempotência ou as chaves de envio, que permanecem desativadas nos testes.
+Arquivamento da solicitação inteira, exclusivo do Master, com motivo, autoria e histórico/restauração. Preservar o mesmo pedido, etapa, aprovações, formulário, propostas, notas, anexos e todos os históricos. Retirar das filas ativas, bloquear edições e pausar novas tarefas automáticas. A aba Arquivadas permite consultar e restaurar a etapa original. Não há mais arquivamento individual de propostas; metadados antigos são apenas históricos. Valores e fechamentos mensais não são apagados.
+
+O monitor não avança prazos, enfileira pesquisas ou projeta estimativas/contatos em solicitações arquivadas. A fila preserva os IDs e fica sem novas retiradas enquanto arquivada. Resultados de tarefas já retiradas e respostas recebidas continuam registrados, sem alterar a etapa arquivada. A restauração pode retomar pendências autorizadas, com a mesma prevenção de duplicidade; envios incertos não são reenviados automaticamente. Não é possível desfazer um envio já aceito pelo provedor. Conta operacional, número exato, credenciais, modelos e chaves de envio são preservados. Testes não enviam mensagens reais.

@@ -24,7 +24,7 @@ Devolver exige motivo e prazo. Adiar não transfere o mês automaticamente. Reto
 
 ## Financeiro
 
-Perfil de consulta atribuído por um Master: orçamento mensal, todos os pedidos, execução, notas, tributos, vencimentos, pagamentos, fechamentos/versões e anexos privados. Use Consultar na linha do documento fiscal para ver os detalhes e pendências. Não registra nem altera documentos/pagamentos, aprova, escolhe fornecedores, arquiva cotações ou opera WhatsApp. As permissões são verificadas na API e no armazenamento de anexos.
+Perfil de consulta atribuído por um Master: orçamento mensal, todos os pedidos, execução, notas, tributos, vencimentos, pagamentos, fechamentos/versões e anexos privados. Use Consultar na linha do documento fiscal para ver os detalhes e pendências. Não registra nem altera documentos/pagamentos, aprova, escolhe fornecedores, arquiva solicitações ou opera WhatsApp. As permissões são verificadas na API e no armazenamento de anexos.
 
 ## Diretoria Geral
 
@@ -40,7 +40,7 @@ A comparação e escolha comercial administrativa, originadas do mapa de cotaç�
 
 As propostas oficiais registram quantidades ofertadas, moeda, base por ciclo ou por vigência, conversão quando aplicável, condições, garantia, documentos e avaliação comparativa. Propostas parciais, tecnicamente incomparáveis ou com conversão pendente não podem ser selecionadas como atendimento integral. A quantidade mínima de propostas continua configurável, com exceção justificada, evidência e autoria registradas. Escolha de preço superior exige justificativa objetiva.
 
-O Master pode **Arquivar cotação** individual com motivo e confirmação. O registro fica preservado, sem contar como proposta ativa/comparável, no mínimo configurado ou na presença de proposta local válida. A escolhida para a compra não pode ser arquivada. **Mostrar cotações arquivadas** permite ao Master consultar o histórico e **Restaurar cotação**, com motivo; validade/câmbio não são renovados e não se permite outra ativa do mesmo fornecedor. O arquivamento não encerra nem retira o pedido inteiro da lista de cotações.
+Abra a solicitação pelo título ou pela seta. Como Master, clique em **Arquivar solicitação**, informe o motivo e confirme. Consulte o pedido inteiro em **Arquivadas**; use **Restaurar solicitação** com justificativa para retomar a etapa original. Arquivamento da solicitação inteira, exclusivo do Master, com motivo, autoria e histórico/restauração. Preservar o mesmo pedido, etapa, aprovações, formulário, propostas, notas, anexos e todos os históricos. Retirar das filas ativas, bloquear edições e pausar novas tarefas automáticas. A aba Arquivadas permite consultar e restaurar a etapa original. Não há mais arquivamento individual de propostas; metadados antigos são apenas históricos. Valores e fechamentos mensais não são apagados.
 
 Manaus permanece primeiro; a busca nacional exige um dia útil desde contato local realizado sem proposta válida. Preparar rascunho não inicia prazo. Testes não enviam mensagens reais e não alteram o número operacional +55 92 9201-7107.
 

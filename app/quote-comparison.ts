@@ -83,7 +83,6 @@ export function normalizeQuote<T extends QuoteInput>(purchase: Pick<Purchase, 'i
 type ComparableCandidate = Partial<QuoteComparison> & { archived?:unknown; exchangeRate?: number; exchangeDate?: string };
 /** O contexto impede considerar uma proposta antiga como válida em formulário novo. */
 export function quoteComparable(quote: ComparableCandidate, purchase?: { form?: Purchase['form'] }): boolean {
-  if(quote.archived)return false;
   const complete = quote.comparisonReady === true && quote.comparable === true && typeof quote.total === 'number' && Number.isFinite(quote.total) && quote.total >= 0;
   if (purchase?.form) return complete;
   if (quote.comparisonReady !== undefined) return complete;

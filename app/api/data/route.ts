@@ -22,8 +22,15 @@ async function context(){
   return {db,all,me,settings:JSON.parse(school!.data) as Settings};
 }
 function fail(e:unknown){if(e instanceof z.ZodError)return Response.json({error:e.issues[0]?.message||'Confira os campos.'},{status:400}); if(e instanceof Error&&'status'in e&&e.status===400)return Response.json({error:e.message},{status:400}); if(e instanceof AppError || e instanceof FlowError)return Response.json({error:e.message},{status:e.status}); console.error('Data operation failed',e instanceof Error?e.message:'unknown');return Response.json({error:'Não foi possível salvar. Tente novamente.'},{status:500});}
-export async function GET(){try{
+export async function GET(req:Request){try{
   let {db,all,me,settings}=await context();
+  const historyFor=new URL(req.url).searchParams.get('historyFor');
+  if(historyFor){
+    if(!['admin','administrativo','financeiro'].includes(me.role))throw new AppError('Seu perfil não permite consultar este histórico.',403);
+    if(!all.some(r=>r.kind==='request'&&r.id===historyFor))throw new AppError('Solicitação não encontrada.',404);
+    const history=await db.prepare("SELECT * FROM audit WHERE entity=? OR entity IN (SELECT id FROM records WHERE kind='budget_invoice' AND json_extract(data,'$.requestId')=?) ORDER BY at DESC,id DESC").bind(historyFor,historyFor).all();
+    return Response.json({activity:history.results},{headers:{'Cache-Control':'no-store'}});
+  }
   if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
   const requests=visibleRequests(all.filter(r=>r.kind==='request'),me);
   const budgetRecords=['admin','administrativo','financeiro'].includes(me.role)?await readBudgetRecords(db):undefined;
@@ -41,7 +48,9 @@ export async function POST(req:Request){try{
   const budgetRecords=await readBudgetRecords(db);
   if(['budget_invoice','budget_closing','budget_reopen'].includes(b.action))return Response.json({ok:true,...await budgetRecordsAction(db,b,me,all.filter(r=>r.kind==='request'),settings,now)});
   const target=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;
-  if(target&&closedBudgetMonth(budgetRecords,budgetMonth(target)))throw new AppError('Reabra o fechamento mensal com justificativa antes de alterar o pedido.');
+  const archiveAction=['archive_request','restore_request'].includes(b.action);
+  if(target?.archived&&!archiveAction)throw new AppError('Solicitação arquivada. O Master deve restaurá-la antes de alterar.',409);
+  if(target&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(target)))throw new AppError('Reabra o fechamento mensal com justificativa antes de alterar o pedido.');
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
   if(['research','prepare_openclaw','retry_integration','review_message','supplier_categories','register_discovered_supplier'].includes(b.action)){
     permit(['admin','administrativo']);
@@ -89,9 +98,9 @@ export async function POST(req:Request){try{
     id=old.id;kind='request';data={...old,updatedAt:now};
     const result=transition(old,b,me,all.filter(r=>r.kind==='supplier'),settings,now);data=result.data;action=result.action;
   }
-  if(kind==='request'&&closedBudgetMonth(budgetRecords,budgetMonth(data)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
+  if(kind==='request'&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(data)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
   const openMonthGuard=" AND NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=? AND json_extract(closing.data,'$.status')='Concluído')";
-  const write=old?db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+(kind==='request'?openMonthGuard+openMonthGuard:'')).bind(JSON.stringify(data),id,old.version,...(kind==='request'?[budgetMonth(old)||'',budgetMonth(data)||'']:[])):db.prepare('INSERT INTO records (id,kind,data,version) SELECT ?,?,?,1'+(kind==='request'?' WHERE NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind=\'budget_closing\' AND json_extract(closing.data,\'$.month\')=? AND json_extract(closing.data,\'$.status\')=\'Concluído\')':'')).bind(id,kind,JSON.stringify(data),...(kind==='request'?[budgetMonth(data)||'']:[]));
+  const write=old?db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+(kind==='request'&&!archiveAction?openMonthGuard+openMonthGuard:'')).bind(JSON.stringify(data),id,old.version,...(kind==='request'&&!archiveAction?[budgetMonth(old)||'',budgetMonth(data)||'']:[])):db.prepare('INSERT INTO records (id,kind,data,version) SELECT ?,?,?,1'+(kind==='request'?' WHERE NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind=\'budget_closing\' AND json_extract(closing.data,\'$.month\')=? AND json_extract(closing.data,\'$.status\')=\'Concluído\')':'')).bind(id,kind,JSON.stringify(data),...(kind==='request'?[budgetMonth(data)||'']:[]));
   const log=db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),id,me.name,action,now);
   const result=await db.batch([write,log]);if(result[0].meta.changes!==1)throw new AppError('Outra pessoa atualizou este registro. Recarregue a página.',409);
   return Response.json({ok:true,id});
