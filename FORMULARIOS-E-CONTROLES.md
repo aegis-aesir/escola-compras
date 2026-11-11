@@ -50,6 +50,8 @@ Armazenados em R2 privado, vinculados ao pedido e protegidos por sessão/perfil.
 
 Limites: 20 arquivos por pedido, 5 MB por arquivo; PDF, PNG, JPG/JPEG, DOCX, XLSX, PPTX, XML, TXT e CSV. Tipos/conteúdo e tamanho são conferidos no servidor. O download é privado e forçado como anexo, sem execução no domínio do sistema. Meses fechados exigem reabertura para alteração de documentos.
 
+Nos detalhes do pedido, Consultar o formulário enviado e Anexos da solicitação formam um único cartão. A consulta do formulário aparece primeiro; abaixo ficam a lista, o envio de arquivos e, para a administração, a avaliação opcional dos documentos.
+
 ## Notas, pagamentos e fechamento
 
 Orçamento mensal apresenta valores do setor, recomendados, referência dos pedidos com necessidade aprovada, contratado e realizado, além de agrupamentos, indicadores, calendário e transferências de competência. Valores ausentes não são inventados; múltiplas notas não duplicam o realizado do pedido.
