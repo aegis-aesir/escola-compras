@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { money, type Item, type Purchase, type Snapshot } from './model';
 import { requestSections, type FieldDef, type FieldSection } from './budget-fields';
 import { subscriptionTotal, type BudgetForm, type BudgetKind, type PreliminaryReference, type Subscription } from './budget';
+
+import type {RequestDraftValues} from './request-draft';
 
 export const budgetKindLabels:Record<BudgetKind,string>={monthly:'Orçamento mensal',emergency:'Solicitação emergencial',digital:'Assinaturas digitais'};
 export function BudgetField({label,children}:{label:string;children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
@@ -21,14 +23,16 @@ const blankSubscription=():Subscription=>({plan:'',cycle:'Mensal',start:'',end:'
 const blankItem=(kind:BudgetKind):Item=>({name:'',quantity:1,unit:kind==='digital'?'licença':'un.',spec:'',category:'',...(kind==='digital'?{subscription:blankSubscription()}:{})});
 const blankReference=():PreliminaryReference=>({itemIndex:0,supplier:'',currency:'BRL',reference:''});
 
-export default function BudgetRequestForm({data,busy,error,onSave,request}:{data:Snapshot;busy:boolean;error:string;onSave:(values:unknown)=>void;request?:Purchase}){
+export default function BudgetRequestForm({data,busy,error,onSave,request,draft,onDraftChange}:{data:Snapshot;busy:boolean;error:string;onSave:(values:unknown)=>void;request?:Purchase;draft?:RequestDraftValues;onDraftChange?:(values:RequestDraftValues)=>void}){
  const original=request?.form;
- const [kind,setKind]=useState<BudgetKind>(original?.kind??'monthly');
- const [fields,setFields]=useState<BudgetForm['fields']>({...original?.fields});
- const [items,setItems]=useState<Item[]>(request?.items.map(i=>({...i,subscription:i.subscription?{...i.subscription}:undefined}))??[blankItem('monthly')]);
- const [subscriptionPrices,setSubscriptionPrices]=useState<Record<number,string>>(()=>Object.fromEntries((request?.items??[]).flatMap((item,index)=>item.subscription?[[index,String(item.subscription.pricePerCycle)]]:[])));
- const [references,setReferences]=useState<PreliminaryReference[]>(original?.references.map(r=>({...r}))??[]);
+ const [kind,setKind]=useState<BudgetKind>(draft?.kind??original?.kind??'monthly');
+ const [fields,setFields]=useState<BudgetForm['fields']>({...draft?.fields??original?.fields});
+ const [items,setItems]=useState<Item[]>(draft?.items??request?.items.map(i=>({...i,subscription:i.subscription?{...i.subscription}:undefined}))??[blankItem(draft?.kind??'monthly')]);
+ const [subscriptionPrices,setSubscriptionPrices]=useState<Record<number,string>>(()=>draft?.subscriptionPrices??Object.fromEntries((request?.items??[]).flatMap((item,index)=>item.subscription?[[index,String(item.subscription.pricePerCycle)]]:[])));
+ const [references,setReferences]=useState<PreliminaryReference[]>(draft?.references??original?.references.map(r=>({...r}))??[]);
  const [accepted,setAccepted]=useState(false),[localError,setLocalError]=useState('');
+ const [basic,setBasic]=useState({title:draft?.title??request?.title??'',department:draft?.department??request?.department??data.me.department,neededBy:draft?.neededBy??request?.neededBy??'',reason:draft?.reason??request?.reason??''});
+ useEffect(()=>{onDraftChange?.({...basic,kind,fields,items,references,subscriptionPrices})},[basic,kind,fields,items,references,subscriptionPrices,onDraftChange]);
  const setField=(key:string,value:string|number|boolean)=>setFields(v=>({...v,[key]:value}));
  const editItem=(index:number,patch:Partial<Item>)=>setItems(current=>current.map((item,i)=>i===index?{...item,...patch}:item));
  const editSubscription=(index:number,patch:Partial<Subscription>)=>editItem(index,{subscription:{...blankSubscription(),...items[index].subscription,...patch}});
@@ -46,17 +50,17 @@ export default function BudgetRequestForm({data,busy,error,onSave,request}:{data
  <BudgetField label="Modelo de solicitação"><select value={kind} disabled={!!request} onChange={e=>changeKind(e.target.value as BudgetKind)}>{Object.entries(budgetKindLabels).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></BudgetField>
  {kind==='emergency'&&<div className="note">Atrasos ou esquecimentos não caracterizam emergência automaticamente. Justifique o risco e a impossibilidade de aguardar o ciclo mensal. A emergência segue a análise e a aprovação da necessidade.</div>}
  <fieldset className="budget-section"><legend>Identificação da solicitação</legend>
- <BudgetField label="Título da necessidade *"><input name="title" defaultValue={request?.title} placeholder="Ex.: Materiais para o mês de dezembro" minLength={3} maxLength={140} required/></BudgetField>
- <div className="budget-fields"><BudgetField label="Setor *"><select name="department" defaultValue={request?.department??data.me.department} required>{Array.from(new Set([...(data.me.role==='solicitante'?[data.me.department]:data.settings.departments),...(request?[request.department]:[])])).map(d=><option key={d}>{d}</option>)}</select></BudgetField>
+ <BudgetField label="Título da necessidade *"><input name="title" value={basic.title} onChange={e=>setBasic(v=>({...v,title:e.target.value}))} placeholder="Ex.: Materiais para o mês de dezembro" minLength={3} maxLength={140} required/></BudgetField>
+ <div className="budget-fields"><BudgetField label="Setor *"><select name="department" value={basic.department} onChange={e=>setBasic(v=>({...v,department:e.target.value}))} required>{Array.from(new Set([...(data.me.role==='solicitante'?[data.me.department]:data.settings.departments),...(request?[request.department]:[])])).map(d=><option key={d}>{d}</option>)}</select></BudgetField>
  {request&&['Normal','Alta','Urgente'].includes(request.priority)&&<div className="field"><span>Prioridade do registro anterior</span><div className="budget-read-value">{request.priority}</div></div>}
- <BudgetField label="Data necessária *"><input name="neededBy" type="date" defaultValue={request?.neededBy} required/></BudgetField></div>
- <BudgetField label="Justificativa da necessidade *"><textarea name="reason" rows={3} minLength={5} maxLength={2000} defaultValue={request?.reason} required/></BudgetField></fieldset>
+ <BudgetField label="Data necessária (opcional)"><input name="neededBy" type="date" value={basic.neededBy} onChange={e=>setBasic(v=>({...v,neededBy:e.target.value}))}/><small className="muted">Preencha apenas se houver um prazo específico. Sem data, a compra segue o orçamento do mês de referência, após a disponibilização do saldo.</small></BudgetField></div>
+ <BudgetField label="Justificativa da necessidade *"><textarea name="reason" rows={3} minLength={5} maxLength={2000} value={basic.reason} onChange={e=>setBasic(v=>({...v,reason:e.target.value}))} required/></BudgetField></fieldset>
  <BudgetFields sections={sections} values={fields} onChange={setField}/>
  <fieldset className="budget-section"><legend>{kind==='digital'?'Assinaturas solicitadas':'Itens solicitados'}</legend>
  <p className="muted">{kind==='digital'?'Informe o preço por licença em cada ciclo. O total da vigência multiplica esse preço pela quantidade de licenças e pelos ciclos.':'O valor informado pelo setor é preliminar e permanece separado da estimativa pesquisada na internet.'}</p>
  {items.map((item,index)=><div className="budget-item" key={index}><div className="section-line"><h3>{kind==='digital'?'Assinatura':'Item'} {index+1}</h3><button type="button" className="icon-button" disabled={busy||items.length===1} aria-label={`Remover item ${index+1}`} onClick={()=>removeItem(index)}><Trash2 size={16}/></button></div>
  <BudgetField label={kind==='digital'?'Plataforma / serviço *':'Descrição *'}><input value={item.name} onChange={e=>editItem(index,{name:e.target.value})} required minLength={2} maxLength={160}/></BudgetField>
- <div className="budget-fields"><BudgetField label={kind==='digital'?'Quantidade de licenças / usuários *':'Quantidade *'}><input type="number" value={item.quantity||''} onChange={e=>editItem(index,{quantity:Number(e.target.value)})} required min={kind==='digital'?'1':'0.01'} max="100000" step={kind==='digital'?'1':'0.01'}/></BudgetField><BudgetField label="Unidade *"><input value={item.unit} onChange={e=>editItem(index,{unit:e.target.value})} required maxLength={30}/></BudgetField><BudgetField label="Categoria *"><input value={item.category??''} onChange={e=>editItem(index,{category:e.target.value})} list="supplier-category-options" required minLength={2} maxLength={100}/></BudgetField><BudgetField label="Marca / padrão necessário"><input value={item.brand??''} onChange={e=>editItem(index,{brand:e.target.value})} maxLength={160}/></BudgetField></div>
+ <div className="budget-fields"><BudgetField label={kind==='digital'?'Quantidade de licenças / usuários *':'Quantidade *'}><input type="number" value={item.quantity||''} onChange={e=>editItem(index,{quantity:Number(e.target.value)})} required min="1" max="100000" step="1"/></BudgetField><BudgetField label="Unidade *"><input value={item.unit} onChange={e=>editItem(index,{unit:e.target.value})} required maxLength={30}/></BudgetField><BudgetField label="Categoria *"><input value={item.category??''} onChange={e=>editItem(index,{category:e.target.value})} list="supplier-category-options" required minLength={2} maxLength={100}/></BudgetField><BudgetField label="Marca / padrão necessário"><input value={item.brand??''} onChange={e=>editItem(index,{brand:e.target.value})} maxLength={160}/></BudgetField></div>
  <BudgetField label="Especificações e requisitos"><textarea value={item.spec} onChange={e=>editItem(index,{spec:e.target.value})} maxLength={500} rows={2}/></BudgetField>
  {kind!=='digital'?<BudgetField label="Valor unitário estimado pelo setor (R$)"><input value={item.estimatedUnitPrice??''} onChange={e=>editItem(index,{estimatedUnitPrice:e.target.value===''?undefined:Number(e.target.value)})} type="number" min="0" max="10000000" step="0.01"/></BudgetField>:<div className="budget-fields">
  <BudgetField label="Plano / licença *"><input value={item.subscription?.plan??''} onChange={e=>editSubscription(index,{plan:e.target.value})} required maxLength={200}/></BudgetField>

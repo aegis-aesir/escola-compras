@@ -5,7 +5,7 @@ Diretora Geral: Franciluce Lima. Responsável pela diretoria administrativa: ain
 
 ## Fluxo definido pela escola
 
-1. O setor solicita itens com quantidade, unidade, especificação, justificativa e prazo.
+1. O setor solicita itens com quantidade, unidade, especificação, justificativa e prazo específico, quando houver.
 2. O sistema deve pesquisar referências na internet para gerar uma estimativa com fontes e datas.
 3. A diretoria administrativa analisa cada solicitação e encaminha seu parecer.
 4. A diretoria geral aprova a necessidade do pedido, sem aprovar valor ou estabelecer teto financeiro.
@@ -71,3 +71,9 @@ Ajuste de 11/11/2026: avaliação financeira informativa retirada do painel e da
 Compatibilidade com os nove arquivos de referência: três formulários estruturados, referências preliminares separadas, declaração autenticada, correções com histórico, conferência/parecer, decisões de escopo, comparativo de propostas, execução, matriz fiscal e fechamento mensal. Consultar `FORMULARIOS-E-CONTROLES.md`. Os dois pedidos preenchidos na planilha antiga não foram importados automaticamente. Registros legados não recebem campos ou declarações inventadas.
 
 Simplificação de 10/11/2026: novos formulários usam classificação única em vez de origem/natureza/previsão e retiram códigos, contato, centro de custo, vínculo e declarações de disponibilidade/ausência de referências. Referências e anexos são opcionais. Competência calculada pelo servidor no mês do primeiro envio em America/Manaus, preservada nas complementações. Formulários anteriores mantêm sua leitura original e histórico. Testes adicionais: `budget-simplification-test` e, com servidor local, `budget-simplification-http-test`.
+
+
+Ajuste de 11/11/2026: data necessária é opcional nos três formulários; preencher apenas quando houver prazo específico. O ciclo é mensal e a execução depende da disponibilização do saldo no início do mês de referência, sem atribuir automaticamente um dia de compra. Preservar competência e datas já registradas. Indicador de recebimento no prazo considera apenas pedidos com data específica. Quantidades de novos itens e complementações devem ser inteiras positivas (1 a 100000); valores monetários continuam com centavos e registros históricos não são arredondados.
+
+
+Rascunhos automáticos (11/11/2026): novas solicitações incompletas ficam em records com kind=request_draft/status=draft, privadas do autor, fora de aprovações, indicadores e integrações. Acesso por Meus rascunhos ou Nova solicitação → Continuar. Salvamento após 600 ms sem edição, fila serial e controle de versão; cópia local por usuário protege o fechamento antes da resposta do servidor. Escape não fecha o formulário. No envio definitivo, validar todas as regras e converter atomicamente o mesmo registro em request; repetição com o mesmo ID retorna a solicitação existente. A competência é do primeiro envio definitivo em Manaus, não da criação do rascunho. Aceite deve ser confirmado novamente. Complementações existentes mantêm o fluxo atual e proteção contra Escape; não são novos rascunhos. Testes locais: scripts/request-drafts-test.mjs e scripts/optional-needed-date-test.mjs; sem mensagens reais ou alteração de dados de produção.
