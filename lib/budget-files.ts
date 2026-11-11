@@ -7,9 +7,13 @@ class FileError extends Error{constructor(message:string,public status=400){supe
 const management=(u:LocalUser)=>u.role==='admin'||u.role==='administrativo';
 const canReadInternal=(u:LocalUser)=>management(u)||u.role==='financeiro';
 async function accessible(db:D1Database,id:string,user:LocalUser){
-  const row=await db.prepare("SELECT data,version FROM records WHERE id=? AND kind='request'").bind(id).first<{data:string;version:number}>();
+  const row=await db.prepare("SELECT data,version,kind FROM records WHERE id=? AND kind IN ('request','request_draft')").bind(id).first<{data:string;version:number;kind:string}>();
   if(!row)throw new FileError('Solicitação não encontrada.',404);
   const r={...JSON.parse(row.data),version:row.version};
+  if(row.kind==='request_draft'){
+    if(r.authorId!==user.id)throw new FileError('Solicitação não encontrada.',404);
+    return {...r,status:'draft'};
+  }
   if(!canReadInternal(user)&&!(user.role==='solicitante'&&r.authorId===user.id)&&!(user.role==='geral'&&r.status==='general_review'))throw new FileError('Solicitação não encontrada.',404);
   return r;
 }
@@ -61,8 +65,9 @@ export async function filesEndpoint(req:Request,env:FileEnv){
     const form=await boundedMultipart(req),requestId=String(form.get('requestId')||''),visibility=String(form.get('visibility')||'request');
     if(!['request','internal'].includes(visibility))throw new FileError('Visibilidade inválida.');
     const r=await accessible(db,requestId,user);
+    if(r.status==='draft'&&visibility!=='request')throw new FileError('Anexos do rascunho são documentos da solicitação.',403);
     if(r.archived)throw new FileError('Solicitação arquivada. Restaure antes de enviar anexos.',409);
-    if(!management(user)&&(visibility!=='request'||!['estimating','pending','correction'].includes(r.status)))throw new FileError('Seu perfil não pode alterar documentos nesta etapa.',403);
+    if(!management(user)&&(visibility!=='request'||!['draft','estimating','pending','correction'].includes(r.status)))throw new FileError('Seu perfil não pode alterar documentos nesta etapa.',403);
     const month=String(r.management?.referenceMonth||r.form?.fields.referenceMonth||'');
     if(await db.prepare("SELECT id FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month')=? AND json_extract(data,'$.status')='Concluído'").bind(month).first())throw new FileError('Reabra o fechamento mensal antes de anexar documentos.');
     const file=form.get('file');if(!file||typeof file==='string')throw new FileError('Selecione um arquivo.');
@@ -74,7 +79,7 @@ export async function filesEndpoint(req:Request,env:FileEnv){
     await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:'application/octet-stream'}});
     try{
       const result=await db.batch([
-        db.prepare("INSERT INTO records(id,kind,data,version) SELECT ?,'budget_file',?,1 WHERE (SELECT COUNT(*) FROM records WHERE kind='budget_file' AND json_extract(data,'$.requestId')=?)<20 AND EXISTS(SELECT 1 FROM records WHERE id=? AND version=?) AND EXISTS(SELECT 1 FROM records WHERE id=? AND kind='request' AND version=?) AND NOT EXISTS(SELECT 1 FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month')=? AND json_extract(data,'$.status')='Concluído')").bind(id,JSON.stringify(data),requestId,user.id,user.version,requestId,r.version,month),
+        db.prepare("INSERT INTO records(id,kind,data,version) SELECT ?,'budget_file',?,1 WHERE (SELECT COUNT(*) FROM records WHERE kind='budget_file' AND json_extract(data,'$.requestId')=?)<20 AND EXISTS(SELECT 1 FROM records WHERE id=? AND version=?) AND EXISTS(SELECT 1 FROM records WHERE id=? AND kind IN ('request','request_draft') AND version=?) AND NOT EXISTS(SELECT 1 FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month')=? AND json_extract(data,'$.status')='Concluído')").bind(id,JSON.stringify(data),requestId,user.id,user.version,requestId,r.version,month),
         db.prepare('INSERT INTO audit(id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),requestId,user.name,'Documento anexado: '+name+' · '+visibility,at),
       ]);
       if(result[0].meta.changes!==1)throw new FileError('Limite de 20 anexos atingido ou sessão atualizada.');

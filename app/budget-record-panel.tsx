@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, Paperclip, RefreshCw } from 'lucide-react';
 import { money, type Purchase, type Snapshot } from './model';
 import { managementSections, requestSections, canCompareCommercial } from './budget-fields';
@@ -10,17 +10,26 @@ import { BudgetField, BudgetFields, budgetKindLabels } from './budget-request-fo
 const date=(value:string)=>value?new Date(value).toLocaleString('pt-BR',{timeZone:'America/Manaus'}):'Não informado';
 type AttachedFile={id:string;name:string;size:number;visibility:'request'|'internal';at:string;author:string};
 async function fetchFiles(requestId:string,signal?:AbortSignal){const response=await fetch(`/api/files?requestId=${encodeURIComponent(requestId)}`,{cache:'no-store',signal});const body=await response.json() as {files?:AttachedFile[];error?:string};if(!response.ok)throw new Error(body.error||'Não foi possível consultar os anexos.');return body.files??[]}
-function Attachments({request,data,busy}:{request:Purchase;data:Snapshot;busy:boolean}){
- const [files,setFiles]=useState<AttachedFile[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(true),[uploading,setUploading]=useState(false),[notice,setNotice]=useState('');
- const internal=['admin','administrativo'].includes(data.me.role);
+export function Attachments({request,data,busy,beforeUpload,onUploading}:{request:Pick<Purchase,'id'|'archived'>&{status:string};data:Snapshot;busy:boolean;beforeUpload?:()=>Promise<boolean>;onUploading?:(busy:boolean)=>void}){
+ const [files,setFiles]=useState<AttachedFile[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(true),[uploading,setUploading]=useState(false),[notice,setNotice]=useState(''),[visibility,setVisibility]=useState('request');
+ const fileInput=useRef<HTMLInputElement>(null);
+ const internal=request.status!=='draft'&&['admin','administrativo'].includes(data.me.role);
  async function refresh(){setLoading(true);setError('');try{setFiles(await fetchFiles(request.id))}catch(e){setError(e instanceof Error?e.message:'Não foi possível consultar os anexos.')}finally{setLoading(false)}}
  useEffect(()=>{const controller=new AbortController();fetchFiles(request.id,controller.signal).then(found=>{if(!controller.signal.aborted)setFiles(found)}).catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Não foi possível consultar os anexos.')}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});return()=>controller.abort()},[request.id]);
- return <section className="budget-section budget-attachments"><h3><Paperclip size={16}/> Anexos do pedido</h3><p className="muted">PDF, imagens, documentos Office XML, XML e texto; até 5 MB por arquivo. Os arquivos exigem acesso autorizado ao pedido.</p>
- {loading?<p className="muted" role="status">Consultando anexos…</p>:files.length?<ul className="budget-file-list">{files.map(file=><li key={file.id}><div><a href={`/api/files/${encodeURIComponent(file.id)}`} download><Download size={14}/>{file.name}</a><small>{(file.size/1024).toLocaleString('pt-BR',{maximumFractionDigits:1})} KB · {file.author} · {date(file.at)}{file.visibility==='internal'?' · Uso interno':''}</small></div></li>)}</ul>:!error&&<p className="muted">Nenhum anexo enviado.</p>}
- {error&&<div className="alert error" role="alert">{error}<button className="text-button" type="button" disabled={loading} onClick={()=>void refresh()}><RefreshCw size={14}/>Tentar novamente</button></div>}
+ async function upload(){
+  const file=fileInput.current?.files?.[0];setNotice('');setError('');
+  if(!file?.size){setError('Selecione um arquivo para enviar.');return}
+  if(file.size>5*1024*1024){setError('O arquivo ultrapassa o limite de 5 MB.');return}
+  const values=new FormData();values.set('file',file);values.set('requestId',request.id);values.set('visibility',internal?visibility:'request');
+  setUploading(true);onUploading?.(true);
+  try{if(beforeUpload&&!await beforeUpload())throw new Error('Salve o rascunho antes de enviar o anexo.');const response=await fetch('/api/files',{method:'POST',body:values});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error||'Não foi possível enviar o arquivo.');if(fileInput.current)fileInput.current.value='';await refresh();setNotice('Anexo enviado e vinculado à solicitação.')}catch(e){setError(e instanceof Error?e.message:'Não foi possível enviar o arquivo.')}finally{setUploading(false);onUploading?.(false)}
+ }
+ return <section className="budget-section budget-attachments"><h3><Paperclip size={16}/> Anexos da solicitação (opcional)</h3><p className="muted">Adicione fotos do item, referências ou documentos que ajudem a explicar a necessidade. Até 5 MB por arquivo; PDF, PNG, JPG, DOCX, XLSX, PPTX, XML, TXT ou CSV.</p>
+ {loading?<p className="muted" role="status">Consultando anexos…</p>:files.length?<ul className="budget-file-list">{files.map(file=><li key={file.id}><div><a href={'/api/files/'+encodeURIComponent(file.id)} download><Download size={14}/>{file.name}</a><small>{(file.size/1024).toLocaleString('pt-BR',{maximumFractionDigits:1})} KB · {file.author} · {date(file.at)}{file.visibility==='internal'?' · Uso interno':''}</small></div></li>)}</ul>:!error&&<p className="muted">Nenhum anexo enviado.</p>}
+ {error&&<div className="alert error" role="alert">{error}<button className="text-button" type="button" disabled={loading||uploading} onClick={()=>void refresh()}><RefreshCw size={14}/>Atualizar lista</button></div>}
  {notice&&<p className="alert success" role="status">{notice}</p>}
- {(!request.archived&&(internal||(data.me.role==='solicitante'&&['estimating','pending','correction'].includes(request.status))))&&<form onSubmit={async e=>{e.preventDefault();const form=e.currentTarget;const values=new FormData(form);const file=values.get('file');setNotice('');setError('');if(!(file instanceof File)||!file.size){setError('Selecione um arquivo para enviar.');return}if(file.size>5*1024*1024){setError('O arquivo ultrapassa o limite de 5 MB.');return}if(!/\.(pdf|png|jpe?g|docx|xlsx|pptx|xml|txt|csv)$/i.test(file.name)){setError('Formato não permitido. Use PDF, PNG, JPG, Office XML, XML, TXT ou CSV.');return}values.set('requestId',request.id);if(!internal)values.set('visibility','request');setUploading(true);try{const response=await fetch('/api/files',{method:'POST',body:values});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error||'Não foi possível enviar o arquivo.');form.reset();await refresh();setNotice('Anexo enviado.')}catch(e){setError(e instanceof Error?e.message:'Não foi possível enviar o arquivo.')}finally{setUploading(false)}}}>
- <div className="budget-fields"><BudgetField label="Arquivo"><input name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.pptx,.xml,.txt,.csv" required disabled={busy||uploading}/></BudgetField><BudgetField label="Visibilidade"><select name="visibility" defaultValue="request" disabled={!internal||busy||uploading}><option value="request">Documentos da solicitação</option>{internal&&<option value="internal">Uso interno administrativo</option>}</select></BudgetField></div><button className="button secondary" disabled={busy||uploading}>{uploading?'Enviando…':'Enviar anexo'}</button></form>}
+ {(!request.archived&&(internal||request.status==='draft'||(data.me.role==='solicitante'&&['estimating','pending','correction'].includes(request.status))))&&<div>
+ <div className="budget-fields"><BudgetField label="Arquivo"><input ref={fileInput} name="attachment" type="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.pptx,.xml,.txt,.csv" disabled={busy||uploading}/></BudgetField>{internal&&<BudgetField label="Visibilidade"><select value={visibility} onChange={e=>setVisibility(e.target.value)} disabled={busy||uploading}><option value="request">Documentos da solicitação</option><option value="internal">Uso interno administrativo</option></select></BudgetField>}</div><button type="button" className="button secondary" disabled={busy||uploading} onClick={()=>void upload()}>{uploading?'Enviando…':'Enviar anexo'}</button></div>}
  </section>;
 }
 

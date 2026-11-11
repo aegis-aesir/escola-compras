@@ -1,10 +1,12 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BudgetRequestForm from './budget-request-form';
+import {Attachments} from './budget-record-panel';
 import {requestDraftSchema,type RequestDraft,type RequestDraftValues} from './request-draft';
 import type {Snapshot} from './model';
 
 export default function DraftRequestForm({data,busy,error,onSave}:{data:Snapshot;busy:boolean;error:string;onSave:(values:unknown,draft:{id:string;version:number})=>Promise<boolean>}){
+ const [savedId,setSavedId]=useState(''),[uploading,setUploading]=useState(false);
  const prefix=`estrelas:draft:${data.me.id}:`;
  const [drafts,setDrafts]=useState<RequestDraft[]|null>(null),[active,setActive]=useState<RequestDraft|null>(null),[message,setMessage]=useState('Carregando rascunhos…'),[failure,setFailure]=useState(''),[submitting,setSubmitting]=useState(false);
  const current=useRef<RequestDraft|null>(null),pending=useRef(false),running=useRef<Promise<boolean>|null>(null),timer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -17,7 +19,7 @@ export default function DraftRequestForm({data,busy,error,onSave}:{data:Snapshot
    const response=await fetch('/api/drafts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:sent.id,version:sent.version,values:sent.values}),keepalive:true});
    const result=await response.json() as {error?:string;version:number;updatedAt:string};if(!response.ok)throw new Error(result.error||'Falha ao salvar.');
    if(current.current){current.current={...current.current,version:result.version,updatedAt:result.updatedAt};backup(current.current)}
-   setFailure('');setMessage('Rascunho salvo automaticamente.');return true;
+   setSavedId(sent.id);setFailure('');setMessage('Rascunho salvo automaticamente.');return true;
   }catch(e){pending.current=true;setFailure(e instanceof Error?e.message:'Não foi possível salvar.');setMessage('Salvamento no servidor pendente.');return false}})();
   running.current=task;const ok=await task;running.current=null;
   return ok&&pending.current?flush():ok;
@@ -40,7 +42,7 @@ export default function DraftRequestForm({data,busy,error,onSave}:{data:Snapshot
   if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>void flush(),600);
  },[backup,flush]);
  if(!active)return <div className="modal-body"><h3>Rascunhos</h3><p>Continue o preenchimento ou comece uma nova solicitação. Rascunhos são privados do seu usuário e ainda não foram enviados.</p>{failure&&<div role="alert" className="alert error">{failure}</div>}{drafts===null?<p>{message}</p>:<>{drafts.map(d=><button type="button" className="quote-link" key={d.id} onClick={()=>choose(d)}><span><strong>{d.values.title||'Solicitação sem título'}</strong><small>Rascunho · {d.values.items.length} item(ns)</small></span><span>Continuar</span></button>)}<button type="button" className="button primary" onClick={()=>choose()}>Começar nova solicitação</button></>}</div>;
- return <><div className="note" role="status"><b>Rascunho</b> · {message}{failure&&<div role="alert">{failure} <button type="button" className="text-button" onClick={()=>void flush()}>Tentar salvar novamente</button></div>}</div><fieldset disabled={busy||submitting} style={{border:0,padding:0,margin:0,minWidth:0}}><BudgetRequestForm key={active.id} data={data} busy={busy||submitting} error={error} draft={active.values} onDraftChange={changed} onSave={async values=>{
+ return <><div className="note" role="status"><b>Rascunho</b> · {message}{failure&&<div role="alert">{failure} <button type="button" className="text-button" onClick={()=>void flush()}>Tentar salvar novamente</button></div>}</div><fieldset disabled={busy||submitting||uploading} style={{border:0,padding:0,margin:0,minWidth:0}}><BudgetRequestForm key={active.id} data={data} busy={busy||submitting||uploading} error={error} draft={active.values} attachments={active.version>0||savedId===active.id?<Attachments request={{id:active.id,status:'draft'}} data={data} busy={busy||submitting} beforeUpload={flush} onUploading={setUploading}/>:<p className="muted">Aguarde o salvamento do rascunho para adicionar anexos.</p>} onDraftChange={changed} onSave={async values=>{
   setSubmitting(true);if(timer.current)clearTimeout(timer.current);
   try{if(!await flush()||!current.current)return;const draft=current.current;if(await onSave(values,{id:draft.id,version:draft.version})){pending.current=false;current.current=null;try{localStorage.removeItem(prefix+draft.id)}catch{}}}finally{setSubmitting(false)}
  }}/></fieldset></>;

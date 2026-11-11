@@ -17,6 +17,16 @@ try{
  await put('req2','request',{authorId:'user:outro',status:'general_review'});
  const call=(path='',user,init={})=>api.filesEndpoint(new Request('https://example.com/api/files'+path,{...init,headers:{...(user?{Cookie:cookies[user]}:{}),...(init.headers||{})}}),env);
  const upload=(user,requestId,visibility='request',name='teste.pdf',contents='%PDF-1.4 TESTE')=>{const f=new FormData();f.set('requestId',requestId);f.set('visibility',visibility);f.set('file',new File([contents],name,{type:'application/pdf'}));return call('',user,{method:'POST',headers:{Origin:'https://example.com'},body:f})};
+ await put('draft1','request_draft',{authorId:'user:setor',status:'draft',values:{title:''}});
+ assert.equal((await upload('outro','draft1')).status,404);
+ assert.equal((await upload('master','draft1')).status,404);
+ assert.equal((await upload('setor','draft1','internal')).status,403);
+ const draftUpload=await upload('setor','draft1');assert.equal(draftUpload.status,200);const draftFile=(await draftUpload.json()).id;
+ assert.equal((await call('/'+draftFile,'setor')).status,200);
+ assert.equal((await call('/'+draftFile,'master')).status,404);
+ await db.prepare("UPDATE records SET kind='request',data=?,version=version+1 WHERE id='draft1'").bind(JSON.stringify({authorId:'user:setor',status:'estimating'})).run();
+ assert.equal((await call('/'+draftFile,'master')).status,200);
+ assert.equal((await (await call('?requestId=draft1','setor')).json()).files.length,1);
  assert.equal((await call('?requestId=req1')).status,401);
  assert.equal((await upload('outro','req1')).status,404);
  assert.equal((await upload('setor','req1','internal')).status,403);
