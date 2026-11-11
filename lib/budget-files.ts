@@ -5,11 +5,12 @@ type FileRecord={id:string;requestId:string;key:string;name:string;size:number;v
 const maxFile=5*1024*1024, maxBody=maxFile+65536;
 class FileError extends Error{constructor(message:string,public status=400){super(message)}}
 const management=(u:LocalUser)=>u.role==='admin'||u.role==='administrativo';
+const canReadInternal=(u:LocalUser)=>management(u)||u.role==='financeiro';
 async function accessible(db:D1Database,id:string,user:LocalUser){
   const row=await db.prepare("SELECT data,version FROM records WHERE id=? AND kind='request'").bind(id).first<{data:string;version:number}>();
   if(!row)throw new FileError('Solicitação não encontrada.',404);
   const r={...JSON.parse(row.data),version:row.version};
-  if(!management(user)&&!(user.role==='solicitante'&&r.authorId===user.id)&&!(user.role==='geral'&&r.status==='general_review'))throw new FileError('Solicitação não encontrada.',404);
+  if(!canReadInternal(user)&&!(user.role==='solicitante'&&r.authorId===user.id)&&!(user.role==='geral'&&r.status==='general_review'))throw new FileError('Solicitação não encontrada.',404);
   return r;
 }
 function validFile(name:string,b:Uint8Array){
@@ -43,19 +44,19 @@ export async function filesEndpoint(req:Request,env:FileEnv){
       if(url.pathname==='/api/files'||url.pathname==='/api/files/'){
         const requestId=url.searchParams.get('requestId')||'';await accessible(db,requestId,user);
         const rows=await db.prepare("SELECT id,data FROM records WHERE kind='budget_file' AND json_extract(data,'$.requestId')=? ORDER BY id").bind(requestId).all<{id:string;data:string}>();
-        return json({files:rows.results.map(r=>({...JSON.parse(r.data),id:r.id}) as FileRecord).filter(f=>management(user)||f.visibility==='request').map(({key,...f})=>f)});
+        return json({files:rows.results.map(r=>({...JSON.parse(r.data),id:r.id}) as FileRecord).filter(f=>canReadInternal(user)||f.visibility==='request').map(({key,...f})=>f)});
       }
       const row=await db.prepare("SELECT id,data FROM records WHERE id=? AND kind='budget_file'").bind(id).first<{id:string;data:string}>();
       if(!row)throw new FileError('Arquivo não encontrado.',404);
       const f={...JSON.parse(row.data),id:row.id} as FileRecord;await accessible(db,f.requestId,user);
-      if(!management(user)&&f.visibility!=='request')throw new FileError('Arquivo não encontrado.',404);
+      if(!canReadInternal(user)&&f.visibility!=='request')throw new FileError('Arquivo não encontrado.',404);
       if(!env.BUCKET)throw new FileError('Armazenamento indisponível.',503);
       const object=await env.BUCKET.get(f.key);if(!object)throw new FileError('Arquivo não encontrado.',404);
       return new Response(object.body,{headers:{'Content-Type':'application/octet-stream','Content-Length':String(f.size),'Content-Disposition':`attachment; filename="documento"; filename*=UTF-8''${encodeURIComponent(f.name).replace(/'/g,'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'"}});
     }
     if(req.method!=='POST')throw new FileError('Método não permitido.',405);
     if(req.headers.get('origin')!==url.origin||req.headers.get('sec-fetch-site')==='cross-site')throw new FileError('Origem inválida.',403);
-    if(user.role==='geral')throw new FileError('Seu perfil não permite anexar documentos.',403);
+    if(user.role==='geral'||user.role==='financeiro')throw new FileError('Seu perfil não permite anexar documentos.',403);
     if(!env.BUCKET)throw new FileError('Armazenamento de anexos indisponível.',503);
     const form=await boundedMultipart(req),requestId=String(form.get('requestId')||''),visibility=String(form.get('visibility')||'request');
     if(!['request','internal'].includes(visibility))throw new FileError('Visibilidade inválida.');

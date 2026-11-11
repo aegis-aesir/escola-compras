@@ -19,6 +19,18 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
   const reason=()=>z.string().trim().min(5,'Informe uma justificativa com pelo menos 5 caracteres.').max(2000).parse(b.reason);
   const validQuote=()=>{const q=old.quotes.find(q=>q.id===(b.quoteId||old.selectedQuoteId));if(!q)throw new FlowError('Selecione uma proposta.');if(q.validUntil<todayManaus(now))throw new FlowError('A proposta está vencida. Atualize a cotação.');if(!quoteComparable(q,old)||typeof q.total!=='number'||!Number.isFinite(q.total))throw new FlowError('A proposta precisa atender integralmente ao escopo, ser comparável e ter conversão para reais conferida.');return q};
   switch(b.action){
+    case 'archive_quote':case 'restore_quote':{
+      permit('admin');const note=reason(),index=old.quotes.findIndex(q=>q.id===b.quoteId);
+      if(index<0)throw new FlowError('Cotação não encontrada.',404);
+      const previous=old.quotes[index],archiving=b.action==='archive_quote';
+      if(archiving&&previous.id===old.selectedQuoteId)throw new FlowError('A cotação escolhida para a compra não pode ser arquivada.');
+      if(archiving===!!previous.archived)throw new FlowError(archiving?'Esta cotação já está arquivada.':'Esta cotação já está ativa.',409);
+      if(!archiving&&old.quotes.some(q=>q.id!==previous.id&&q.supplierId===previous.supplierId&&!q.archived))throw new FlowError('Já existe uma cotação ativa deste fornecedor. Arquive a atual antes de restaurar a anterior.');
+      const next={...previous,archiveHistory:[...(previous.archiveHistory||[]),{action:archiving?'archive' as const:'restore' as const,actor:me.name,at:now,reason:note}]};
+      if(archiving)next.archived={actor:me.name,at:now,reason:note};else delete next.archived;
+      data.quotes=old.quotes.map((q,i)=>i===index?next:q);
+      action='Cotação '+(archiving?'arquivada':'restaurada')+' pelo Master: '+previous.supplierName+' — '+note;break;
+    }
     case 'estimate':{
       permit('administrativo');stage('estimating','pending','admin_review');const e=estimateSchema.parse(b.data);
       if(e.freightKnown===false)e.freight=0;
@@ -44,7 +56,7 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       const q=quoteSchema.parse(b.data);const s=suppliers.find(s=>s.id===q.supplierId);if(!s)throw new FlowError('Fornecedor não encontrado.');
       if(old.status==='quoting'&&(s.scope||'local')!=='local')throw new FlowError('Nesta etapa, cote primeiro com fornecedores de Manaus.');
       const normalized=normalizeQuote(old,q);
-      data.quotes=[...old.quotes.filter(v=>v.supplierId!==q.supplierId),{...normalized,id:crypto.randomUUID(),supplierName:s.name,createdAt:now}];action='Proposta real registrada: '+s.name;break;
+      data.quotes=[...old.quotes.filter(v=>v.supplierId!==q.supplierId||v.archived),{...normalized,id:crypto.randomUUID(),supplierName:s.name,createdAt:now}];action='Proposta real registrada: '+s.name;break;
     }
     case 'select':{
       permit('administrativo');stage('quoting','national');if(!old.generalApproval)throw new FlowError('O pedido precisa da aprovação da diretoria geral.');const q=validQuote();

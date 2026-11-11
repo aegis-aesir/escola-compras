@@ -9,7 +9,7 @@ export class AuthError extends Error {constructor(message:string,public status=4
 const lifetime=8*60*60*1000;
 const passwordSchema=z.string().min(8,'Use pelo menos 8 caracteres.').max(128,'Use no máximo 128 caracteres.');
 const usernameSchema=z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,39}$/,'Use de 3 a 40 letras, números, ponto, hífen ou sublinhado.');
-const userInput=z.object({username:usernameSchema,name:z.string().trim().min(2).max(100),role:z.enum(['admin','administrativo','geral','solicitante']),department:z.string().trim().min(2).max(80)});
+const userInput=z.object({username:usernameSchema,name:z.string().trim().min(2).max(100),role:z.enum(['admin','administrativo','geral','solicitante','financeiro']),department:z.string().trim().min(2).max(80)});
 const sha=(s:string)=>createHash('sha256').update(s).digest('hex');
 const derive=(password:string,salt:string)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,32,{N:16384,r:8,p:5,maxmem:32*1024*1024},(error,key)=>error?reject(error):resolve(key)));
 export async function hashPassword(password:string) {

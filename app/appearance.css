@@ -40,13 +40,13 @@
 :root[data-accent="orange"] {--accent-base:#b45309;--accent-hover:#92400e}
 :root[data-theme="dark"] {
   color-scheme:dark;
-  --canvas:#101620;
-  --surface:#182130;
-  --surface-soft:#202c3d;
-  --ink:#e7edf6;
-  --muted:#a9b5c9;
-  --subdued:#96a5bd;
-  --line:#334157;
+  --canvas:#0b0c0e;
+  --surface:#141518;
+  --surface-soft:#1d1f23;
+  --ink:#eceef2;
+  --muted:#a9acb5;
+  --subdued:#969aa5;
+  --line:#303238;
   --accent:color-mix(in srgb,var(--accent-base) 58%,white);
   --accent-soft:color-mix(in srgb,var(--accent-base) 20%,var(--surface));
   --accent-line:color-mix(in srgb,var(--accent-base) 55%,var(--line));

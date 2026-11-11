@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {Miniflare} from 'miniflare';
+import {readFile} from 'node:fs/promises';
+import {createHmac} from 'node:crypto';
+await build({entryPoints:['app/access.ts','app/workflow.ts','lib/local-auth.ts','lib/budget-files.ts','lib/budget-records.ts'],outdir:'outputs/finance-profile',bundle:true,platform:'node',format:'esm',outExtension:{'.js':'.mjs'}});
+const access=await import('../outputs/finance-profile/app/access.mjs');
+const {transition}=await import('../outputs/finance-profile/app/workflow.mjs');
+const auth=await import('../outputs/finance-profile/lib/local-auth.mjs');
+const {filesEndpoint}=await import('../outputs/finance-profile/lib/budget-files.mjs');
+const {budgetRecordsAction}=await import('../outputs/finance-profile/lib/budget-records.mjs');
+assert.deepEqual(access.visibleViews('financeiro'),['budget','requests','execution']);
+assert.equal(access.roleLabels.financeiro,'Financeiro');assert.equal(access.canCreateRequest('financeiro'),false);
+const me={id:'user:financeiro.teste',role:'financeiro',name:'TESTE Financeiro'},now='2026-11-11T15:00:00.000Z';
+const purchases=['admin_review','general_review','quoting','execution','received','rejected'].map((status,i)=>({id:'r'+i,authorId:'outra.pessoa',status,items:[],quotes:[],management:{contractedAmount:50,realizedAmount:45}}));
+assert.deepEqual(access.visibleRequests(purchases,me),purchases,'financeiro acompanha todos os setores e etapas');
+for(const action of ['estimate','admin_review','approve','reject','local_contact','national','quote','select','execution_note','ordered','received','restart_estimate','budget_management','return_request','defer_request','resume_request','reopen_request','decide_need'])assert.throws(()=>transition(purchases[0],{action,reason:'Tentativa fictícia não autorizada'},me,[],{},now),e=>e.status===403,action);
+await assert.rejects(()=>budgetRecordsAction({}, {action:'budget_invoice'},me,[],{},now),e=>e.status===403);
+const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("test")}}',d1Databases:['DB'],r2Buckets:['BUCKET']});
+try{
+ const db=await mf.getD1Database('DB'),bucket=await mf.getR2Bucket('BUCKET'),env={DB:db,BUCKET:bucket,INTEGRATION_SECRET:'FAKE-ONLY-'.repeat(8)};
+ for(const sql of (await readFile('drizzle/0000_flawless_korvac.sql','utf8')).split('--> statement-breakpoint'))if(sql.trim())await db.prepare(sql).run();
+ const origin='https://example.com';
+ const post=(path,data,cookie='',extra={})=>auth.authEndpoint(new Request(origin+'/api/auth/'+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Cookie:cookie,...extra},body:JSON.stringify(data)}),env);
+ const bootstrap={batchId:'finance-profile-test-only',users:[{username:'master',name:'TESTE Master',role:'admin',department:'Administrativo',password:'FAKE123!'}]},raw=JSON.stringify(bootstrap),timestamp=String(Date.now());
+ assert.equal((await post('bootstrap',bootstrap,'',{'X-Estrelas-Timestamp':timestamp,'X-Estrelas-Signature':'sha256='+createHmac('sha256',env.INTEGRATION_SECRET).update(timestamp+'.'+raw).digest('hex')})).status,200);
+ const login=await post('login',{username:'master',password:'FAKE123!'}),masterCookie=login.headers.get('set-cookie').split(';')[0];
+ const created=await post('users',{username:'financeiro.teste',name:me.name,role:me.role,department:'Financeiro'},masterCookie);assert.equal(created.status,200);const credential=await created.json();assert.equal(credential.temporaryPassword.length,8);
+ const finLogin=await post('login',{username:'financeiro.teste',password:credential.temporaryPassword});assert.equal(finLogin.status,200);const financeCookie=finLogin.headers.get('set-cookie').split(';')[0];assert.equal((await auth.readSession(db,financeCookie)).role,'financeiro');
+ assert.equal((await post('users',{},financeCookie)).status,403);
+ await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('req-finance','request',?,1)").bind(JSON.stringify({authorId:'outro',status:'execution',items:[],quotes:[]})).run();
+ await bucket.put('private-finance-file','%PDF-1.4 TESTE');
+ await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('file-finance','budget_file',?,1)").bind(JSON.stringify({requestId:'req-finance',key:'private-finance-file',name:'TESTE-nf.pdf',size:14,visibility:'internal',author:'Master',at:now})).run();
+ const files=(path,init={})=>filesEndpoint(new Request(origin+'/api/files'+path,{...init,headers:{Origin:origin,Cookie:financeCookie,...init.headers}}),env);
+ const listed=await files('?requestId=req-finance');assert.equal(listed.status,200);assert.equal((await listed.json()).files[0].name,'TESTE-nf.pdf');assert.equal((await files('/file-finance')).status,200);
+ assert.equal((await files('',{method:'POST',body:new FormData()})).status,403,'financeiro não anexa nem altera documentos');
+ console.log('PASS: Financeiro role creation/login, read-only navigation, all-sector follow-up, private document reading, denied purchases/fiscal writes/uploads/user management. No real messages.');
+}finally{await mf.dispose()}

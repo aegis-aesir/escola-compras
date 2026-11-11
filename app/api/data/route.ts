@@ -26,10 +26,10 @@ export async function GET(){try{
   let {db,all,me,settings}=await context();
   if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
   const requests=visibleRequests(all.filter(r=>r.kind==='request'),me);
-  const budgetRecords=['admin','administrativo'].includes(me.role)?await readBudgetRecords(db):undefined;
+  const budgetRecords=['admin','administrativo','financeiro'].includes(me.role)?await readBudgetRecords(db):undefined;
   const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
   const management=['admin','administrativo'].includes(me.role);
-  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:[]},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:me.role==='financeiro'?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return fail(e)}}
 export async function POST(req:Request){try{
   if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new AppError('Origem inválida.',403);
@@ -37,6 +37,7 @@ export async function POST(req:Request){try{
   const raw=await req.text();if(raw.length>100000)throw new AppError('Solicitação muito grande.');
   let b:any;try{b=JSON.parse(raw)}catch{throw new AppError('Conteúdo inválido.')}
   const {db,all,me,settings}=await context();const now=new Date().toISOString();
+  if(me.role==='financeiro')throw new AppError('O perfil Financeiro permite somente consulta e acompanhamento.',403);
   const budgetRecords=await readBudgetRecords(db);
   if(['budget_invoice','budget_closing','budget_reopen'].includes(b.action))return Response.json({ok:true,...await budgetRecordsAction(db,b,me,all.filter(r=>r.kind==='request'),settings,now)});
   const target=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;

@@ -7,6 +7,7 @@ O sistema usa login e senha próprios. A hospedagem Sites e o D1 existentes fora
 | Perfil | Permissão |
 | --- | --- |
 | Master (`admin`) | Acesso completo; cria usuários, altera perfis/setores, desativa acessos, emite novas senhas e exclui acessos de outros usuários. Não pode remover seu próprio acesso Master. Alterações concorrentes não podem eliminar o último Master. |
+| Financeiro (`financeiro`) | Consulta orçamento, pedidos de todos os setores, execução, notas fiscais, vencimentos, pagamentos, fechamentos e anexos privados. Não altera registros, aprova, escolhe/arquiva cotações, envia mensagens ou gerencia usuários. |
 | Setor (`solicitante`) | Preenche solicitações apenas do seu setor e consulta os próprios registros. Não recebe fornecedores, propostas, estimativas internas, histórico administrativo ou dados de usuários. |
 | Diretoria Geral (`geral`) | Vê a fila aguardando aprovação da necessidade, com itens, justificativa, estimativa e parecer administrativo. Pode aprovar ou recusar; não cria pedidos nem executa compras. |
 | Diretoria Administrativa (`administrativo`) | Mantém as funções administrativas do fluxo existente. Não gerencia usuários. |
@@ -43,13 +44,16 @@ O launcher da ponte e a configuração de envio WhatsApp não são alterados por
 
 ## Administração
 
-Em Configurações → Pessoas e acessos, um Master cria os usuários. Cada login é único e usa de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado. Não precisa de e-mail. Defina um usuário por pessoa para manter a identificação no histórico.
+Em Configurações → Pessoas e acessos, um Master cria os usuários. Selecione **Financeiro** para acesso de acompanhamento; não foi criada conta financeira de produção automaticamente. A sessão financeira recebe dados fiscais, mas não usuários, fornecedores separados ou informações da integração. A API bloqueia todas as gravações de compras/fiscais e anexos para esse perfil. Alteração da própria senha e saída da sessão continuam disponíveis. Cada login é único e usa de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado. Não precisa de e-mail. Defina um usuário por pessoa para manter a identificação no histórico.
 
 Para recuperar acesso de outro usuário, gerar nova senha no painel. Ela permite acesso direto, sem troca obrigatória. Para recuperação administrativa quando nenhum Master consegue entrar, usar manutenção autorizada com acesso ao D1 e registrar a ação; não reabrir o bootstrap nem apagar a tabela de usuários.
 
 A opção **Excluir usuário** exige confirmação no painel do Master. Encerra imediatamente o acesso e retira a conta da lista, mantendo sua identidade no banco para preservar pedidos, autoria e auditoria. O login excluído permanece reservado; não pode ser recriado nem reativado pelo painel. Exclusão, desativação e mudança de perfil não podem retirar o próprio acesso Master ou eliminar o último Master, inclusive sob concorrência. Não apaga dados de compras.
 
 ## Validação
+
+- `node scripts/finance-profile-test.mjs`: papel, login, navegação, leitura de anexos privados e bloqueios em D1/R2 isolados.
+- `node scripts/finance-profile-http-test.mjs`: consulta real da API local e negação de gravações.
 
 - `node scripts/local-auth-test.mjs`: D1 isolado, inicialização assinada/idempotente, hashes, sessões, primeiro acesso direto, troca opcional, redefinição, exclusão com histórico preservado, concorrência, limites, origem e projeções por perfil.
 - `node scripts/local-access-smoke.mjs`: sessões locais reais, bloqueio de identidade ChatGPT forjada, separação de setores e ações da Diretoria Geral.

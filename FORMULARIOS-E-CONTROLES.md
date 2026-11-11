@@ -22,6 +22,10 @@ Para reavaliar uma solicitação **Não aprovada**, Master ou Diretoria Administ
 
 Devolver exige motivo e prazo. Adiar não transfere o mês automaticamente. Retomar exige justificativa e competência efetiva; a original fica preservada e o pedido exige nova estimativa/análise/decisão da necessidade. A área mensal identifica entradas e saídas sem repetir o valor nas duas competências. Pedidos antigos permanecem sem competência até classificação administrativa explícita.
 
+## Financeiro
+
+Perfil de consulta atribuído por um Master: orçamento mensal, todos os pedidos, execução, notas, tributos, vencimentos, pagamentos, fechamentos/versões e anexos privados. Use Consultar na linha do documento fiscal para ver os detalhes e pendências. Não registra nem altera documentos/pagamentos, aprova, escolhe fornecedores, arquiva cotações ou opera WhatsApp. As permissões são verificadas na API e no armazenamento de anexos.
+
 ## Diretoria Geral
 
 Aprova a necessidade integral, parte identificada de itens/quantidades, medida provisória emergencial, adia ou rejeita, com motivo e condições. A aprovação parcial reduz efetivamente o escopo que segue às cotações; o pedido original permanece no histórico. A medida provisória não autoriza a solução definitiva, que precisa de solicitação vinculada e fluxo próprio.
@@ -35,6 +39,8 @@ A pesquisa continua integrada ao OpenClaw e separada das referências do setor. 
 A comparação e escolha comercial administrativa, originadas do mapa de cotações, aparecem somente após aprovação da necessidade e recebimento de propostas reais, inclusive em pedidos legados. Não são preenchidas durante a análise inicial nem com base apenas nas estimativas. O servidor impede alterações comerciais antecipadas; valores históricos inalterados são preservados. A origem automática ou o registro administrativo de uma proposta recebida não altera essas regras.
 
 As propostas oficiais registram quantidades ofertadas, moeda, base por ciclo ou por vigência, conversão quando aplicável, condições, garantia, documentos e avaliação comparativa. Propostas parciais, tecnicamente incomparáveis ou com conversão pendente não podem ser selecionadas como atendimento integral. A quantidade mínima de propostas continua configurável, com exceção justificada, evidência e autoria registradas. Escolha de preço superior exige justificativa objetiva.
+
+O Master pode **Arquivar cotação** individual com motivo e confirmação. O registro fica preservado, sem contar como proposta ativa/comparável, no mínimo configurado ou na presença de proposta local válida. A escolhida para a compra não pode ser arquivada. **Mostrar cotações arquivadas** permite ao Master consultar o histórico e **Restaurar cotação**, com motivo; validade/câmbio não são renovados e não se permite outra ativa do mesmo fornecedor. O arquivamento não encerra nem retira o pedido inteiro da lista de cotações.
 
 Manaus permanece primeiro; a busca nacional exige um dia útil desde contato local realizado sem proposta válida. Preparar rascunho não inicia prazo. Testes não enviam mensagens reais e não alteram o número operacional +55 92 9201-7107.
 

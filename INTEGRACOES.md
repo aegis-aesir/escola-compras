@@ -211,3 +211,7 @@ Validação em 09/11/2026: sessão real reconhecida pelo controle visível atual
 A operação assinada `retry_estimate` recebe `jobId` e `version`, somente para uma pesquisa de estimativa elegível. Usa os mesmos controles do Site privado/HMAC, valida versão e registra histórico. Não permite reexecutar envios WhatsApp. Destina-se a refazer pesquisas mediante solicitação administrativa, inclusive após o usuário concluir login no perfil compras.
 
 A análise respeita o runtime configurado do agente coordinator (inclusive Claude CLI). Não usa modelRun, pois esse modo força execução pela API e ignora o runtime CLI, exigindo outra credencial. As instruções de análise são enviadas também como contexto de sistema. Frete numérico só é extraído quando há valor completo com centavos; spans fragmentados não geram um valor parcial.
+
+## Cotações arquivadas
+
+Propostas individuais arquivadas pelo Master não contam como propostas locais válidas nem no mínimo configurado. Sem proposta local ativa após 1 dia útil, o monitor pode avançar para a busca nacional. O arquivamento não altera credenciais, idempotência ou as chaves de envio, que permanecem desativadas nos testes.

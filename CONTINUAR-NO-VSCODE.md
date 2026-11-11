@@ -24,6 +24,8 @@ O ambiente local já tem dependências instaladas e banco local preparado. Os re
 
 ## Integração atual e próximos passos
 
+- Novidades de 11/11/2026: perfil Financeiro somente consulta (Master atribui em Pessoas e acessos), sem gravações fiscais/de compras ou integração. Arquivamento de propostas individuais exclusivo do Master, com motivo, histórico/restauração e proteção da escolhida; arquivadas não contam no mínimo/validade local. Tema escuro ajustado para cinza-carvão mais escuro. Testes: `finance-profile-test`, `finance-profile-http-test`, `quote-archive-test`, `quote-archive-http-test`.
+
 - Reabrir para análise: disponível a Master/Administrativo nos detalhes de pedidos Não aprovados, com justificativa e preservação da recusa anterior. Com estimativa, retorna à análise; sem ela, pesquisa primeiro. Requer novo parecer e decisão da DG. Testes: `reopen-request-test` e `reopen-request-http-test`. Aparência inclui as dez cores de referência e mantém Verde, com preferência pessoal no mesmo armazenamento local.
 
 - Análise administrativa simplificada em 11/11/2026: sem avaliação financeira informativa ou exigência desses dados para encaminhar à DG. Comparação/escolha comercial apenas após a aprovação da necessidade e propostas reais recebidas; estimativa não habilita comparação. Históricos e regras da seleção preservados. Teste: `node scripts/administrative-stages-test.mjs`.
