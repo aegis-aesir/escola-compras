@@ -40,4 +40,10 @@
 .budget-record .decision-box>h3{margin-bottom:10px}
 .budget-record .decision-box>.muted{margin-bottom:15px}
 .budget-record .alert{margin-top:16px}
-@media(max-width:600px){.budget-fields{grid-template-columns:minmax(0,1fr)}.budget-section{padding:13px;margin:16px 0}.budget-item{padding:12px}.budget-details{padding:12px}.budget-form .form-end .button{width:100%}.budget-record .button{white-space:normal;text-align:center}.budget-section legend{font-size:12px}}
+.conference-actions{align-items:center;flex-wrap:wrap;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.conference-actions .button{min-height:42px;padding-inline:16px;border-radius:8px}
+.conference-actions .conference-save{background:var(--surface,#fff);border-color:var(--line);color:var(--ink);box-shadow:none}
+.conference-actions .conference-submit{box-shadow:0 5px 14px color-mix(in srgb,var(--accent-base,var(--purple)) 22%,transparent)}
+.conference-actions .conference-return{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.conference-actions .conference-return:not(:disabled):hover{background:color-mix(in srgb,#b7791f 9%,var(--surface,#fff));border-color:color-mix(in srgb,#b7791f 40%,var(--line));color:color-mix(in srgb,#b7791f 78%,var(--ink))}
+@media(max-width:600px){.budget-fields{grid-template-columns:minmax(0,1fr)}.budget-section{padding:13px;margin:16px 0}.budget-item{padding:12px}.budget-details{padding:12px}.budget-form .form-end .button{width:100%}.budget-record .button{white-space:normal;text-align:center}.budget-section legend{font-size:12px}.conference-actions{display:grid;grid-template-columns:1fr;width:100%}.conference-actions .button{width:100%}.conference-actions .conference-submit{grid-row:1}}
