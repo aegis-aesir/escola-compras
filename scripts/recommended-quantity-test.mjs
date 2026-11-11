@@ -6,7 +6,7 @@ const {managementSections}=await import('../outputs/quantity-review/budget-field
 const {ensureAdministrativeReview,budgetTransition}=await import('../outputs/quantity-review/budget-workflow.mjs');
 const {visibleRequests}=await import('../outputs/quantity-review/access.mjs');
 const items=[{name:'Item A',quantity:10,unit:'un.',spec:''},{name:'Item B',quantity:4,unit:'un.',spec:''}];
-const r={id:'r',authorId:'s',priority:'Essencial',status:'admin_review',quotes:[],items,form:{kind:'monthly',fields:{},references:[],accepted:true},management:{quantityAssessment:'Adequadas',additionalDataStatus:'Suficientes',recommendation:'Aprovar integralmente',validatedPriority:'Essencial',recommendedScope:'Todos os itens',analysis:'Análise necessária',opinionReason:'Necessidade confirmada'}};
+const r={id:'r',authorId:'s',priority:'Essencial',status:'admin_review',quotes:[],items,form:{kind:'monthly',fields:{},references:[],accepted:true},management:{quantityAssessment:'Adequadas',additionalDataStatus:'Suficientes',recommendation:'Aprovar integralmente',validatedPriority:'Essencial'}};
 const keys=managementSections('monthly',r).flatMap(s=>s.fields).map(f=>f.key);assert.ok(!keys.includes('reviewQuantity'));assert.ok(!keys.includes('reviewDeferral'));assert.ok(!keys.includes('additionalDataNotes'));assert.ok(keys.includes('reviewNotes'));assert.ok(keys.includes('recommendedQuantity_0'));assert.ok(keys.includes('additionalDataStatus'));
 assert.doesNotThrow(()=>ensureAdministrativeReview(r));
 assert.throws(()=>ensureAdministrativeReview({...r,management:{...r.management,additionalDataStatus:'Complementação necessária'}}),/Pendências e esclarecimentos/i);

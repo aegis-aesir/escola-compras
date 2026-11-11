@@ -101,7 +101,7 @@ export function ensureAdministrativeReview(r:Purchase){
   if(m.quantityAssessment!=='Adequadas'&&!changed)throw new FlowError('Informe ao menos uma quantidade recomendada diferente da solicitada.');
   if(m.quantityAssessment==='Podem ser reduzidas'&&items.some((item,index)=>Number(recommended[index])>item.quantity))throw new FlowError('A recomendação de redução não pode aumentar quantidades.');
   if(items.length&&!recommended.some(value=>Number(value)>0))throw new FlowError('A recomendação deve manter ao menos um item; caso contrário, rejeite ou adie a solicitação.');
-  if(!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.analysis||!m.opinionReason||!m.validatedPriority||!m.recommendedScope)throw new FlowError('Registre recomendação, prioridade validada, escopo, análise e justificativa no parecer.');
+  if(!['Aprovar integralmente','Aprovar parcialmente','Medida provisória'].includes(String(m.recommendation))||!m.validatedPriority)throw new FlowError('Registre a recomendação administrativa e a prioridade validada.');
   if(fields.some(f=>m[f.key]==='Não')&&!m.reviewNotes)throw new FlowError('Explique os itens de conferência marcados Não.');
   if(r.form.kind==='digital'&&(r.form.fields.personalData==='Sim'||r.form.fields.integrations==='Sim')&&(m.technicalReview!=='Concluída'||!m.technicalReviewer||!m.technicalReviewDate))throw new FlowError('Conclua a validação técnica e de privacidade antes de encaminhar.');
 }

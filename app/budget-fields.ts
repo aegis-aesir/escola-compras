@@ -98,7 +98,7 @@ export function requestSections(kind: BudgetKind, version?: 2): FieldSection[] {
   return [identification, need, ...(kind === 'emergency' ? emergencySections : kind === 'digital' ? digitalSections : []), checks];
 }
 
-const review: FieldSection = { title: 'Conferência administrativa', fields: [
+const review: FieldSection = { title: 'Conferência e parecer administrativo', fields: [
   choice('quantityAssessment', 'Avaliação das quantidades', ['Adequadas', 'Inadequadas', 'Podem ser reduzidas']),
   choice('additionalDataStatus', 'Completude das informações adicionais', ['Suficientes', 'Complementação necessária', 'Não necessárias']),
   field('additionalDataNotes', 'Informações adicionais necessárias / observações', 'textarea'),
@@ -109,11 +109,13 @@ const review: FieldSection = { title: 'Conferência administrativa', fields: [
     ['reviewSupplier', 'Fornecedor e condições informados'],
   ].map(([key, label]) => choice(key, label, reviewOptions)),
   field('documentReviewNotes', 'Observações sobre os anexos', 'textarea'), field('reviewNotes', 'Pendências e esclarecimentos', 'textarea'), field('complementDeadline', 'Prazo para complementação', 'date'),
+  choice('recommendation', 'Recomendação administrativa', ['Aprovar integralmente', 'Aprovar parcialmente', 'Complementar', 'Adiar', 'Rejeitar']),
+  choice('validatedPriority', 'Prioridade validada', ['Essencial', 'Importante', 'Adiável', 'Emergencial', 'Normal', 'Alta', 'Urgente']),
   field('reviewOwner', 'Responsável pela conferência'), field('reviewDate', 'Data da conferência', 'date'), field('reviewDeadline', 'Prazo da análise', 'date'),
 ] };
-const opinion: FieldSection = { title: 'Parecer e escopo recomendado', fields: [
-  choice('recommendation', 'Recomendação administrativa', ['Aprovar integralmente', 'Aprovar parcialmente', 'Complementar', 'Adiar', 'Rejeitar']),
-  choice('validatedPriority', 'Prioridade validada', ['Essencial', 'Importante', 'Adiável', 'Emergencial', 'Normal', 'Alta', 'Urgente']), field('recommendedScope', 'Itens, quantidades e escopo recomendado', 'textarea'),
+/** Campos retirados da interface, mantidos somente para aceitar e preservar registros anteriores. */
+const legacyOpinion: FieldSection = { title: 'Parecer administrativo legado', fields: [
+  field('recommendedScope', 'Itens, quantidades e escopo recomendado', 'textarea'),
   field('recommendedAmount', 'Valor recomendado informativo (R$)', 'number'), field('analysis', 'Análise administrativa', 'textarea'), field('opinionReason', 'Justificativa do parecer', 'textarea'),
   field('adjustments', 'Condições e ajustes recomendados', 'textarea'), field('opinionNotes', 'Observações do parecer', 'textarea'), field('opinionDeadline', 'Prazo de análise / validade do contexto', 'date'),
 ] };
@@ -188,7 +190,8 @@ export function canCompareCommercial(request:ManagementStage) {
 export function managementSections(kind: BudgetKind, stage?:ManagementStage): FieldSection[] {
   if (!['monthly', 'emergency', 'digital'].includes(kind)) throw new Error('Modelo de formulário inválido.');
   const specific = kind === 'emergency' ? emergencyManagement : kind === 'digital' ? digitalManagement : [];
-  const opinionSection = kind === 'emergency' ? { ...opinion, fields: opinion.fields.map(f => f.key === 'recommendation' ? { ...f, options: [...f.options!, 'Medida provisória'] } : f) } : opinion;
-  const sections=[review, opinionSection, finance, ...specific, commercial, execution, followup];
-  return stage?sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))).map(section=>({...section,fields:section.fields.filter(field=>!hiddenReviewKeys.has(field.key)).flatMap(field=>field.key==='quantityAssessment'?[field,...recommendedQuantityFields(stage.originalScope?.items||stage.items||[])]:[field])})):sections;
+  const reviewSection = kind === 'emergency' ? { ...review, fields: review.fields.map(f => f.key === 'recommendation' ? { ...f, options: [...f.options!, 'Medida provisória'] } : f) } : review;
+  const sections=[reviewSection, finance, ...specific, commercial, execution, followup];
+  if(!stage)return [reviewSection,legacyOpinion,finance,...specific,commercial,execution,followup];
+  return sections.filter(section=>section!==finance&&(section!==commercial||canCompareCommercial(stage))).map(section=>({...section,fields:section.fields.filter(field=>!hiddenReviewKeys.has(field.key)).flatMap(field=>field.key==='quantityAssessment'?[field,...recommendedQuantityFields(stage.originalScope?.items||stage.items||[])]:[field])}));
 }

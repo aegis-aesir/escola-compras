@@ -18,4 +18,4 @@ export function visibleRequests(requests:Purchase[],me:{id:string;role:Member['r
   }));
 }
 
-function generalContext(m:Purchase['management']){if(!m)return undefined;const allowed=['quantityAssessment','additionalDataStatus',...Object.keys(m).filter(key=>/^recommendedQuantity_\d+$/.test(key)),'recommendation','recommendedScope','recommendedAmount','analysis','opinionReason','adjustments','validatedPriority','technicalReview','validatedEmergency'];return Object.fromEntries(allowed.filter(k=>m[k]!==undefined).map(k=>[k,m[k]]));}
+function generalContext(m:Purchase['management']){if(!m)return undefined;const allowed=['quantityAssessment','additionalDataStatus',...Object.keys(m).filter(key=>/^recommendedQuantity_\d+$/.test(key)),'recommendation','validatedPriority','technicalReview','validatedEmergency'];return Object.fromEntries(allowed.filter(k=>m[k]!==undefined).map(k=>[k,m[k]]));}
