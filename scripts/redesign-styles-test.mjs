@@ -14,6 +14,7 @@ assert.equal([...accents.matchAll(/id:'([^']+)'/g)].length,11,'all eleven accent
 for(const token of ['--ui-radius','--ui-shadow','--ui-control-height','--ui-sidebar-compact','--ui-sidebar-expanded'])assert.ok(redesign.includes(token),`missing design token ${token}`);
 for(const selector of [':focus-visible','.button','.panel','input,textarea,select','.table-scroll','.badge','dialog','.alert'])assert.ok(redesign.includes(selector),`missing shared component rule ${selector}`);
 for(const selector of ['.page-heading','.metrics','.overview-grid','.filters','.supplier-grid','.integration-banner','.empty','.page-actions'])assert.ok(redesign.includes(selector),`missing primary screen rule ${selector}`);
+for(const selector of ['.user-menu','.user-menu-options'])assert.ok(redesign.includes(selector),`missing contextual navigation rule ${selector}`);
 for(const selector of ['.budget-section','.budget-fields','.budget-item','.budget-details','.budget-file-list','.workflow-panel','.integration-status','.users-panel','.decision-box','.conference-actions','.form-end'])assert.ok(redesign.includes(selector),`missing domain form rule ${selector}`);
 for(const selector of ['.modal-head','.modal-body','.detail-title','.detail-meta','.items-list','.request-history','.request-archive-dialog','.archive-confirm-actions'])assert.ok(redesign.includes(selector),`missing dialog and detail rule ${selector}`);
 assert.match(redesign,/@media\s*\(prefers-reduced-motion:\s*reduce\)/,'motion must respect the device accessibility preference');

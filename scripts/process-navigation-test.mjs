@@ -64,4 +64,16 @@ assert.equal(navigation.requestMatchesView({status:'execution',archived:null},'r
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'execution','admin'),false,'arquivadas não permanecem nas filas ativas');
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'archives','admin'),true,'arquivadas ficam na consulta auxiliar');
 
+assert.deepEqual(navigation.contextualActionsForView('requests','admin'),[{view:'archives',label:'Arquivadas'}],'Master abre arquivadas dentro de Solicitação');
+assert.deepEqual(navigation.contextualActionsForView('requests','administrativo'),[],'Diretoria Administrativa não recebe o controle exclusivo de arquivamento');
+assert.deepEqual(navigation.contextualActionsForView('quotes','admin'),[
+  {view:'suppliers',label:'Fornecedores'},
+  {view:'whatsapp',label:'Agente WhatsApp'},
+]);
+assert.deepEqual(navigation.contextualActionsForView('quotes','administrativo'),[
+  {view:'suppliers',label:'Fornecedores'},
+  {view:'whatsapp',label:'Agente WhatsApp'},
+]);
+assert.deepEqual(navigation.contextualActionsForView('requests','solicitante'),[],'Setor mantém a tela simples');
+
 console.log('PASS: menu por perfil e filas exclusivas seguem as etapas do processo orçamentário.');

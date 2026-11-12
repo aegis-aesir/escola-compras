@@ -2,6 +2,7 @@ import type {Member,Purchase} from './model';
 
 export type ProcessView='archives'|'budget'|'overview'|'analysis'|'estimates'|'execution'|'requests'|'general_approval'|'quotes'|'suppliers'|'whatsapp'|'settings';
 export type PrimaryNavigationItem={id:ProcessView;label:string};
+export type ContextualNavigationItem={view:ProcessView;label:string};
 
 const administrativeSteps:PrimaryNavigationItem[]=[
   {id:'overview',label:'Dashboard'},
@@ -46,6 +47,15 @@ export function primaryParentView(view:ProcessView):ProcessView{
   if(view==='suppliers'||view==='whatsapp')return 'quotes';
   if(view==='archives')return 'requests';
   return view;
+}
+
+export function contextualActionsForView(view:ProcessView,role:Member['role']):ContextualNavigationItem[]{
+  if(view==='requests'&&role==='admin')return [{view:'archives',label:'Arquivadas'}];
+  if(view==='quotes'&&(role==='admin'||role==='administrativo'))return [
+    {view:'suppliers',label:'Fornecedores'},
+    {view:'whatsapp',label:'Agente WhatsApp'},
+  ];
+  return [];
 }
 
 export function requestMatchesView(request:Pick<Purchase,'status'|'archived'>,view:ProcessView,role:Member['role']):boolean{
