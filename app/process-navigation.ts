@@ -58,9 +58,10 @@ export function contextualActionsForView(view:ProcessView,role:Member['role']):C
   return [];
 }
 
-export function requestMatchesView(request:Pick<Purchase,'status'|'archived'>,view:ProcessView,role:Member['role']):boolean{
+export function requestMatchesView(request:Pick<Purchase,'status'|'archived'|'generalApproval'>,view:ProcessView,role:Member['role']):boolean{
   if(view==='archives')return !!request.archived;
   if(request.archived)return false;
+  if(role==='financeiro'&&!request.generalApproval)return false;
   if(view==='requests'){
     if(role==='solicitante')return true;
     if(role==='financeiro')return !['execution','approved','ordered','received'].includes(request.status);

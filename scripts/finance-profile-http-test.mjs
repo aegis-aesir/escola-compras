@@ -40,4 +40,4 @@ export async function prepareFinanceFixture(){
  const after=await snapshot(masterCookie);assert.deepEqual(after.requests.find(r=>r.id===id),request);assert.deepEqual(after.budgetRecords.find(r=>r.id===invoiceId).data,view.budgetRecords.find(r=>r.id===invoiceId).data);
  return {financeCookie,masterCookie,requestId:id,title,invoiceNumber,fileId,month:invoice.month,unapprovedId,unapprovedInvoiceId,unapprovedFileId};
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){await prepareFinanceFixture();console.log('PASS HTTP: Financeiro reads all-sector requests, invoices, payments and private files; all purchase/fiscal/integration/user mutations denied without changing records. No real messages.');}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){await prepareFinanceFixture();console.log('PASS HTTP: Financeiro reads only DG-approved requests and their invoices, payments and private files; all mutations denied. No real messages.');}

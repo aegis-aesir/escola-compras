@@ -18,7 +18,12 @@ function financeClosing(c:BudgetClosing,requestIds:Set<string>):BudgetClosing{
 }
 function financeRecords(records:BudgetRecord[],requests:Purchase[]):BudgetRecord[]{
   const requestIds=new Set(requests.map(r=>r.id));
-  return records.flatMap(record=>record.kind==='budget_invoice'?(requestIds.has(record.data.requestId)?[record]:[]):[{...record,data:financeClosing(record.data,requestIds)}]);
+  const visible:BudgetRecord[]=[];
+  for(const record of records){
+    if(record.kind==='budget_invoice'){if(requestIds.has(record.data.requestId))visible.push(record);continue;}
+    visible.push({...record,data:financeClosing(record.data,requestIds)});
+  }
+  return visible;
 }
 async function context(){
   const user=await currentLocalUser(); if(!user)throw new AppError('Entre com seu usuário e senha.',401);

@@ -60,9 +60,11 @@ for(const [status,expectedView] of Object.entries(administrativeStatusView)){
 
 assert.equal(navigation.requestMatchesView({status:'general_review',archived:null},'general_approval','geral'),true);
 assert.equal(navigation.requestMatchesView({status:'admin_review',archived:null},'general_approval','geral'),false);
-assert.equal(navigation.requestMatchesView({status:'pending',archived:null},'requests','financeiro'),true,'Financeiro acompanha etapas anteriores à execução em Solicitação');
+assert.equal(navigation.requestMatchesView({status:'pending',archived:null},'requests','financeiro'),false,'Financeiro não acompanha solicitação antes da aprovação da Diretora Geral');
+assert.equal(navigation.requestMatchesView({status:'quoting',archived:null},'requests','financeiro'),false,'Financeiro não classifica pedido sem o registro da aprovação da Diretora Geral');
+assert.equal(navigation.requestMatchesView({status:'quoting',archived:null,generalApproval:{actor:'Diretora Geral TESTE',at:'2026-11-12T12:00:00.000Z',reason:'Necessidade aprovada'}},'requests','financeiro'),true,'Financeiro acompanha o pedido aprovado antes da execução em Solicitação');
 assert.equal(navigation.requestMatchesView({status:'execution',archived:null},'requests','financeiro'),false,'Financeiro não mantém o pedido na fila anterior após iniciar a execução');
-assert.equal(navigation.requestMatchesView({status:'execution',archived:null},'execution','financeiro'),true,'Financeiro acompanha a compra na etapa Execução');
+assert.equal(navigation.requestMatchesView({status:'execution',archived:null,generalApproval:{actor:'Diretora Geral TESTE',at:'2026-11-12T12:00:00.000Z',reason:'Necessidade aprovada'}},'execution','financeiro'),true,'Financeiro acompanha a compra aprovada na etapa Execução');
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'execution','admin'),false,'arquivadas não permanecem nas filas ativas');
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'archives','admin'),true,'arquivadas ficam na consulta auxiliar');
 

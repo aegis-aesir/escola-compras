@@ -39,5 +39,5 @@ try{
  assert.equal((await files('?requestId=req-finance-unapproved')).status,404,'financeiro não lista anexos antes da aprovação da Diretora Geral');
  assert.equal((await files('/file-finance-unapproved')).status,404,'financeiro não baixa anexos antes da aprovação da Diretora Geral');
  assert.equal((await files('',{method:'POST',body:new FormData()})).status,403,'financeiro não anexa nem altera documentos');
- console.log('PASS: Financeiro role creation/login, read-only navigation, all-sector follow-up, private document reading, denied purchases/fiscal writes/uploads/user management. No real messages.');
+ console.log('PASS: Financeiro role creation/login, approved-only all-sector follow-up, private document reading, denied purchases/fiscal writes/uploads/user management. No real messages.');
 }finally{await mf.dispose()}
