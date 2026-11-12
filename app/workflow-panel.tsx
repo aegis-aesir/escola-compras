@@ -10,8 +10,7 @@ export default function WorkflowPanel({request:r,data,busy,onSave,onDecision}:Pr
  const send=(action:string,extra:object={})=>onSave({action,id:r.id,version:r.version,...extra});
  const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Manaus'});
  if(data.me.role==='solicitante')return null;
- return <section className="workflow-panel">
- <h3>Estimativa e decisões</h3>
+ return <details className="budget-details workflow-details" open={['estimating','pending','admin_review'].includes(r.status)}><summary>Estimativas</summary><section className="workflow-panel">
  {admin&&<ResearchPanel request={r} data={data} busy={busy} onSave={onSave}/>}
  {admin&&<SupplierDiscoveryPanel request={r} data={data} busy={busy} onSave={onSave}/>}
  {r.estimate?<><div className="cost-comparison"><div><small>ESTIMATIVA DE REFERÊNCIA</small><strong>{money(r.estimate.total)}</strong><span>{r.estimate.freightKnown===false?'Frete não apurado — não incluído no total':<>Inclui frete estimado de {money(r.estimate.freight)}</>}</span></div><div><small>PROPOSTA REAL ESCOLHIDA</small><strong>{r.selectedQuoteId?money(r.quotes.find(q=>q.id===r.selectedQuoteId)?.total||0):'Aguardando cotação'}</strong><span>A diretoria geral aprova o pedido, sem aprovar valor.</span></div></div><details><summary>Fontes e premissas da estimativa</summary>{r.estimate.references.map((ref,i)=><div className="source-row" key={i}><strong>{r.items[i]?.name}: {money(ref.unitPrice)} / {r.items[i]?.unit}</strong><a href={ref.sourceUrl} target="_blank" rel="noopener noreferrer">{ref.sourceName} ↗</a><small>Consulta em {ref.researchedOn.split('-').reverse().join('/')}</small></div>)}<p className="muted">{r.estimate.notes}</p><p className="muted">{r.estimate.method==='automatic'?'Referências preenchidas automaticamente a partir das páginas pesquisadas.':'Referências registradas manualmente.'} Não representam proposta comercial confirmada.</p></details></>:<div className="note">{r.status==='pending'?'Aguardando a Diretoria Administrativa iniciar a estimativa automática.':r.form?.kind==='digital'?'A pesquisa levanta fontes para conferência. A administração deve registrar a referência por licença para toda a vigência; preços mensais e anuais não são convertidos automaticamente sem comprovação do período.':'O sistema está buscando preços para preencher a estimativa. A pesquisa depende da ponte conectada; pendências por item aparecem acima.'}</div>}
@@ -27,5 +26,5 @@ export default function WorkflowPanel({request:r,data,busy,onSave,onDecision}:Pr
  {r.status==='national'&&<div className="note"><b>Pesquisa nacional liberada.</b> {r.nationalReason}<br/>A pesquisa é processada pela ponte OpenClaw e exige conferência das fontes. Registre apenas propostas reais com entrega para Manaus, incluindo frete e prazo.</div>}
  {['execution','ordered'].includes(r.status)&&admin&&<div className="actions"><button className="button secondary" onClick={()=>onDecision({action:'execution_note'})}>Registrar acompanhamento da execução</button></div>}
  {r.executionNotes?.map((n,i)=><div className="source-row" key={i}><strong>{n.note}</strong><small>{n.actor} · {date(n.at)}</small></div>)}
- </section>;
+ </section></details>;
 }

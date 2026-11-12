@@ -51,11 +51,14 @@ tbody tr:hover,tbody tr:focus-within {background:var(--accent-soft)}
 .alert {border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:var(--ui-radius-sm);box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 4%,transparent)}
 
 dialog {width:min(920px,calc(100vw - 32px));max-height:min(92vh,960px);padding:0;border:1px solid var(--line);border-radius:var(--ui-radius-lg);background:var(--surface);color:var(--ink);box-shadow:var(--ui-shadow-raised)}
-dialog[open] {display:flex;flex-direction:column}
+dialog[open] {display:flex;flex-direction:column;overflow:hidden}
+dialog[open]:has(>fieldset) {height:min(92vh,960px)}
+dialog[open]>fieldset {position:relative;flex:1 1 auto;min-width:0;min-height:0;margin:0;padding:0;border:0;overflow:hidden}
 dialog::backdrop {background:color-mix(in srgb,#07101f 64%,transparent);backdrop-filter:blur(3px)}
 .modal-head {position:sticky;z-index:5;top:0;display:flex;align-items:center;justify-content:space-between;flex:none;min-height:64px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface)}
 .modal-head h2 {min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-size:17px;white-space:nowrap}
-.modal-body {min-height:0;padding:24px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+.modal-body {flex:1 1 auto;min-height:0;padding:24px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+dialog[open]>fieldset>.modal-body {position:absolute;inset:0;height:auto}
 
 /* Authenticated shell */
 .app-shell {display:block;min-height:100vh}
@@ -169,6 +172,9 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
 .budget-section legend {max-width:calc(100% - 12px);padding:0 8px;color:var(--ink);font-size:13px;font-weight:800}
 .budget-section>h3,.section-line h3 {color:var(--ink);font-size:14px;font-weight:800;letter-spacing:-.015em}
 .budget-section>.muted {margin-bottom:18px}
+.budget-submitted-record>h3 {display:flex;align-items:center;gap:8px}
+.budget-submitted-record>.budget-attachments {margin:18px 0 0;background:var(--surface-soft);box-shadow:none}
+.budget-submitted-record>.budget-attachments>h3 {margin-top:0}
 .budget-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px;min-width:0}
 .budget-fields>* {min-width:0}
 .budget-wide {grid-column:1/-1}
@@ -192,6 +198,7 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
 .budget-totals strong,.budget-indicators dd {font-variant-numeric:tabular-nums}
 
 .workflow-panel {margin:22px 0 0;padding:20px 0 0;border-top:1px solid var(--line)}
+.workflow-details>.workflow-panel {margin-top:0;margin-bottom:16px;padding-top:16px;border-top:0}
 .workflow-panel>h3 {display:flex;align-items:center;min-height:44px;margin:0 0 14px;color:var(--ink);font-size:15px}
 .workflow-panel .item-form,.decision-box,.integration-research {padding:18px;border:1px solid var(--line);border-radius:var(--ui-radius);background:var(--surface-soft)}
 .cost-comparison {gap:14px}
