@@ -11,12 +11,14 @@ const recordStart=panel.indexOf('className="budget-section budget-submitted-reco
 const formTitle=panel.indexOf('Formulário da solicitação',recordStart);
 const submittedForm=panel.indexOf('className="budget-details budget-submitted-form"',formTitle);
 const attachments=panel.indexOf('<Attachments request={r}',submittedForm);
+const submittedFormEnd=panel.indexOf('</details>',submittedForm);
 const recordEnd=panel.indexOf('</section>',attachments);
 
 assert.ok(recordStart>=0,'the submitted request must have a form-owned container');
 assert.ok(formTitle>recordStart,'the main container must be identified as the request form');
 assert.ok(submittedForm>formTitle,'the submitted form content must be inside the form container');
 assert.ok(attachments>submittedForm&&attachments<recordEnd,'attachments must be nested inside the request form container');
+assert.ok(submittedFormEnd>attachments,'attachments must remain inside the submitted-form collapsible');
 assert.doesNotMatch(panel,/before=\{<details className="budget-details budget-submitted-form"/,'attachments must not own the submitted form');
 
 const conference=panel.indexOf('<summary>Conferência administrativa</summary>');
