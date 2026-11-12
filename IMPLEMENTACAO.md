@@ -76,7 +76,7 @@ Em 11/11/2026, a conferência e o parecer administrativos foram reunidos em um �
 
 Também em 11/11/2026, o painel passou a separar Conferência administrativa, Execução e Prestação de contas. A devolução para complementação usa diretamente as pendências e o prazo da conferência e salva ambos junto com a mudança para correção. Execução e prestação mantêm as mesmas chaves históricas, apenas distribuídas em blocos próprios.
 
-Nos pedidos estruturados, a consulta do formulário enviado e os anexos foram reunidos em um único cartão. A ordem é formulário, anexos e avaliação documental opcional; permissões e arquivos privados permanecem inalterados.
+Nos pedidos estruturados, formulário e anexos foram reunidos no único colapsável **Formulário Orçamentário**, sem uma caixa externa redundante. A ordem é formulário, anexos e avaliação documental opcional; permissões e arquivos privados permanecem inalterados.
 
 Na devolução ao setor, a janela Complementar solicitação também lista e envia anexos opcionais antes do novo aceite. Os arquivos usam o mesmo ID do pedido. O histórico da própria solicitação fica visível ao setor, sem documentos internos ou eventos fiscais vinculados; a gestão e o Financeiro mantêm a auditoria completa autorizada. Quando o setor não altera as quantidades, a avaliação e as quantidades recomendadas da conferência permanecem preenchidas. Completude adicional, pendências, prazo, responsável e data são limpos para a nova conferência; mudança de quantidade também exige nova avaliação quantitativa.
 
