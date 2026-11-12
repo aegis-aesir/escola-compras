@@ -3,9 +3,11 @@ import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 import { bridgeEndpoint } from "../lib/integration-endpoint";
 import { authEndpoint } from '../lib/local-auth';
+import { filesEndpoint } from '../lib/budget-files';
 
 const worker = {
   fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
+    if (/^\/api\/files(?:\/|$)/.test(new URL(request.url).pathname)) return filesEndpoint(request, env);
     if (new URL(request.url).pathname.startsWith('/api/auth/')) return authEndpoint(request, env);
     if (new URL(request.url).pathname === '/api/integrations/bridge') return bridgeEndpoint(request, env);
     let binding = ctx.props?.CONNECTORS;

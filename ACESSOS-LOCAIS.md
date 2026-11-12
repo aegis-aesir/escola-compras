@@ -6,7 +6,8 @@ O sistema usa login e senha próprios. A hospedagem Sites e o D1 existentes fora
 
 | Perfil | Permissão |
 | --- | --- |
-| Master (`admin`) | Acesso completo; cria usuários, altera perfis/setores, desativa acessos e emite senhas temporárias. Não pode remover seu próprio acesso Master. Alterações concorrentes não podem eliminar o último Master. |
+| Master (`admin`) | Acesso completo; cria usuários, altera perfis/setores, desativa acessos, emite novas senhas e exclui acessos de outros usuários. Não pode remover seu próprio acesso Master. Alterações concorrentes não podem eliminar o último Master. |
+| Financeiro (`financeiro`) | Consulta orçamento, pedidos de todos os setores, execução, notas fiscais, vencimentos, pagamentos, fechamentos e anexos privados. Não altera registros, aprova, escolhe/arquiva cotações, envia mensagens ou gerencia usuários. |
 | Setor (`solicitante`) | Preenche solicitações apenas do seu setor e consulta os próprios registros. Não recebe fornecedores, propostas, estimativas internas, histórico administrativo ou dados de usuários. |
 | Diretoria Geral (`geral`) | Vê a fila aguardando aprovação da necessidade, com itens, justificativa, estimativa e parecer administrativo. Pode aprovar ou recusar; não cria pedidos nem executa compras. |
 | Diretoria Administrativa (`administrativo`) | Mantém as funções administrativas do fluxo existente. Não gerencia usuários. |
@@ -19,7 +20,7 @@ O nome visível Master corresponde ao código `admin`, preservando as regras de 
 - `setor.teste`: Setor de teste, vinculado inicialmente a Administrativo.
 - `diretoria.geral`: Franciluce Lima, perfil Diretoria Geral.
 
-As senhas iniciais são aleatórias e temporárias. Não ficam no Git nem nesta documentação. O responsável usa o mesmo usuário Windows para abrir a janela de acesso:
+As novas senhas de acesso são aleatórias e têm 8 caracteres. Senhas já emitidas continuam válidas até a troca; elas não são truncadas nem alteradas automaticamente. Não ficam no Git nem nesta documentação. O responsável usa o mesmo usuário Windows para abrir a janela de acesso:
 
 ```powershell
 powershell.exe -NoProfile -File ./integrations/local-auth/show-initial-access.ps1
@@ -31,9 +32,9 @@ Não enviar senhas no chat. Não são enviados e-mails ou mensagens WhatsApp par
 
 ## Proteções e operação
 
-- Senhas com pelo menos 12 e até 128 caracteres, preservadas exatamente como digitadas. Hash scrypt com salt aleatório por senha, N=16384, r=8, p=5. Senhas em texto não são armazenadas no D1.
+- Senhas com pelo menos 8 e até 128 caracteres, preservadas exatamente como digitadas. Hash scrypt com salt aleatório por senha, N=16384, r=8, p=5. Senhas em texto não são armazenadas no D1.
 - Sessões aleatórias de oito horas: apenas o hash do token fica no banco. Cookie de produção `__Host-estrelas_session`, Secure, HttpOnly, SameSite=Strict e Path=/, sem Domain. O ambiente de desenvolvimento usa um cookie diferente, aceito apenas em desenvolvimento.
-- Troca obrigatória da senha temporária antes de acessar dados. Logout revoga a sessão; troca de senha, redefinição, alteração de perfil e desativação invalidam sessões anteriores.
+- A troca de senha é opcional desde o primeiro acesso, incluindo contas antigas marcadas pela regra anterior e senhas redefinidas. As senhas existentes não são alteradas e as sessões válidas são preservadas. Logout revoga a sessão; troca de senha, redefinição, alteração de perfil e desativação invalidam sessões anteriores.
 - Limites persistentes de tentativas por login e IP; verificação de origem nas operações autenticadas; cabeçalhos ChatGPT não autenticam o usuário.
 - Nenhum cadastro público. A inicialização via `/api/auth/bootstrap` exige a assinatura do operador da ponte e funciona uma única vez. O lote original é guardado no cofre DPAPI antes da transmissão para recuperação em caso de interrupção; repetir o mesmo lote é idempotente. Depois disso só um Master autenticado cria usuários.
 - Contas, sessões e limites usam novos tipos em `records`, sem migração, exclusão ou reinterpretação dos pedidos antigos. O histórico anterior e `school.owner` são preservados como dados históricos; `school.owner` não concede autenticação local.
@@ -43,13 +44,18 @@ O launcher da ponte e a configuração de envio WhatsApp não são alterados por
 
 ## Administração
 
-Em Configurações → Pessoas e acessos, um Master cria os usuários. Cada login é único e usa de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado. Não precisa de e-mail. Defina um usuário por pessoa para manter a identificação no histórico.
+Em Configurações → Pessoas e acessos, um Master cria os usuários. Selecione **Financeiro** para acesso de acompanhamento; não foi criada conta financeira de produção automaticamente. A sessão financeira recebe dados fiscais, mas não usuários, fornecedores separados ou informações da integração. A API bloqueia todas as gravações de compras/fiscais e anexos para esse perfil. Alteração da própria senha e saída da sessão continuam disponíveis. Cada login é único e usa de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado. Não precisa de e-mail. Defina um usuário por pessoa para manter a identificação no histórico.
 
-Para recuperar acesso de outro usuário, emitir senha temporária no painel. Para recuperação administrativa quando nenhum Master consegue entrar, usar manutenção autorizada com acesso ao D1 e registrar a ação; não reabrir o bootstrap nem apagar a tabela de usuários.
+Para recuperar acesso de outro usuário, gerar nova senha no painel. Ela permite acesso direto, sem troca obrigatória. Para recuperação administrativa quando nenhum Master consegue entrar, usar manutenção autorizada com acesso ao D1 e registrar a ação; não reabrir o bootstrap nem apagar a tabela de usuários.
+
+A opção **Excluir usuário** exige confirmação no painel do Master. Encerra imediatamente o acesso e retira a conta da lista, mantendo sua identidade no banco para preservar pedidos, autoria e auditoria. O login excluído permanece reservado; não pode ser recriado nem reativado pelo painel. Exclusão, desativação e mudança de perfil não podem retirar o próprio acesso Master ou eliminar o último Master, inclusive sob concorrência. Não apaga dados de compras.
 
 ## Validação
 
-- `node scripts/local-auth-test.mjs`: D1 isolado, inicialização assinada/idempotente, hashes, sessões, troca obrigatória, redefinição, concorrência, limites, origem e projeções por perfil.
+- `node scripts/finance-profile-test.mjs`: papel, login, navegação, leitura de anexos privados e bloqueios em D1/R2 isolados.
+- `node scripts/finance-profile-http-test.mjs`: consulta real da API local e negação de gravações.
+
+- `node scripts/local-auth-test.mjs`: D1 isolado, inicialização assinada/idempotente, hashes, sessões, primeiro acesso direto, troca opcional, redefinição, exclusão com histórico preservado, concorrência, limites, origem e projeções por perfil.
 - `node scripts/local-access-smoke.mjs`: sessões locais reais, bloqueio de identidade ChatGPT forjada, separação de setores e ações da Diretoria Geral.
 - `node scripts/smoke-test.mjs`: fluxo de compras com login local.
 - TypeScript, build e revisão no navegador dos três perfis e da tela móvel.

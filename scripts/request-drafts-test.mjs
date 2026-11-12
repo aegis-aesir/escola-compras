@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {localBase,localTestSession,testUsers} from './local-test-session.mjs';
+import {budgetFixture} from './budget-fixture.mjs';
+const cookie=await localTestSession(),other=await localTestSession(testUsers[1]),general=await localTestSession(testUsers[2]);
+async function call(path,body,session=cookie){const r=await fetch(localBase+path,{method:body?'POST':'GET',headers:{Cookie:session,Origin:localBase,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()}}
+const id=randomUUID(),values={title:'TESTE LOCAL rascunho incompleto',department:'Administrativo',neededBy:'',reason:'',kind:'monthly',fields:{},items:[{name:'',quantity:1,unit:'un.',spec:''}],references:[],subscriptionPrices:{}};
+assert.equal((await call('/api/drafts',{id,version:0,values},general)).status,403);
+assert.equal((await call('/api/drafts',{id,version:0,values})).status,200);
+assert.equal((await call('/api/drafts')).data.drafts.find(d=>d.id===id).values.reason,'');
+assert.equal((await call('/api/drafts',null,other)).data.drafts.some(d=>d.id===id),false);
+assert.equal((await call('/api/drafts',{id,version:1,values},other)).status,409);
+assert.equal((await call('/api/drafts',{id,version:0,values})).status,409);
+assert.equal((await call('/api/data')).data.requests.some(d=>d.id===id),false);
+const fixture={...budgetFixture('monthly'),department:'Administrativo',neededBy:''};
+assert.equal((await call('/api/data',{action:'request',draftId:id,draftVersion:1,data:{...fixture,items:fixture.items.map(i=>({...i,quantity:1.5}))}})).status,400);
+assert.equal((await call('/api/data',{action:'request',draftId:id,draftVersion:1,data:fixture},other)).status,404);
+const submitted=await call('/api/data',{action:'request',draftId:id,draftVersion:1,data:fixture});assert.equal(submitted.status,200,JSON.stringify(submitted.data));assert.equal(submitted.data.id,id);
+assert.equal((await call('/api/drafts')).data.drafts.some(d=>d.id===id),false);
+assert.equal((await call('/api/drafts',{id,version:1,values})).status,409);
+const repeated=await call('/api/data',{action:'request',draftId:id,draftVersion:1,data:fixture});assert.equal(repeated.data.id,id);
+const request=(await call('/api/data')).data.requests.find(d=>d.id===id);assert.equal(request.neededBy,'');assert.equal(request.status,'pending');assert.equal(request.items[0].quantity,fixture.items[0].quantity);
+console.log('PASS: rascunho incompleto e privado, permissões, conflito de versões, fora das filas, envio validado com data vazia, quantidades inteiras e repetição sem duplicar.');

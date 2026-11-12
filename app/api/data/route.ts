@@ -1,17 +1,18 @@
 import { env } from 'cloudflare:workers';
 import { currentLocalUser } from '../../local-session';
+import {parseBudgetForm,budgetMonth} from '../../budget';
+import {budgetRecordsAction,readBudgetRecords,closedBudgetMonth} from '../../../lib/budget-records';
 import { listLocalUsers } from '../../../lib/local-auth';
 import { visibleRequests, canCreateRequest } from '../../access';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
-import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier } from '../../../lib/integrations';
+import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
 async function context(){
   const user=await currentLocalUser(); if(!user)throw new AppError('Entre com seu usuário e senha.',401);
-  if(user.mustChangePassword)throw new AppError('Altere sua senha temporária antes de continuar.',403);
   const db=env.DB!;
   const school=await db.prepare('SELECT * FROM school WHERE id=1').first<{owner:string;data:string}>();
   if(!school)throw new AppError('A escola ainda não foi inicializada.',503);
@@ -20,15 +21,26 @@ async function context(){
   const me={id:user.id,name:user.name,username:user.username,email:'',role:user.role,department:user.department};
   return {db,all,me,settings:JSON.parse(school!.data) as Settings};
 }
-function fail(e:unknown){if(e instanceof z.ZodError)return Response.json({error:e.issues[0]?.message||'Confira os campos.'},{status:400}); if(e instanceof AppError || e instanceof FlowError)return Response.json({error:e.message},{status:e.status}); console.error('Data operation failed',e instanceof Error?e.message:'unknown');return Response.json({error:'Não foi possível salvar. Tente novamente.'},{status:500});}
-export async function GET(){try{
+function fail(e:unknown){if(e instanceof z.ZodError)return Response.json({error:e.issues[0]?.message||'Confira os campos.'},{status:400}); if(e instanceof Error&&'status'in e&&e.status===400)return Response.json({error:e.message},{status:400}); if(e instanceof AppError || e instanceof FlowError)return Response.json({error:e.message},{status:e.status}); console.error('Data operation failed',e instanceof Error?e.message:'unknown');return Response.json({error:'Não foi possível salvar. Tente novamente.'},{status:500});}
+export async function GET(req:Request){try{
   let {db,all,me,settings}=await context();
+  const historyFor=new URL(req.url).searchParams.get('historyFor');
+  if(historyFor){
+    const historyRequest=all.find(r=>r.kind==='request'&&r.id===historyFor) as Purchase|undefined;
+    if(!historyRequest)throw new AppError('Solicitação não encontrada.',404);
+    const full=['admin','administrativo','financeiro'].includes(me.role);
+    if(!full&&!visibleRequests([historyRequest],me).some(r=>r.id===historyFor))throw new AppError('Seu perfil não permite consultar este histórico.',403);
+    const history=full
+      ?await db.prepare("SELECT * FROM audit WHERE entity=? OR entity IN (SELECT id FROM records WHERE kind='budget_invoice' AND json_extract(data,'$.requestId')=?) ORDER BY at DESC,id DESC").bind(historyFor,historyFor).all()
+      :await db.prepare("SELECT * FROM audit WHERE entity=? AND action NOT LIKE '% · internal' ORDER BY at DESC,id DESC").bind(historyFor).all();
+    return Response.json({activity:history.results},{headers:{'Cache-Control':'no-store'}});
+  }
   if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
   const requests=visibleRequests(all.filter(r=>r.kind==='request'),me);
-  const ids=new Set(requests.map(r=>r.id));
+  const budgetRecords=['admin','administrativo','financeiro'].includes(me.role)?await readBudgetRecords(db):undefined;
   const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
   const management=['admin','administrativo'].includes(me.role);
-  return Response.json({requests,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:[]},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:me.role==='financeiro'?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return fail(e)}}
 export async function POST(req:Request){try{
   if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new AppError('Origem inválida.',403);
@@ -36,6 +48,13 @@ export async function POST(req:Request){try{
   const raw=await req.text();if(raw.length>100000)throw new AppError('Solicitação muito grande.');
   let b:any;try{b=JSON.parse(raw)}catch{throw new AppError('Conteúdo inválido.')}
   const {db,all,me,settings}=await context();const now=new Date().toISOString();
+  if(me.role==='financeiro')throw new AppError('O perfil Financeiro permite somente consulta e acompanhamento.',403);
+  const budgetRecords=await readBudgetRecords(db);
+  if(['budget_invoice','budget_closing','budget_reopen'].includes(b.action))return Response.json({ok:true,...await budgetRecordsAction(db,b,me,all.filter(r=>r.kind==='request'),settings,now)});
+  const target=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;
+  const archiveAction=['archive_request','restore_request'].includes(b.action);
+  if(target?.archived&&!archiveAction)throw new AppError('Solicitação arquivada. O Master deve restaurá-la antes de alterar.',409);
+  if(target&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(target)))throw new AppError('Reabra o fechamento mensal com justificativa antes de alterar o pedido.');
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
   if(['research','prepare_openclaw','retry_integration','review_message','supplier_categories','register_discovered_supplier'].includes(b.action)){
     permit(['admin','administrativo']);
@@ -47,7 +66,7 @@ export async function POST(req:Request){try{
       if(!r)throw new AppError('Solicitação não encontrada.',404);
       if(r.version!==b.version)throw new AppError('Solicitação atualizada. Recarregue.',409);
       if(b.action==='supplier_categories')await setSupplierCategories(db,r,b.categories,me.name,now);
-      else if(b.action==='research')await enqueueSearch(db,r,me.name,now);
+      else if(b.action==='research'){if(r.status==='pending')await startEstimateSearch(db,r,me.name,now);else await enqueueSearch(db,r,me.name,now)}
       else {const s=all.find(s=>s.id===b.supplierId&&s.kind==='supplier');if(!s)throw new AppError('Fornecedor não encontrado.');await enqueueQuotation(db,r,s,me.name,now,env)}
     }
     return Response.json({ok:true});
@@ -55,9 +74,31 @@ export async function POST(req:Request){try{
   let id:string=crypto.randomUUID(),kind='',data:any,action='',old:any;
   if(b.action==='request'){
     if(!canCreateRequest(me.role))throw new AppError('Seu perfil permite apenas aprovar ou recusar pedidos.',403);
-    const input=requestSchema.parse(b.data);if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
+    if(b.draftId){
+      const draft=all.find(r=>r.id===b.draftId);
+      if(!draft||draft.authorId!==me.id)throw new AppError('Rascunho não encontrado.',404);
+      if(draft.kind==='request')return Response.json({ok:true,id:draft.id});
+      if(draft.kind!=='request_draft'||draft.version!==b.draftVersion)throw new AppError('Rascunho atualizado em outra aba. Reabra para conferir.',409);
+      old=draft;id=draft.id;
+    }
+    const input=requestSchema.parse(b.data);const form=parseBudgetForm(b.data?.form,input.items,{at:now});if(closedBudgetMonth(budgetRecords,String(form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de incluir solicitações.');if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
     if(me.role==='solicitante'&&input.department!==me.department)throw new AppError('Você só pode solicitar para seu setor.',403);
-    kind='request';data={...input,code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'estimating',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada';
+    kind='request';data={...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'pending',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada; aguardando a Diretoria Administrativa iniciar a estimativa';
+  }else if(b.action==='resubmit_request'){
+    old=target;if(!old)throw new AppError('Solicitação não encontrada.',404);
+    if(!canCreateRequest(me.role)||(me.role==='solicitante'&&old.authorId!==me.id))throw new AppError('Seu perfil não permite complementar este pedido.',403);
+    if(old.status!=='correction'||old.generalApproval)throw new AppError('Aguarde a devolução para complementar.');
+    if(b.version!==old.version)throw new AppError('Solicitação atualizada. Recarregue.',409);
+    const input=requestSchema.parse(b.data);if(!settings.departments.includes(input.department)||(me.role==='solicitante'&&input.department!==me.department))throw new AppError('Setor inválido.',403);
+    const form=parseBudgetForm({...b.data.form,fields:{...b.data.form?.fields,referenceMonth:old.form?.fields.referenceMonth||b.data.form?.fields.referenceMonth,situation:'Complementação',originalRequestId:old.code}},input.items,{at:now,previous:old.form,createdAt:old.createdAt,requestCode:old.code});
+    if(!form.fields.correctionResponse)throw new AppError('Responda às pendências da complementação.');
+    if(closedBudgetMonth(budgetRecords,String(old.management?.referenceMonth||form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
+    id=old.id;kind='request';data={...old,...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},status:'pending',updatedAt:now,estimateRevision:now,management:{...old.management},correctionHistory:[...(old.correctionHistory||[]),{at:now,actor:me.name,reason:String(form.fields.correctionResponse),previous:{form:old.form,items:old.items,estimate:old.estimate,adminReview:old.adminReview,management:old.management,title:old.title,reason:old.reason,neededBy:old.neededBy}}]};
+    const sameQuantities=old.items.length===input.items.length&&old.items.every((item:Purchase['items'][number],index:number)=>item.quantity===input.items[index]?.quantity);
+    for(const key of ['additionalDataStatus','reviewNotes','complementDeadline','reviewOwner','reviewDate'])delete data.management[key];
+    if(!sameQuantities)for(const key of ['quantityAssessment',...Object.keys(data.management).filter(key=>/^recommendedQuantity_\d+$/.test(key))])delete data.management[key];
+    if(!Object.keys(data.management).length)delete data.management;
+    delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.returnForCorrection;delete data.needDecision;delete data.deferred;action='Solicitação complementada pelo setor; aguardando a Diretoria Administrativa iniciar nova estimativa';
   }else if(b.action==='supplier'){
     permit(['admin','administrativo']);kind='supplier';data=supplierSchema.parse(b.data);action='Fornecedor cadastrado';
   }else if(b.action==='member'){
@@ -72,7 +113,9 @@ export async function POST(req:Request){try{
     id=old.id;kind='request';data={...old,updatedAt:now};
     const result=transition(old,b,me,all.filter(r=>r.kind==='supplier'),settings,now);data=result.data;action=result.action;
   }
-  const write=old?db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?').bind(JSON.stringify(data),id,old.version):db.prepare('INSERT INTO records (id,kind,data,version) VALUES (?,?,?,1)').bind(id,kind,JSON.stringify(data));
+  if(kind==='request'&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(data)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
+  const openMonthGuard=" AND NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=? AND json_extract(closing.data,'$.status')='Concluído')";
+  const write=old?db.prepare('UPDATE records SET kind=?,data=?,version=version+1 WHERE id=? AND version=?'+(kind==='request'&&!archiveAction?openMonthGuard+openMonthGuard:'')).bind(kind,JSON.stringify(data),id,old.version,...(kind==='request'&&!archiveAction?[budgetMonth(old)||'',budgetMonth(data)||'']:[])):db.prepare('INSERT INTO records (id,kind,data,version) SELECT ?,?,?,1'+(kind==='request'?' WHERE NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind=\'budget_closing\' AND json_extract(closing.data,\'$.month\')=? AND json_extract(closing.data,\'$.status\')=\'Concluído\')':'')).bind(id,kind,JSON.stringify(data),...(kind==='request'?[budgetMonth(data)||'']:[]));
   const log=db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),id,me.name,action,now);
   const result=await db.batch([write,log]);if(result[0].meta.changes!==1)throw new AppError('Outra pessoa atualizou este registro. Recarregue a página.',409);
   return Response.json({ok:true,id});

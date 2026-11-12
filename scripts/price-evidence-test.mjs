@@ -9,11 +9,11 @@ assert.equal(extractReference(item,{...page,analysis})?.unitPrice,129.9);
 for(const changed of [{reason:'a'.repeat(2001)},{productName:'a'.repeat(301)},{priceAmount:13},{currency:'USD'},{priceType:'installment'},{sourceUrl:'https://evil.example/'},{productQuote:'Produto inventado'},{packageQuantity:0},{unit:'caixa'},{itemMatches:false},{unitMatches:false},{status:'needs_review'}])assert.equal(extractReference(item,{...page,analysis:{...analysis,...changed}}),null);
 let agentParams;
 const answer=await analyzePages({id:'test',leaseToken:'lease',item},[page],async(_bin,args)=>{agentParams=JSON.parse(args[args.indexOf('--params')+1]);return {stdout:JSON.stringify({status:'ok',result:{payloads:[{text:JSON.stringify(analysis)}]}})};});
-assert.equal(answer.priceAmount,129.9);assert.equal(agentParams.agentId,'operacional');assert.equal(agentParams.disableMessageTool,true);assert.equal(agentParams.deliver,false);assert.equal(agentParams.modelRun,undefined);assert.equal(agentParams.promptMode,'minimal');assert.equal(typeof agentParams.extraSystemPrompt,'string');
+assert.equal(answer.priceAmount,129.9);assert.equal(agentParams.agentId,'coordinator');assert.equal(agentParams.disableMessageTool,true);assert.equal(agentParams.deliver,false);assert.equal(agentParams.modelRun,undefined);assert.equal(agentParams.promptMode,'minimal');assert.equal(typeof agentParams.extraSystemPrompt,'string');
 const calls=[];
 const result=await executeJob({gateway:'http://127.0.0.1:18789',gatewayToken:'test',canSend:false},{id:'test',leaseToken:'lease',type:'estimate_search',query:'teste',item},async(_url,options)=>{
  const b=JSON.parse(options.body);calls.push(b.tool);
  return Response.json({ok:true,result:{details:b.tool==='web_search'?{results:[{title:page.title,url:page.url,description:'Resumo incorreto R$ 1,00'}]}:page}});
 },async()=>analysis);
 assert.deepEqual(calls,['web_search','web_fetch']);assert.equal(result.priceEvidence.analysis.priceAmount,129.9);
-console.log('Operational extraction: source quotes, units, value, structured agent call and no delivery passed.');
+console.log('Coordinator extraction: source quotes, units, value, structured agent call and no delivery passed.');

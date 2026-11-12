@@ -3,13 +3,13 @@ import { z } from 'zod';
 import { sectors, type Member, type Settings } from '../app/model';
 import { validSignature } from './integration-endpoint';
 
-export type LocalUser={id:string;version:number;username:string;name:string;role:Member['role'];department:string;active:boolean;mustChangePassword:boolean;passwordHash:string;createdAt:string};
+export type LocalUser={id:string;version:number;username:string;name:string;role:Member['role'];department:string;active:boolean;mustChangePassword:boolean;passwordHash:string;createdAt:string;deletedAt?:string};
 type AuthEnv={DB?:D1Database;INTEGRATION_SECRET?:string};
 export class AuthError extends Error {constructor(message:string,public status=400){super(message)}}
 const lifetime=8*60*60*1000;
-const passwordSchema=z.string().min(12,'Use pelo menos 12 caracteres.').max(128,'Use no máximo 128 caracteres.');
+const passwordSchema=z.string().min(8,'Use pelo menos 8 caracteres.').max(128,'Use no máximo 128 caracteres.');
 const usernameSchema=z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,39}$/,'Use de 3 a 40 letras, números, ponto, hífen ou sublinhado.');
-const userInput=z.object({username:usernameSchema,name:z.string().trim().min(2).max(100),role:z.enum(['admin','administrativo','geral','solicitante']),department:z.string().trim().min(2).max(80)});
+const userInput=z.object({username:usernameSchema,name:z.string().trim().min(2).max(100),role:z.enum(['admin','administrativo','geral','solicitante','financeiro']),department:z.string().trim().min(2).max(80)});
 const sha=(s:string)=>createHash('sha256').update(s).digest('hex');
 const derive=(password:string,salt:string)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,32,{N:16384,r:8,p:5,maxmem:32*1024*1024},(error,key)=>error?reject(error):resolve(key)));
 export async function hashPassword(password:string) {
@@ -31,11 +31,19 @@ function log(db:D1Database,id:string,actor:string,action:string,now:string) {
   return db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),id,actor,action,now);
 }
 export function publicUser(u:LocalUser):Member {
-  return {id:u.id,version:u.version,username:u.username,email:'',name:u.name,role:u.role,department:u.department,active:u.active,mustChangePassword:u.mustChangePassword};
+  return {id:u.id,version:u.version,username:u.username,email:'',name:u.name,role:u.role,department:u.department,active:u.active,mustChangePassword:false};
 }
 export async function listLocalUsers(db:D1Database) {
-  const rows=await db.prepare("SELECT id,data,version FROM records WHERE kind='local_user' ORDER BY id").all<{id:string;data:string;version:number}>();
+  const rows=await db.prepare("SELECT id,data,version FROM records WHERE kind='local_user' AND json_extract(data,'$.deletedAt') IS NULL ORDER BY id").all<{id:string;data:string;version:number}>();
   return rows.results.map(r=>publicUser({...JSON.parse(r.data),id:r.id,version:r.version}));
+}
+export type LoginUserOption={username:string;name:string};
+export async function listLoginUsers(db:D1Database):Promise<LoginUserOption[]> {
+  const rows=await db.prepare(`SELECT json_extract(data,'$.username') AS username,json_extract(data,'$.name') AS name
+    FROM records
+    WHERE kind='local_user' AND json_extract(data,'$.active')=1 AND json_extract(data,'$.deletedAt') IS NULL
+    ORDER BY lower(json_extract(data,'$.name')),lower(json_extract(data,'$.username'))`).all<LoginUserOption>();
+  return rows.results.map(({username,name})=>({username,name}));
 }
 function cookieToken(cookie:string,allowDev:boolean) {
   const fields=cookie.split(';').map(p=>p.trim());
@@ -48,7 +56,8 @@ export async function readSession(db:D1Database,cookie:string,allowDev=false):Pr
   const session=await readRecord<{userId:string;userVersion:number;expiresAt:number}>(db,'session:'+sha(token),'local_session');
   if(!session||session.expiresAt<=Date.now())return null;
   const user=await readRecord<LocalUser>(db,session.userId,'local_user');
-  return user?.active&&session.userVersion===user.version?user:null;
+  // The first-login requirement was retired; preserve stored credentials and existing sessions.
+  return user?.active&&!user.deletedAt&&session.userVersion===user.version?{...user,mustChangePassword:false}:null;
 }
 function cookieHeader(req:Request,token:string,maxAge=28800) {
   const url=new URL(req.url),local=url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname);
@@ -91,7 +100,7 @@ async function bootstrap(db:D1Database,raw:string,req:Request,env:AuthEnv,now:st
   const settings:Settings=school?JSON.parse(school.data):{name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',departments:sectors,minQuotes:3};
   if(b.users.some(u=>!settings.departments.includes(u.department)))throw new AuthError('Setor não cadastrado.');
   const users:LocalUser[]=[];
-  for(const input of b.users){const {password,...fields}=input;users.push({...fields,id:'user:'+input.username,version:1,active:true,mustChangePassword:true,passwordHash:await hashPassword(password),createdAt:now})}
+  for(const input of b.users){const {password,...fields}=input;users.push({...fields,id:'user:'+input.username,version:1,active:true,mustChangePassword:false,passwordHash:await hashPassword(password),createdAt:now})}
   const statements=[db.prepare("INSERT OR IGNORE INTO records(id,kind,data,version) SELECT 'auth:bootstrap','auth_state',?,1 WHERE NOT EXISTS(SELECT 1 FROM records WHERE kind='local_user')").bind(JSON.stringify({batchId:b.batchId,batchHash,createdAt:now}))];
   statements.push(db.prepare('INSERT OR IGNORE INTO school(id,owner,data) SELECT 1,?,? WHERE EXISTS(SELECT 1 FROM records WHERE id=\'auth:bootstrap\' AND json_extract(data,\'$.batchHash\')=?)').bind(users.find(u=>u.role==='admin')!.id,JSON.stringify(settings),batchHash));
   for(const u of users){statements.push(db.prepare("INSERT OR IGNORE INTO records(id,kind,data,version) SELECT ?,'local_user',?,1 WHERE EXISTS(SELECT 1 FROM records WHERE id='auth:bootstrap' AND json_extract(data,'$.batchHash')=?)").bind(u.id,JSON.stringify(u),batchHash),log(db,u.id,'Inicialização autorizada','Usuário local criado: '+u.username+' · '+u.role,now))}
@@ -119,9 +128,9 @@ export async function authEndpoint(req:Request,env:AuthEnv) {
       const counter=await rateLimit(db,'login:'+username,5);
       const user=await readRecord<LocalUser>(db,'user:'+username,'local_user');
       const verified=await verifyPassword(password,user?.passwordHash);
-      if(!verified||!user?.active)throw new AuthError('Usuário ou senha inválidos.',401);
+      if(!verified||!user?.active||user.deletedAt)throw new AuthError('Usuário ou senha inválidos.',401);
       await db.prepare('DELETE FROM records WHERE id=?').bind(counter).run();
-      return reply({ok:true,mustChangePassword:user.mustChangePassword},200,await sessionCookie(db,user,req));
+      return reply({ok:true,mustChangePassword:false},200,await sessionCookie(db,user,req));
     }
     const user=await readSession(db,req.headers.get('cookie')||'',local);
     if(!user)throw new AuthError('Entre com seu usuário e senha.',401);
@@ -134,26 +143,36 @@ export async function authEndpoint(req:Request,env:AuthEnv) {
       const input=z.object({currentPassword:z.string().min(1).max(128),newPassword:passwordSchema}).parse(b);
       await rateLimit(db,'password:'+user.id,5);
       if(!await verifyPassword(input.currentPassword,user.passwordHash))throw new AuthError('Senha atual inválida.',401);
-      if(input.newPassword===input.currentPassword)throw new AuthError('Escolha uma senha diferente da temporária/atual.');
+      if(input.newPassword===input.currentPassword)throw new AuthError('Escolha uma senha diferente da atual.');
       const next={...user,passwordHash:await hashPassword(input.newPassword),mustChangePassword:false};
       const result=await db.batch([db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?').bind(JSON.stringify(next),user.id,user.version),log(db,user.id,user.name,'Senha local alterada; sessões anteriores revogadas',now)]);
       if(result[0].meta.changes!==1)throw new AuthError('Usuário atualizado. Entre novamente.',409);
       await db.prepare('DELETE FROM records WHERE id=?').bind('auth-rate:'+sha('password:'+user.id)).run();
       return reply({ok:true},200,await sessionCookie(db,{...next,version:user.version+1},req));
     }
-    if(user.mustChangePassword||user.role!=='admin')throw new AuthError('Seu perfil não permite administrar usuários.',403);
+    if(user.role!=='admin')throw new AuthError('Seu perfil não permite administrar usuários.',403);
     const settings=JSON.parse((await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>())!.data) as Settings;
     if(path==='users') {
       const input=userInput.parse(b);if(!settings.departments.includes(input.department))throw new AuthError('Setor não cadastrado.');
-      const password=randomBytes(18).toString('base64url');
-      const next:LocalUser={...input,id:'user:'+input.username,version:1,active:true,mustChangePassword:true,passwordHash:await hashPassword(password),createdAt:now};
+      const password=randomBytes(6).toString('base64url');
+      const next:LocalUser={...input,id:'user:'+input.username,version:1,active:true,mustChangePassword:false,passwordHash:await hashPassword(password),createdAt:now};
       const result=await db.batch([db.prepare("INSERT OR IGNORE INTO records(id,kind,data,version) SELECT ?,'local_user',?,1 WHERE EXISTS(SELECT 1 FROM records WHERE id=? AND version=?)").bind(next.id,JSON.stringify(next),user.id,user.version),log(db,next.id,user.name,'Usuário local criado: '+next.username+' · '+next.role,now)]);
       if(result[0].meta.changes!==1)throw new AuthError('Esse login já está cadastrado.',409);
       return reply({ok:true,username:next.username,temporaryPassword:password});
     }
     const targetInput=z.object({id:z.string().min(1).max(100),version:z.number().int().positive()}).parse(b);
     const target=await readRecord<LocalUser>(db,targetInput.id,'local_user');
-    if(!target||target.version!==targetInput.version)throw new AuthError('Usuário atualizado ou não encontrado. Recarregue.',409);
+    if(!target||target.deletedAt||target.version!==targetInput.version)throw new AuthError('Usuário atualizado ou não encontrado. Recarregue.',409);
+    if(path==='users/delete') {
+      if(user.id===target.id)throw new AuthError('Você não pode excluir seu próprio acesso Master.');
+      const protectsMaster=target.role==='admin'&&target.active;
+      // Keep the identity for historical authorship and reserve the login against reassignment.
+      const result=await db.batch([db.prepare(`UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?
+        AND EXISTS(SELECT 1 FROM records AS actor WHERE actor.id=? AND actor.version=?)
+        ${protectsMaster?"AND (SELECT COUNT(*) FROM records WHERE kind='local_user' AND json_extract(data,'$.role')='admin' AND json_extract(data,'$.active')=1)>1":''}`).bind(JSON.stringify({...target,active:false,deletedAt:now}),target.id,target.version,user.id,user.version),log(db,target.id,user.name,'Usuário local excluído; histórico preservado: '+target.username,now)]);
+      if(result[0].meta.changes!==1)throw new AuthError('Usuário atualizado por outro processo ou último Master protegido. Recarregue.',409);
+      return reply({ok:true});
+    }
     if(path==='users/update') {
       const input=userInput.omit({username:true}).extend({active:z.boolean()}).parse(b);
       if(!settings.departments.includes(input.department))throw new AuthError('Setor não cadastrado.');
@@ -167,8 +186,8 @@ export async function authEndpoint(req:Request,env:AuthEnv) {
     }
     if(path==='users/reset') {
       if(target.id===user.id)throw new AuthError('Para sua própria senha, use Alterar senha.');
-      const password=randomBytes(18).toString('base64url');
-      const result=await db.batch([db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=? AND EXISTS(SELECT 1 FROM records AS actor WHERE actor.id=? AND actor.version=?)').bind(JSON.stringify({...target,passwordHash:await hashPassword(password),mustChangePassword:true}),target.id,target.version,user.id,user.version),log(db,target.id,user.name,'Senha temporária emitida; sessões revogadas: '+target.username,now)]);
+      const password=randomBytes(6).toString('base64url');
+      const result=await db.batch([db.prepare('UPDATE records SET data=?,version=version+1 WHERE id=? AND version=? AND EXISTS(SELECT 1 FROM records AS actor WHERE actor.id=? AND actor.version=?)').bind(JSON.stringify({...target,passwordHash:await hashPassword(password),mustChangePassword:false}),target.id,target.version,user.id,user.version),log(db,target.id,user.name,'Nova senha emitida; sessões revogadas: '+target.username,now)]);
       if(result[0].meta.changes!==1)throw new AuthError('Usuário atualizado por outro processo.',409);
       await db.prepare('DELETE FROM records WHERE id=?').bind('auth-rate:'+sha('login:'+target.username)).run();
       return reply({ok:true,username:target.username,temporaryPassword:password});

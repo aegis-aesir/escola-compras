@@ -14,7 +14,7 @@ try {
     $env:ESTRELAS_SITES_SERVICE_TOKEN = $credentials.serviceToken
     $env:OPENCLAW_GATEWAY_TOKEN = $gatewayConfig.gateway.auth.token
     $env:OPENCLAW_GATEWAY_URL = 'http://127.0.0.1:18789'
-    $env:ESTRELAS_SITE_URL = 'https://compras-escola-aegis.col-gio-estr-8349.chatgpt.site'
+    $env:ESTRELAS_SITE_URL = 'https://ceea.colegioestrelas.com'
     $env:ESTRELAS_STATE_DIR = Join-Path $bridgeHome 'state'
     $env:ESTRELAS_INBOX_DIR = Join-Path $bridgeHome 'inbox'
     $env:ESTRELAS_ENABLE_SEND = 'false'

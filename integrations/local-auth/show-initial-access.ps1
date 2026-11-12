@@ -14,7 +14,7 @@ try {
     $form.MaximizeBox=$false
     $form.FormBorderStyle='FixedDialog'
     $label=New-Object Windows.Forms.Label
-    $label.Text="Senhas temporárias — troque no primeiro login.`nO arquivo permanece criptografado neste computador."
+    $label.Text="Senhas de acesso — alteração opcional.`nO arquivo permanece criptografado neste computador."
     $label.SetBounds(20,15,560,45)
     $form.Controls.Add($label)
     $y=75

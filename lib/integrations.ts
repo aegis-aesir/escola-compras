@@ -30,15 +30,17 @@ async function insert(db:D1Database,id:string,kind:string,data:object,entity:str
   return result[0].meta.changes===1;
 }
 async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[]) {
-  const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('');
-  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
+  const openMonth=" AND NOT EXISTS(SELECT 1 FROM records AS target JOIN records AS closing ON closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(json_extract(target.data,'$.management.referenceMonth'),json_extract(target.data,'$.form.fields.referenceMonth')) WHERE target.id=? AND target.kind='request' AND json_extract(closing.data,'$.status')='Concluído')";
+  const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+openMonth+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('');
+  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,old.id,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
 export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'>,suppliers:Supplier[]) {
-  if(j.type==='estimate_search')return ['estimating','pending'].includes(r.status);
+function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>,suppliers:Supplier[]) {
+  if(r.archived)return false;
+  if(j.type==='estimate_search')return r.status==='estimating'&&(j.estimateRevision||'')===(r.estimateRevision||'');
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   const s=suppliers.find(s=>s.id===j.supplierId);
@@ -47,22 +49,29 @@ function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category
 export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   if(['quoting','national'].includes(r.status))return enqueueSupplierSearch(db,r,actor,now);
   const type=r.status==='national'?'national_search':'estimate_search';
-  if(!eligible(r,{type},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
+  if(!eligible(r,{type,estimateRevision:r.estimateRevision},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
   let created=0;
   for(const [itemIndex,item] of r.items.entries()) {
     const query=`${item.name} ${item.spec} ${item.unit} ${type==='estimate_search'?'preço comprar Brasil':'fornecedor entrega Manaus AM Brasil'}`.slice(0,380);
-    const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item]));
-    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+    const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
+    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
     const existing=await row<IntegrationJob>(db,id,jobKind);
     if(existing?.state==='review'&&existing.item&&!existing.analysisReason&&!existing.priceEvidence) {
-      if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise operacional reenfileirada',now))created++;
+      if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise estruturada reenfileirada',now))created++;
     }else if(await insert(db,id,jobKind,data,r.id,actor,`Pesquisa enfileirada: ${item.name}`,now))created++;
   }
   return created;
 }
+
+export async function startEstimateSearch(db:D1Database,r:Purchase,actor:string,now:string) {
+  if(r.archived||r.status!=='pending'||r.estimate)throw new FlowError('A estimativa só pode ser iniciada pela Diretoria Administrativa antes da pesquisa.',409);
+  const next:Purchase={...r,status:'estimating',updatedAt:now};
+  if(!await update(db,r,next,r.id,actor,'Diretoria administrativa iniciou a estimativa automática na internet',now))throw new FlowError('Solicitação atualizada. Recarregue.',409);
+  return enqueueSearch(db,{...next,version:r.version+1},actor,now);
+}
 export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   const type=r.status==='national'?'national_search':'local_supplier_search';
-  if(!r.generalApproval||r.status!==(type==='national_search'?'national':'quoting'))throw new FlowError('A busca de fornecedores exige aprovação e a etapa correspondente.');
+  if(r.archived||!r.generalApproval||r.status!==(type==='national_search'?'national':'quoting'))throw new FlowError('A busca de fornecedores exige aprovação e a etapa correspondente.');
   const scope=type==='local_supplier_search'?'local':'national';
   const suppliers=await rows<Supplier>(db,'supplier');
   let created=0;
@@ -79,6 +88,7 @@ export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:strin
   return created;
 }
 export async function setSupplierCategories(db:D1Database,r:Purchase,input:unknown,actor:string,now:string) {
+  if(r.archived)throw new FlowError('Solicitação arquivada.',409);
   if(!['estimating','pending','admin_review','general_review','quoting','national'].includes(r.status))throw new FlowError('A etapa não permite alterar categorias.');
   const categories=z.array(categorySchema).length(r.items.length).parse(input);
   const next={...r,items:r.items.map((item,i)=>({...item,category:categories[i]})),updatedAt:now};
@@ -149,7 +159,7 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
   for(const j of (await rows<IntegrationJob>(db,jobKind)).filter(j=>j.type==='whatsapp_quote'&&j.state==='done'&&j.sentAt&&j.providerMessageId)) {
     const r=await row<Purchase>(db,j.requestId,'request');
-    if(!r||r.status!=='quoting'||!r.generalApproval||r.localAttempts?.some(a=>a.integrationJobId===j.id))continue;
+    if(!r||r.archived||r.status!=='quoting'||!r.generalApproval||r.localAttempts?.some(a=>a.integrationJobId===j.id))continue;
     if(!suppliers.some(s=>s.id===j.supplierId&&(s.scope||'local')==='local'))continue;
     const result=transition(r,{action:'local_contact',supplierId:j.supplierId,reason:`OpenClaw confirmou envio. Mensagem: ${j.providerMessageId}`},{role:'administrativo',name:'OpenClaw'},suppliers,settings,j.sentAt!);
     result.data.localAttempts![result.data.localAttempts!.length-1].integrationJobId=j.id;
@@ -161,17 +171,19 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
 async function projectAutomaticEstimates(db:D1Database,now:string) {
   const jobs=await rows<IntegrationJob>(db,jobKind);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(!['estimating','pending'].includes(r.status)||r.estimate)continue;
+    // The evidence protocol has no verified billing-period field. Digital sources
+    // remain available for review; never multiply an ambiguous monthly price as a term total.
+    if(r.archived||r.status!=='estimating'||r.estimate||r.form?.kind==='digital')continue;
     const selected:IntegrationJob[]=[];
     for(const [i,item] of r.items.entries()) {
-      const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item]));
+      const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
       const j=jobs.find(j=>j.id===id&&j.state==='review'&&j.priceEvidence&&j.researchedAt);
       if(!j||!extractReference(item,j.priceEvidence!))break;
       selected.push(j);
     }
     if(!selected.length||selected.length!==r.items.length)continue;
     const references=selected.map((j,i)=>({unitPrice:extractReference(r.items[i],j.priceEvidence!)!.unitPrice,sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!))}));
-    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente operacional do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
+    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
     result.data.estimate!.method='automatic';
     result.data.estimate!.freightKnown=false;
     await update(db,r,result.data,r.id,'Sistema','Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
@@ -184,7 +196,7 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   await advanceDeadlines(db,now);
   await projectAutomaticEstimates(db,now);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(['estimating','pending'].includes(r.status)||(['quoting','national'].includes(r.status)&&r.generalApproval))await enqueueSearch(db,r,'Sistema',now);
+    if(!r.archived&&(r.status==='estimating'||(['quoting','national'].includes(r.status)&&r.generalApproval)))await enqueueSearch(db,r,'Sistema',now);
   }
   // Expired search leases are safe to retry. Message leases are not: the remote
   // gateway may have sent the message before the connection was interrupted.
@@ -200,6 +212,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.state==='queued'&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
     const r=await row<Purchase>(db,j.requestId,'request');
+    if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
     const internalMatch=j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
     if(!r||!eligible(r,j,suppliers)||internalMatch) {
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
