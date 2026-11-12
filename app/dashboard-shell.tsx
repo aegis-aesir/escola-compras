@@ -1,9 +1,8 @@
 'use client';
+/* Vinext currently requires native links/images in client shells to avoid loading a second React runtime. */
+/* eslint-disable @next/next/no-html-link-for-pages, @next/next/no-img-element, @next/next/no-location-assign-relative-destination */
 import {useEffect,useMemo,useState,type ReactNode} from 'react';
 import {Archive,ChevronLeft,ChevronRight,CircleCheck,ClipboardList,FileText,KeyRound,LayoutDashboard,LogOut,Menu,MessageCircle,PackageCheck,Scale,Search,Settings2,Store,X,type LucideIcon} from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import {useRouter} from 'next/navigation';
 import AppearanceControl from './appearance-control';
 import {formatManausDate,readSidebarPreference,sidebarPreferenceKey,type SidebarPreference} from './dashboard-shell-state';
 
@@ -34,7 +33,6 @@ type Props={
 };
 
 export default function DashboardShell({view,allowedViews,userName,roleLabel,pendingApprovals,onNavigate,children}:Props){
-  const router=useRouter();
   const [sidebar,setSidebar]=useState<SidebarPreference>('compact');
   const [mobileOpen,setMobileOpen]=useState(false);
   const allowed=useMemo(()=>new Set(allowedViews),[allowedViews]);
@@ -56,20 +54,20 @@ export default function DashboardShell({view,allowedViews,userName,roleLabel,pen
   }
   async function logout(){
     await fetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-    router.replace('/login');router.refresh();
+    window.location.assign('/login');
   }
 
   return <div className="app-shell" data-sidebar={sidebar} data-mobile-nav={mobileOpen?'open':'closed'}>
     <button type="button" className="nav-backdrop" aria-label="Fechar navegação" onClick={()=>setMobileOpen(false)}/>
     <aside className="sidebar" id="dashboard-navigation">
       <div className="sidebar-brand-row">
-        <Link className="brand" href="/" aria-label="Central de Compras do Colégio Estrelas">
-          <span className="brand-logo-frame"><Image src="/estrela-2026.png" alt="" width={42} height={42} priority/></span>
+        <a className="brand" href="/" aria-label="Central de Compras do Colégio Estrelas">
+          <span className="brand-logo-frame"><img src="/estrela-2026.png" alt=""/></span>
           <span className="brand-copy"><strong>Colégio Estrelas</strong><small>Central de Compras</small></span>
-        </Link>
+        </a>
         <button type="button" className="sidebar-close" aria-label="Fechar navegação" onClick={()=>setMobileOpen(false)}><X size={19}/></button>
       </div>
-      <button type="button" className="sidebar-toggle" aria-expanded={sidebar==='expanded'} aria-controls="dashboard-navigation" onClick={()=>changeSidebar(sidebar==='expanded'?'compact':'expanded')}>
+      <button type="button" className="sidebar-toggle" aria-label={sidebar==='expanded'?'Recolher menu':'Expandir menu'} aria-expanded={sidebar==='expanded'} aria-controls="dashboard-navigation" onClick={()=>changeSidebar(sidebar==='expanded'?'compact':'expanded')}>
         {sidebar==='expanded'?<ChevronLeft size={18}/>:<ChevronRight size={18}/>}<span>{sidebar==='expanded'?'Recolher menu':'Expandir menu'}</span>
       </button>
       <nav role="navigation" aria-label="Navegação principal">
@@ -85,7 +83,7 @@ export default function DashboardShell({view,allowedViews,userName,roleLabel,pen
       <header className="topbar">
         <div className="topbar-context">
           <button type="button" className="mobile-menu-button icon-button" aria-label="Abrir navegação" aria-expanded={mobileOpen} aria-controls="dashboard-navigation" onClick={()=>setMobileOpen(true)}><Menu size={20}/></button>
-          <span className="topbar-logo"><Image src="/estrela-2026.png" alt="" width={46} height={46} priority/></span>
+          <span className="topbar-logo"><img src="/estrela-2026.png" alt=""/></span>
           <div><strong>Olá, {firstName}</strong><small>{formatManausDate()} · {activeLabel}</small></div>
         </div>
         <div className="topbar-actions">

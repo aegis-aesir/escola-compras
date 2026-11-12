@@ -82,3 +82,13 @@ Botão Meus rascunhos somente na aba Solicitações. Visão geral mantém Nova s
 Avaliação unificada de quantidades (11/11/2026): substitui Quantidades adequadas e Possibilidade de reduzir/adiar por Avaliação das quantidades (Adequadas/Inadequadas/Podem ser reduzidas), com quantidade recomendada inteira por item. Branco mantém o solicitado; zero não recomenda o item. Redução não permite aumento; alteração exige recomendação diferente e preserva itens originais. DG recebe as recomendações como contexto, mantendo sua decisão de escopo. A completude das informações adicionais admite Suficientes, Complementação necessária ou Não necessárias; pendências impedem encaminhamento até complementação. Dados opcionais não se tornam globalmente obrigatórios. Campos anteriores preservados no armazenamento; reabertura exige nova avaliação, com a anterior no histórico.
 
 Para Complementação necessária, usar Pendências e esclarecimentos como único detalhamento obrigatório. Não reexibir `additionalDataNotes`; preservar apenas registros históricos que já o contenham.
+
+## Redesign global aprovado em 12/11/2026
+
+- Shell autenticado: `app/dashboard-shell.tsx`; preferência do menu: `estrelas-sidebar-v1`; lógica testável: `app/dashboard-shell-state.ts`.
+- Camada visual final: `app/redesign.css`, importada por último em `app/layout.tsx`. Ela reaproveita as variáveis de `appearance.css`, os três modos de tema e as 11 cores de destaque.
+- Breakpoints: até 900 px, menu lateral sobreposto; até 600 px, formulários, métricas e ações principais empilhados.
+- Marca oficial: `public/estrela-2026.png`, sem alterar formas, cores ou gradientes.
+- Testes: `node scripts/redesign-shell-test.mjs`, `node scripts/redesign-styles-test.mjs`, `node node_modules/typescript/bin/tsc --noEmit` e `npm.cmd run build`, além das suítes funcionais já listadas neste documento.
+- A mudança é exclusivamente visual. Não alterar permissões, APIs, fluxo de estimativa/aprovação, dados D1/R2, integração OpenClaw ou envio de WhatsApp para ajustar a apresentação.
+- A validação visual local cobriu desktop, celular de 390 px, menu compacto/expandido/sobreposto, tema claro/escuro e janela longa de solicitação. Nenhuma mensagem real foi enviada.
