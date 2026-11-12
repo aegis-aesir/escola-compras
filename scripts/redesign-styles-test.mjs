@@ -13,11 +13,14 @@ assert.equal([...accents.matchAll(/id:'([^']+)'/g)].length,11,'all eleven accent
 for(const token of ['--ui-radius','--ui-shadow','--ui-control-height','--ui-sidebar-compact','--ui-sidebar-expanded'])assert.ok(redesign.includes(token),`missing design token ${token}`);
 for(const selector of [':focus-visible','.button','.panel','input,textarea,select','.table-scroll','.badge','dialog','.alert'])assert.ok(redesign.includes(selector),`missing shared component rule ${selector}`);
 for(const selector of ['.page-heading','.metrics','.overview-grid','.filters','.supplier-grid','.integration-banner','.empty','.page-actions'])assert.ok(redesign.includes(selector),`missing primary screen rule ${selector}`);
+for(const selector of ['.budget-section','.budget-fields','.budget-item','.budget-details','.budget-file-list','.workflow-panel','.integration-status','.users-panel','.decision-box','.conference-actions','.form-end'])assert.ok(redesign.includes(selector),`missing domain form rule ${selector}`);
 assert.match(redesign,/@media\s*\(prefers-reduced-motion:\s*reduce\)/,'motion must respect the device accessibility preference');
 assert.match(redesign,/@media\s*\(max-width:\s*900px\)/,'tablet navigation breakpoint must exist');
 assert.match(redesign,/@media\s*\(max-width:\s*600px\)/,'mobile form breakpoint must exist');
 assert.match(redesign,/min-height:\s*var\(--ui-control-height\)/,'interactive controls must share the accessible minimum height');
 assert.match(redesign,/overflow-wrap:\s*anywhere/,'long business content must wrap safely');
 assert.match(redesign,/content-visibility:\s*auto/,'long card and table collections should defer off-screen rendering');
+assert.match(redesign,/\.budget-fields[^}]*grid-template-columns:\s*repeat\(2/,'budget fields need an identifiable desktop grid');
+assert.match(redesign,/@media\s*\(max-width:\s*600px\)[\s\S]*\.budget-fields[^}]*grid-template-columns:\s*1fr/,'budget fields must become one column on mobile');
 assert.match(appearance,/:root\[data-theme="dark"\]/,'dark theme must remain supported');
 console.log('PASS: global redesign tokens and shared component contracts are present.');
