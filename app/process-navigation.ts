@@ -1,6 +1,6 @@
 import type {Member,Purchase} from './model';
 
-export type ProcessView='archives'|'budget'|'overview'|'analysis'|'estimates'|'execution'|'requests'|'general_approval'|'quotes'|'suppliers'|'whatsapp'|'settings';
+export type ProcessView='archives'|'drafts'|'budget'|'overview'|'analysis'|'estimates'|'execution'|'requests'|'general_approval'|'quotes'|'suppliers'|'whatsapp'|'settings';
 export type PrimaryNavigationItem={id:ProcessView;label:string};
 export type ContextualNavigationItem={view:ProcessView;label:string};
 
@@ -16,7 +16,7 @@ const administrativeSteps:PrimaryNavigationItem[]=[
 ];
 
 const labels:Record<ProcessView,string>={
-  overview:'Dashboard',requests:'Solicitação',analysis:'Análise ADM',estimates:'Estimativa',general_approval:'Aprovação Diretoria',quotes:'Cotação',execution:'Execução',budget:'Resumo Mensal',suppliers:'Fornecedores',whatsapp:'Agente WhatsApp',archives:'Arquivadas',settings:'Configurações',
+  overview:'Dashboard',requests:'Solicitação',analysis:'Análise ADM',estimates:'Estimativa',general_approval:'Aprovação Diretoria',quotes:'Cotação',execution:'Execução',budget:'Resumo Mensal',suppliers:'Fornecedores',whatsapp:'Agente WhatsApp',archives:'Arquivadas',drafts:'Rascunhos dos setores',settings:'Configurações',
 };
 
 export function primaryNavigationForRole(role:Member['role']):PrimaryNavigationItem[]{
@@ -38,7 +38,7 @@ export function allowedViewsForRole(role:Member['role']):ProcessView[]{
   if(role==='geral')return ['overview','general_approval','budget'];
   if(role==='solicitante')return ['requests'];
   if(role==='financeiro')return ['budget','requests','execution'];
-  if(role==='admin')return ['overview','budget','requests','analysis','estimates','general_approval','quotes','execution','suppliers','whatsapp','archives','settings'];
+  if(role==='admin')return ['overview','budget','requests','analysis','estimates','general_approval','quotes','execution','suppliers','whatsapp','archives','drafts','settings'];
   return ['overview','budget','requests','analysis','estimates','general_approval','quotes','execution','suppliers','whatsapp'];
 }
 
@@ -49,12 +49,12 @@ export function processViewLabel(view:ProcessView,role:Member['role']):string{
 
 export function primaryParentView(view:ProcessView):ProcessView{
   if(view==='suppliers'||view==='whatsapp')return 'quotes';
-  if(view==='archives')return 'requests';
+  if(view==='archives'||view==='drafts')return 'requests';
   return view;
 }
 
 export function contextualActionsForView(view:ProcessView,role:Member['role']):ContextualNavigationItem[]{
-  if(view==='requests'&&role==='admin')return [{view:'archives',label:'Arquivadas'}];
+  if(view==='requests'&&role==='admin')return [{view:'archives',label:'Arquivadas'},{view:'drafts',label:'Rascunhos dos setores'}];
   if(view==='quotes'&&(role==='admin'||role==='administrativo'))return [
     {view:'suppliers',label:'Fornecedores'},
     {view:'whatsapp',label:'Agente WhatsApp'},

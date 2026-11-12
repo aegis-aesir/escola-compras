@@ -11,5 +11,5 @@ export const requestDraftSchema=z.object({
 });
 export type RequestDraftValues=z.infer<typeof requestDraftSchema>;
 export type DeferredDraftMetadata={status:'deferred';sourceRequestId:string;sourceCode:string;deferReason:string;availableMonth:string;deferredAt:string};
-export type RequestDraft={id:string;version:number;values:RequestDraftValues;updatedAt:string;status?:'draft'|'deferred';sourceRequestId?:string;sourceCode?:string;deferReason?:string;availableMonth?:string;deferredAt?:string};
+export type RequestDraft={id:string;version:number;values:RequestDraftValues;updatedAt:string;status?:'draft'|'deferred';sourceRequestId?:string;sourceCode?:string;deferReason?:string;availableMonth?:string;deferredAt?:string;archivedAt?:string;archivedBy?:string;authorName?:string;authorDepartment?:string};
 export type DeferredDraftRecord=DeferredDraftMetadata&{id:string;authorId:string;values:RequestDraftValues;updatedAt:string};

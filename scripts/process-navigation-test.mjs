@@ -33,8 +33,8 @@ assert.deepEqual(navigation.primaryNavigationForRole('financeiro').map(({id,labe
 ]);
 
 const adminAllowed=navigation.allowedViewsForRole('admin');
-for(const auxiliary of ['suppliers','whatsapp','archives','settings'])assert.ok(adminAllowed.includes(auxiliary),`Master mantém acesso auxiliar a ${auxiliary}`);
-assert.ok(!navigation.primaryNavigationForRole('admin').some(({id})=>['suppliers','whatsapp','archives','settings'].includes(id)),'funções auxiliares não são etapas principais');
+for(const auxiliary of ['suppliers','whatsapp','archives','drafts','settings'])assert.ok(adminAllowed.includes(auxiliary),`Master mantém acesso auxiliar a ${auxiliary}`);
+assert.ok(!navigation.primaryNavigationForRole('admin').some(({id})=>['suppliers','whatsapp','archives','drafts','settings'].includes(id)),'funções auxiliares não são etapas principais');
 assert.deepEqual(navigation.allowedViewsForRole('financeiro'),['budget','requests','execution'],'a fachada de permissões do Financeiro permanece compatível');
 assert.deepEqual(navigation.allowedViewsForRole('geral'),['overview','general_approval','budget'],'a Diretoria Geral acompanha o processo sem receber telas operacionais');
 
@@ -74,7 +74,7 @@ assert.equal(navigation.requestMatchesView({status:'execution',archived:null,gen
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'execution','admin'),false,'arquivadas não permanecem nas filas ativas');
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'archives','admin'),true,'arquivadas ficam na consulta auxiliar');
 
-assert.deepEqual(navigation.contextualActionsForView('requests','admin'),[{view:'archives',label:'Arquivadas'}],'Master abre arquivadas dentro de Solicitação');
+assert.deepEqual(navigation.contextualActionsForView('requests','admin'),[{view:'archives',label:'Arquivadas'},{view:'drafts',label:'Rascunhos dos setores'}],'Master abre arquivadas e rascunhos dentro de Solicitação');
 assert.deepEqual(navigation.contextualActionsForView('requests','administrativo'),[],'Diretoria Administrativa não recebe o controle exclusivo de arquivamento');
 assert.deepEqual(navigation.contextualActionsForView('quotes','admin'),[
   {view:'suppliers',label:'Fornecedores'},

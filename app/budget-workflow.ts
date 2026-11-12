@@ -109,7 +109,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   let indexes=choice==='approve'?old.items.map((_,i)=>i):z.array(z.number().int().nonnegative()).max(old.items.length).parse(b.itemIndexes||[]);
   if(['partial','provisional'].includes(choice)&&(!indexes.length||new Set(indexes).size!==indexes.length||indexes.some(i=>i>=old.items.length)))throw new FlowError('Selecione itens válidos, sem repetição, para o escopo da necessidade.');
   indexes=[...indexes].sort((a,b)=>a-b);
-  if(choice==='defer'&&!b.due)throw new FlowError('Informe o prazo pertinente ao adiamento.');
+  if(choice==='defer'&&!b.due)throw new FlowError('Informe a data prevista para reavaliar a solicitação.');
   const conditions=z.string().trim().max(2000).optional().parse(b.conditions),due=b.due?date.parse(b.due):undefined;
   data.needDecision={choice,itemIndexes:indexes,reason,conditions,due,actor:me.name,at:now};
   if(choice==='reject'){data.status='rejected';data.decision=reason;return {data,action:'Necessidade recusada pela diretoria geral: '+reason}}

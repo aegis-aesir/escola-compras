@@ -107,3 +107,12 @@ Para Complementação necessária, usar Pendências e esclarecimentos como únic
 - Fornecedores e Agente WhatsApp ficam dentro de Cotação; Arquivadas dentro de Solicitação; Configurações na área do usuário Master.
 - Implementação central: `app/process-navigation.ts`. Teste: `node scripts/process-navigation-test.mjs`.
 - A reorganização não cria estados, não migra dados e não altera aprovações, permissões, APIs ou a integração OpenClaw.
+
+## Ajustes de 12/11/2026 — decisão, versão e rascunhos
+
+- No detalhe do pedido, a decisão da Diretoria Geral fica depois de Estimativas e antes de Execução.
+- No adiamento, a data é a **Data prevista para reavaliar a solicitação**: acompanhamento interno, não data de compra, sem alterar automaticamente a competência.
+- A versão do sistema fica em `app/system-version.ts` e deve permanecer visível na área autenticada.
+- O setor arquiva/restaura somente seus próprios rascunhos. Arquivamento é reversível, mantém dados/anexos e bloqueia autosave/envio até restauração.
+- O Master consulta todos os rascunhos em **Solicitação → Rascunhos dos setores** e pode arquivar/restaurar, mas não editar rascunhos alheios.
+- O endpoint global é exclusivo do Master (`/api/drafts?scope=all`); a listagem padrão continua privada por autor. Rascunhos arquivados permanecem fora das filas, indicadores e agentes.

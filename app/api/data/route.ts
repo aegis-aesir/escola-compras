@@ -95,6 +95,7 @@ export async function POST(req:Request){try{
       if(!draft||draft.authorId!==me.id)throw new AppError('Rascunho não encontrado.',404);
       if(draft.kind==='request')return Response.json({ok:true,id:draft.id});
       if(draft.kind!=='request_draft'||draft.version!==b.draftVersion)throw new AppError('Rascunho atualizado em outra aba. Reabra para conferir.',409);
+      if(draft.archivedAt)throw new AppError('Restaure o rascunho antes de enviá-lo.',409);
       if(draft.status==='deferred'&&!canSubmitDeferredDraft(draft,now))throw new AppError(`Este rascunho adiado poderá ser enviado a partir de ${String(draft.availableMonth).split('-').reverse().join('/')}.`,409);
       old=draft;id=draft.id;
     }

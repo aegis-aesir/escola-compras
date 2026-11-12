@@ -4,12 +4,13 @@
 import {useEffect,useMemo,useState,type ReactNode} from 'react';
 import {Archive,ChevronLeft,ChevronRight,CircleCheck,ClipboardCheck,ClipboardList,FileText,KeyRound,LayoutDashboard,LogOut,Menu,MessageCircle,PackageCheck,Scale,Search,Settings2,Store,X,type LucideIcon} from 'lucide-react';
 import AppearanceControl from './appearance-control';
+import {SYSTEM_VERSION} from './system-version';
 import {formatManausDate,readSidebarPreference,sidebarPreferenceKey,type SidebarPreference} from './dashboard-shell-state';
 import {primaryNavigationForRole,primaryParentView,processViewLabel,type ProcessView} from './process-navigation';
 import type {Member} from './model';
 
 export type DashboardView=ProcessView;
-const navigationIcons:Record<DashboardView,LucideIcon>={overview:LayoutDashboard,requests:ClipboardList,analysis:ClipboardCheck,estimates:Search,general_approval:CircleCheck,quotes:Scale,execution:PackageCheck,budget:FileText,suppliers:Store,whatsapp:MessageCircle,archives:Archive,settings:Settings2};
+const navigationIcons:Record<DashboardView,LucideIcon>={overview:LayoutDashboard,requests:ClipboardList,analysis:ClipboardCheck,estimates:Search,general_approval:CircleCheck,quotes:Scale,execution:PackageCheck,budget:FileText,suppliers:Store,whatsapp:MessageCircle,archives:Archive,drafts:ClipboardList,settings:Settings2};
 
 type Props={
   view:DashboardView;
@@ -71,6 +72,7 @@ export default function DashboardShell({view,allowedViews,role,userName,roleLabe
           <summary className="user-row" aria-label="Abrir opções do usuário"><span className="user-avatar">{userName.slice(0,2).toUpperCase()||'CE'}</span><div><strong>{userName||'Carregando…'}</strong><small>{roleLabel}</small></div></summary>
           <div className="user-menu-options">{allowed.has('settings')?<button type="button" aria-label="Abrir configurações" onClick={()=>onNavigate('settings')}><Settings2 size={16}/>Configurações</button>:null}<a href="/alterar-senha" aria-label="Alterar senha"><KeyRound size={16}/>Alterar senha</a><button type="button" aria-label="Sair" onClick={logout}><LogOut size={16}/>Sair</button></div>
         </details>
+        <small className="system-version">Versão {SYSTEM_VERSION}</small>
       </div>
     </aside>
     <div className="workspace">

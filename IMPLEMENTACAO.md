@@ -122,3 +122,9 @@ O perfil Setor continua com uma única área **Minhas solicitações**, que most
 Na decisão da Diretoria Geral, **Devolver para apuração administrativa** passou a ser uma opção do mesmo seletor usado para aprovar, adiar ou rejeitar. A escolha abre diretamente o campo obrigatório de pendência e chama a transição auditada `return_to_admin`; o colapsável separado foi removido. O pedido volta para `admin_review`, preserva o parecer e sai da fila da DG até novo encaminhamento.
 
 Validações próprias: `node scripts/redesign-shell-test.mjs` e `node scripts/redesign-styles-test.mjs`. A inspeção visual foi feita em desktop e 390 px, nos temas claro e escuro, com menu compacto, expandido e móvel. O lint global ainda possui dívida anterior em arquivos não relacionados; o novo shell passa isoladamente em ESLint. Nenhuma mensagem real foi enviada na validação.
+
+### Ordem da decisão, versão e arquivo de rascunhos (12/11/2026)
+
+A decisão da Diretoria Geral aparece entre Estimativas e Execução. O campo de adiamento foi renomeado para **Data prevista para reavaliar a solicitação**, entendido como acompanhamento interno, não como data de compra e sem mudança automática de competência. A versão `2026.11.12.1`, centralizada em `app/system-version.ts`, aparece no menu autenticado e no rodapé.
+
+O setor pode arquivar e restaurar seus próprios rascunhos em **Meus rascunhos**. O arquivo é reversível e preserva conteúdo e anexos; bloqueia autosave e envio definitivo até restauração. O Master possui **Solicitação → Rascunhos dos setores**, consulta todos os autores/setores e pode arquivar ou restaurar sem editar o conteúdo alheio. A consulta global exige `GET /api/drafts?scope=all`; o GET comum continua restrito aos rascunhos do usuário. Validação principal: `node scripts/request-drafts-test.mjs`, `node scripts/process-navigation-test.mjs` e `node scripts/general-return-ui-test.mjs`.
