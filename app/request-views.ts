@@ -2,7 +2,7 @@ import type {Purchase} from './model';
 import type {Member} from './model';
 
 export function isVisibleInEstimateView(request:Pick<Purchase,'status'|'estimate'>) {
-  return ['estimating','pending'].includes(request.status)||!!request.estimate;
+  return ['estimating','admin_review'].includes(request.status);
 }
 
 export function isVisibleInApprovalView(request:Pick<Purchase,'status'>,role:Member['role']) {

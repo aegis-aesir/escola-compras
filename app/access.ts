@@ -1,10 +1,8 @@
 import type { Member, Purchase } from './model';
+import {allowedViewsForRole} from './process-navigation';
 export const roleLabels:Record<Member['role'],string>={admin:'Master',administrativo:'Diretoria Administrativa',geral:'Diretoria Geral',solicitante:'Setor',financeiro:'Financeiro'};
 export function visibleViews(role:Member['role']) {
-  if(role==='geral')return ['approvals'];
-  if(role==='solicitante')return ['requests'];
-  if(role==='financeiro')return ['budget','requests','execution'];
-  return role==='admin'?['overview','budget','requests','estimates','approvals','quotes','execution','suppliers','whatsapp','archives','settings']:['overview','budget','requests','estimates','approvals','quotes','execution','suppliers','whatsapp'];
+  return allowedViewsForRole(role);
 }
 export const canCreateRequest=(role:Member['role'])=>['admin','administrativo','solicitante'].includes(role);
 export function visibleRequests(requests:Purchase[],me:{id:string;role:Member['role']}):Purchase[] {
