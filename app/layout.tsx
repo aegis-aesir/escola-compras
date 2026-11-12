@@ -3,6 +3,7 @@ import "./globals.css";
 import "./appearance.css";
 import "./local-auth.css";
 import "./budget.css";
+import "./redesign.css";
 import { appearanceBootstrap } from './appearance';
 
 export const metadata: Metadata = {

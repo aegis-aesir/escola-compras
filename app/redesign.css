@@ -1,0 +1,74 @@
+/* Final presentation layer for the authenticated application. Business rules
+   stay in the existing React components; this file only unifies their visual language. */
+:root {
+  --ui-radius-sm:8px;
+  --ui-radius:12px;
+  --ui-radius-lg:16px;
+  --ui-shadow:0 10px 30px color-mix(in srgb,var(--ink) 7%,transparent);
+  --ui-shadow-raised:0 18px 50px color-mix(in srgb,#000 18%,transparent);
+  --ui-control-height:42px;
+  --ui-sidebar-compact:76px;
+  --ui-sidebar-expanded:264px;
+  --ui-content-max:1760px;
+  --ui-space:clamp(18px,2vw,30px);
+}
+
+*,*::before,*::after {box-sizing:border-box}
+html {background:var(--canvas);scroll-behavior:smooth}
+body {min-width:320px;background:var(--canvas);color:var(--ink)}
+button,input,textarea,select {font:inherit}
+button,a,input,textarea,select,summary {transition:border-color .16s ease,background-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}
+:focus-visible {outline:3px solid var(--focus);outline-offset:2px}
+
+.button,.icon-button,.appearance-trigger,input,select {min-height:var(--ui-control-height)}
+.button {border-radius:var(--ui-radius-sm);padding:10px 16px;font-size:12px;font-weight:700;letter-spacing:-.01em}
+.button:not(:disabled):active {transform:translateY(1px)}
+.button:disabled {cursor:not-allowed;opacity:.52}
+.primary {background:var(--accent-base);color:#fff;box-shadow:0 7px 18px color-mix(in srgb,var(--accent-base) 20%,transparent)}
+.secondary {background:var(--surface);color:var(--ink);border-color:var(--line)}
+.danger {color:var(--danger)!important}
+.icon-button {min-width:var(--ui-control-height);border:1px solid transparent;border-radius:var(--ui-radius-sm)}
+
+.panel,.metric {background:var(--surface);border:1px solid var(--line);border-radius:var(--ui-radius);box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 4%,transparent)}
+.panel-heading {padding:22px var(--ui-space);border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
+.panel-heading h2 {font-size:16px;letter-spacing:-.02em}
+
+input,textarea,select {width:100%;min-height:var(--ui-control-height);padding:10px 12px;border:1px solid var(--line);border-radius:var(--ui-radius-sm);background:var(--surface);color:var(--ink)}
+textarea {min-height:96px}
+input:hover,textarea:hover,select:hover {border-color:color-mix(in srgb,var(--accent) 38%,var(--line))}
+input:focus,textarea:focus,select:focus {border-color:var(--accent);box-shadow:0 0 0 3px var(--focus)}
+.field>span {display:block;margin-bottom:8px;color:var(--ink);font-size:11px;font-weight:700}
+
+.table-scroll {max-width:100%;overflow:auto;border-radius:0 0 var(--ui-radius) var(--ui-radius)}
+table {font-variant-numeric:tabular-nums}
+th {padding:13px 18px;background:var(--surface-soft);color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.06em}
+td {padding:16px 18px;color:var(--ink);font-size:12px}
+tbody tr {transition:background-color .14s ease}
+tbody tr:hover,tbody tr:focus-within {background:var(--accent-soft)}
+.title-link {font-size:13px;color:var(--ink)}
+
+.badge {min-height:24px;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:700}
+.alert {border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:var(--ui-radius-sm);box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 4%,transparent)}
+
+dialog {width:min(920px,calc(100vw - 32px));max-height:min(92vh,960px);padding:0;border:1px solid var(--line);border-radius:var(--ui-radius-lg);background:var(--surface);color:var(--ink);box-shadow:var(--ui-shadow-raised)}
+dialog::backdrop {background:color-mix(in srgb,#07101f 64%,transparent);backdrop-filter:blur(3px)}
+.modal-head {border-bottom:1px solid var(--line)}
+
+@media(max-width:900px) {
+  :root {--ui-space:20px}
+  .panel-heading {padding:18px 20px}
+}
+
+@media(max-width:600px) {
+  :root {--ui-space:16px;--ui-control-height:44px}
+  .form-grid,.form-grid.two,.quote-grid,.field-grid {grid-template-columns:1fr!important}
+  .actions,.form-end,.page-actions {align-items:stretch}
+  .actions>.button,.form-end>.button,.page-actions>.button {width:100%}
+  th,td {padding-left:14px;padding-right:14px}
+  dialog {width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}
+}
+
+@media(prefers-reduced-motion:reduce) {
+  html {scroll-behavior:auto}
+  *,*::before,*::after {scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
