@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {build} from 'esbuild';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {budgetFixture} from './budget-fixture.mjs';
+
+await build({entryPoints:['app/budget-record-panel.tsx'],outfile:'outputs/general-return-ui/panel.mjs',bundle:true,platform:'node',format:'esm',external:['react','react-dom','lucide-react']});
+const {BudgetRecordPanel}=await import('../outputs/general-return-ui/panel.mjs?test='+Date.now());
+const request={...budgetFixture('monthly'),id:'pedido-dg',code:'CE-TESTE',version:1,authorId:'setor',authorName:'Setor teste',createdAt:'2026-11-12T12:00:00.000Z',updatedAt:'2026-11-12T12:00:00.000Z',status:'general_review',quotes:[],estimate:{total:10,freight:0,references:[{unitPrice:10,sourceUrl:'https://example.com',sourceName:'Fonte teste',researchedOn:'2026-11-12'}],notes:'Estimativa local de teste',recordedAt:'2026-11-12T12:00:00.000Z',method:'manual'},adminReview:'Aprovar integralmente'};
+const data={me:{id:'dg',name:'Diretora Geral',email:'',role:'geral',department:'Administrativo'},requests:[request],suppliers:[],members:[],activity:[],settings:{name:'Colégio Estrelas',legalName:'CEEA',minQuotes:3,departments:['Administrativo']}};
+const markup=renderToStaticMarkup(createElement(BudgetRecordPanel,{request,data,busy:false,onSave:async()=>true}));
+assert.match(markup,/<option value="return_admin">Devolver para apuração administrativa<\/option>/,'a devolução deve ser uma opção da própria decisão');
+assert.doesNotMatch(markup,/<summary>Devolver para apuração administrativa<\/summary>/,'a devolução não deve ocupar um colapsável separado');
 
 const panel=await readFile('app/budget-record-panel.tsx','utf8');
 const drafts=await readFile('app/draft-request-form.tsx','utf8');

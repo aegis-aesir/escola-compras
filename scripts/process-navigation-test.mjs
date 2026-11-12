@@ -25,7 +25,9 @@ const administrativeSteps=[
 assert.deepEqual(navigation.primaryNavigationForRole('admin').map(({id,label})=>[id,label]),administrativeSteps);
 assert.deepEqual(navigation.primaryNavigationForRole('administrativo').map(({id,label})=>[id,label]),administrativeSteps);
 assert.deepEqual(navigation.primaryNavigationForRole('solicitante').map(({id,label})=>[id,label]),[['requests','Minhas solicitações']]);
-assert.deepEqual(navigation.primaryNavigationForRole('geral').map(({id,label})=>[id,label]),[['general_approval','Aprovação Diretoria']]);
+assert.deepEqual(navigation.primaryNavigationForRole('geral').map(({id,label})=>[id,label]),[
+  ['overview','Dashboard'],['general_approval','Aprovação Diretoria'],['budget','Resumo Mensal'],
+]);
 assert.deepEqual(navigation.primaryNavigationForRole('financeiro').map(({id,label})=>[id,label]),[
   ['requests','Solicitação'],['execution','Execução'],['budget','Resumo Mensal'],
 ]);
@@ -34,6 +36,7 @@ const adminAllowed=navigation.allowedViewsForRole('admin');
 for(const auxiliary of ['suppliers','whatsapp','archives','settings'])assert.ok(adminAllowed.includes(auxiliary),`Master mantém acesso auxiliar a ${auxiliary}`);
 assert.ok(!navigation.primaryNavigationForRole('admin').some(({id})=>['suppliers','whatsapp','archives','settings'].includes(id)),'funções auxiliares não são etapas principais');
 assert.deepEqual(navigation.allowedViewsForRole('financeiro'),['budget','requests','execution'],'a fachada de permissões do Financeiro permanece compatível');
+assert.deepEqual(navigation.allowedViewsForRole('geral'),['overview','general_approval','budget'],'a Diretoria Geral acompanha o processo sem receber telas operacionais');
 
 const administrativeStatusView={
   correction:'requests',

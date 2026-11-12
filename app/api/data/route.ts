@@ -4,7 +4,7 @@ import {parseBudgetForm,budgetMonth} from '../../budget';
 import {canSubmitDeferredDraft,deferredDraftRecord} from '../../deferred-draft';
 import {budgetRecordsAction,readBudgetRecords,closedBudgetMonth} from '../../../lib/budget-records';
 import { listLocalUsers } from '../../../lib/local-auth';
-import { visibleRequests, canCreateRequest, canFinanceReadRequest } from '../../access';
+import { visibleRequests, canCreateRequest, canFinanceReadRequest, canReadBudgetRecords } from '../../access';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
 import type {BudgetClosing,BudgetRecord} from '../../budget-month';
 import { z } from 'zod';
@@ -52,11 +52,11 @@ export async function GET(req:Request){try{
   }
   if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
   const requests=visibleRequests(all.filter(r=>r.kind==='request'),me);
-  const allBudgetRecords=['admin','administrativo','financeiro'].includes(me.role)?await readBudgetRecords(db):undefined;
+  const allBudgetRecords=canReadBudgetRecords(me.role)?await readBudgetRecords(db):undefined;
   const budgetRecords=me.role==='financeiro'&&allBudgetRecords?financeRecords(allBudgetRecords,requests):allBudgetRecords;
   const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
   const management=['admin','administrativo'].includes(me.role);
-  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:me.role==='financeiro'?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:['financeiro','geral'].includes(me.role)?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return fail(e)}}
 export async function POST(req:Request){try{
   if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new AppError('Origem inválida.',403);

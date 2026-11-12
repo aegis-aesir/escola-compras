@@ -21,7 +21,11 @@ const labels:Record<ProcessView,string>={
 
 export function primaryNavigationForRole(role:Member['role']):PrimaryNavigationItem[]{
   if(role==='solicitante')return [{id:'requests',label:'Minhas solicitações'}];
-  if(role==='geral')return [{id:'general_approval',label:'Aprovação Diretoria'}];
+  if(role==='geral')return [
+    {id:'overview',label:'Dashboard'},
+    {id:'general_approval',label:'Aprovação Diretoria'},
+    {id:'budget',label:'Resumo Mensal'},
+  ];
   if(role==='financeiro')return [
     {id:'requests',label:'Solicitação'},
     {id:'execution',label:'Execução'},
@@ -31,7 +35,7 @@ export function primaryNavigationForRole(role:Member['role']):PrimaryNavigationI
 }
 
 export function allowedViewsForRole(role:Member['role']):ProcessView[]{
-  if(role==='geral')return ['general_approval'];
+  if(role==='geral')return ['overview','general_approval','budget'];
   if(role==='solicitante')return ['requests'];
   if(role==='financeiro')return ['budget','requests','execution'];
   if(role==='admin')return ['overview','budget','requests','analysis','estimates','general_approval','quotes','execution','suppliers','whatsapp','archives','settings'];

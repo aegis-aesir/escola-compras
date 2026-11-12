@@ -72,6 +72,8 @@ Devolução da Diretoria Geral e adiamento reutilizável (12/11/2026): em `gener
 
 Revisão administrativa durante a aprovação (12/11/2026): enquanto o pedido está em `general_review` e ainda não possui `generalApproval`, Master/Diretoria Administrativa podem editar a Conferência administrativa. O botão passa a indicar **Salvar alterações na análise administrativa**; o salvamento exige uma conferência ainda válida, atualiza `adminReview`, mantém a fila da DG e registra a revisão na auditoria. Validação em `budget-flow-test` e `general-return-ui-test`.
 
+Interface e acompanhamento da Diretoria Geral (12/11/2026): **Devolver para apuração administrativa** integra o seletor da Decisão da necessidade e mostra diretamente o campo obrigatório de pendência, sem colapsável exclusivo. O perfil `geral` agora possui Dashboard, Aprovação Diretoria e Resumo Mensal em modo de consulta. A fila de aprovação continua exclusiva de `general_review`, e as proteções do servidor mantêm cotação, execução e registros mensais sem edição pela DG. Testes principais: `general-return-ui-test`, `process-navigation-test` e `local-auth-test`.
+
 
 Anexos no preenchimento do setor (11/11/2026): seção opcional antes do aceite nas novas solicitações, disponível após salvar automaticamente o rascunho. Sem escolha de visibilidade para o setor; documentos da solicitação. Rascunhos e seus arquivos são privados do autor, inclusive perante outros perfis; a conversão para pedido preserva o mesmo ID e os anexos, passando às permissões normais da solicitação. Manter R2 privado, 5 MB/arquivo, 20 arquivos, validação do conteúdo e bloqueios de etapa/arquivamento/fechamento.
 
