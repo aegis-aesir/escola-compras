@@ -8,7 +8,7 @@ import {FlowError,todayManaus} from './workflow';
 const reasonSchema=z.string().trim().min(5,'Informe uma justificativa de pelo menos 5 caracteres.').max(2000);
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,'Data inválida.');
 export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name:string},settings:Settings,now:string):{data:Purchase;action:string}|null{
-  if(!['budget_management','return_request','defer_request','resume_request','reopen_request','decide_need'].includes(b.action))return null;
+  if(!['budget_management','return_request','return_to_admin','defer_request','resume_request','reopen_request','decide_need'].includes(b.action))return null;
   const data:Purchase={...old,updatedAt:now};
   const permit=(...roles:Member['role'][])=>{if(me.role!=='admin'&&!roles.includes(me.role))throw new FlowError('Seu perfil não permite esta ação.',403)};
   const preApproval=()=>{if(old.generalApproval||!['estimating','pending','admin_review','general_review','correction'].includes(old.status))throw new FlowError('A ação exige pedido ainda sem aprovação da necessidade.');};
@@ -28,6 +28,17 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     if(b.submitToGeneral===true){
       if(old.status!=='admin_review'||!old.estimate||!old.form)throw new FlowError('Conclua a estimativa da internet antes de enviar para a Diretoria Geral.');
       ensureAdministrativeReview(data);
+      if(old.generalReturn){
+        if(typeof b.generalReturnResponse!=='string'||!b.generalReturnResponse.trim())throw new FlowError('Informe a resposta à pendência da Diretoria Geral.');
+        const response=reasonSchema.parse(b.generalReturnResponse);
+        let resolved=false;
+        data.generalReturnHistory=(old.generalReturnHistory||[]).map(entry=>{
+          if(resolved||entry.at!==old.generalReturn!.at||entry.actor!==old.generalReturn!.actor||entry.response)return entry;
+          resolved=true;return {...entry,response,resolvedBy:me.name,resolvedAt:now};
+        });
+        if(!resolved)data.generalReturnHistory.push({...old.generalReturn,response,resolvedBy:me.name,resolvedAt:now,previousAdminReview:old.adminReview});
+        delete data.generalReturn;
+      }
       data.adminReview=`${String(m.recommendation)}. Prioridade validada: ${String(m.validatedPriority)}.`;
       data.status='general_review';
       return {data,action:'Conferência salva; Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview};
@@ -35,6 +46,14 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     return {data,action:'Controles administrativos e de execução atualizados'};
   }
   const reason=reasonSchema.parse(b.reason);
+  if(b.action==='return_to_admin'){
+    permit('geral');
+    if(old.status!=='general_review'||old.generalApproval)throw new FlowError('Somente pedidos aguardando decisão da Diretoria Geral podem voltar para apuração administrativa.');
+    data.generalReturn={reason,actor:me.name,at:now};
+    data.generalReturnHistory=[...(old.generalReturnHistory||[]),{...data.generalReturn,previousAdminReview:old.adminReview}];
+    data.status='admin_review';
+    return {data,action:'Diretoria Geral devolveu para apuração administrativa: '+reason};
+  }
   if(b.action==='reopen_request'){
     permit('administrativo');
     if(old.status!=='rejected')throw new FlowError('Somente solicitações não aprovadas podem ser reabertas.');

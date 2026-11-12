@@ -18,4 +18,13 @@ const savedManagement=transition(resumed,{action:'budget_management',data:{analy
 const reviewReady={...original,status:'admin_review',adminReview:undefined,management:{quantityAssessment:'Adequadas',additionalDataStatus:'Suficientes',recommendation:'Aprovar integralmente',validatedPriority:'Essencial'}};
 const forwarded=transition(reviewReady,{action:'budget_management',submitToGeneral:true,data:reviewReady.management},admin,[],settings,now).data;
 assert.equal(forwarded.status,'general_review','salvar e enviar conclui a aprovação administrativa');assert.match(forwarded.adminReview,/Aprovar integralmente/);assert.equal(forwarded.management.validatedPriority,'Essencial');
+const pendingReason='Apurar se a quantidade recomendada atende todas as turmas';
+const returnedToAdmin=transition(forwarded,{action:'return_to_admin',reason:pendingReason},dg,[],settings,now).data;
+assert.equal(returnedToAdmin.status,'admin_review');assert.equal(returnedToAdmin.generalReturn.reason,pendingReason);assert.equal(returnedToAdmin.generalReturn.actor,dg.name);assert.equal(returnedToAdmin.generalReturn.at,now);assert.deepEqual(returnedToAdmin.estimate,forwarded.estimate);assert.equal(returnedToAdmin.generalReturnHistory.length,1);assert.equal(returnedToAdmin.generalReturnHistory[0].previousAdminReview,forwarded.adminReview);
+assert.throws(()=>transition(forwarded,{action:'return_to_admin',reason:pendingReason},sector,[],settings,now),e=>e.status===403);
+assert.throws(()=>transition(forwarded,{action:'return_to_admin',reason:pendingReason},{id:'adm',role:'administrativo',name:'Administrativo'},[],settings,now),e=>e.status===403);
+assert.throws(()=>transition(returnedToAdmin,{action:'budget_management',submitToGeneral:true,data:returnedToAdmin.management},admin,[],settings,now),/resposta.*pendência|pendência.*resposta/i);
+const response='Quantidades e abrangência conferidas com os registros das turmas';
+const resent=transition(returnedToAdmin,{action:'budget_management',submitToGeneral:true,generalReturnResponse:response,data:returnedToAdmin.management},admin,[],settings,'2026-11-10T16:00:00.000Z').data;
+assert.equal(resent.status,'general_review');assert.equal(resent.generalReturn,undefined);assert.equal(resent.generalReturnHistory.length,1);assert.equal(resent.generalReturnHistory[0].reason,pendingReason);assert.equal(resent.generalReturnHistory[0].response,response);assert.equal(resent.generalReturnHistory[0].resolvedBy,admin.name);assert.equal(resent.generalReturnHistory[0].resolvedAt,'2026-11-10T16:00:00.000Z');
 console.log('PASS: structured decisions, effective partial scope, return/defer/resume, no approval reuse and scoped form privacy.');
