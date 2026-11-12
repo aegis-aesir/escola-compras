@@ -3,14 +3,23 @@ import { currentLocalUser } from '../../local-session';
 import {parseBudgetForm,budgetMonth} from '../../budget';
 import {budgetRecordsAction,readBudgetRecords,closedBudgetMonth} from '../../../lib/budget-records';
 import { listLocalUsers } from '../../../lib/local-auth';
-import { visibleRequests, canCreateRequest } from '../../access';
+import { visibleRequests, canCreateRequest, canFinanceReadRequest } from '../../access';
 import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
+import type {BudgetClosing,BudgetRecord} from '../../budget-month';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
 import { advanceDeadlines, enqueueSearch, enqueueQuotation, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
+function financeClosing(c:BudgetClosing,requestIds:Set<string>):BudgetClosing{
+  const {snapshot,...data}=c;
+  return {...data,followups:(c.followups||[]).filter(f=>requestIds.has(f.requestId)),history:c.history?.map(h=>financeClosing(h,requestIds))};
+}
+function financeRecords(records:BudgetRecord[],requests:Purchase[]):BudgetRecord[]{
+  const requestIds=new Set(requests.map(r=>r.id));
+  return records.flatMap(record=>record.kind==='budget_invoice'?(requestIds.has(record.data.requestId)?[record]:[]):[{...record,data:financeClosing(record.data,requestIds)}]);
+}
 async function context(){
   const user=await currentLocalUser(); if(!user)throw new AppError('Entre com seu usuário e senha.',401);
   const db=env.DB!;
@@ -28,7 +37,7 @@ export async function GET(req:Request){try{
   if(historyFor){
     const historyRequest=all.find(r=>r.kind==='request'&&r.id===historyFor) as Purchase|undefined;
     if(!historyRequest)throw new AppError('Solicitação não encontrada.',404);
-    const full=['admin','administrativo','financeiro'].includes(me.role);
+    const full=['admin','administrativo'].includes(me.role)||(me.role==='financeiro'&&canFinanceReadRequest(historyRequest));
     if(!full&&!visibleRequests([historyRequest],me).some(r=>r.id===historyFor))throw new AppError('Seu perfil não permite consultar este histórico.',403);
     const history=full
       ?await db.prepare("SELECT * FROM audit WHERE entity=? OR entity IN (SELECT id FROM records WHERE kind='budget_invoice' AND json_extract(data,'$.requestId')=?) ORDER BY at DESC,id DESC").bind(historyFor,historyFor).all()
@@ -37,7 +46,8 @@ export async function GET(req:Request){try{
   }
   if(['admin','administrativo'].includes(me.role)&&await advanceDeadlines(db,new Date().toISOString()))({all}=await context());
   const requests=visibleRequests(all.filter(r=>r.kind==='request'),me);
-  const budgetRecords=['admin','administrativo','financeiro'].includes(me.role)?await readBudgetRecords(db):undefined;
+  const allBudgetRecords=['admin','administrativo','financeiro'].includes(me.role)?await readBudgetRecords(db):undefined;
+  const budgetRecords=me.role==='financeiro'&&allBudgetRecords?financeRecords(allBudgetRecords,requests):allBudgetRecords;
   const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
   const management=['admin','administrativo'].includes(me.role);
   return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:me.role==='financeiro'?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});

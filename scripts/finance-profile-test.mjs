@@ -28,11 +28,16 @@ try{
  const created=await post('users',{username:'financeiro.teste',name:me.name,role:me.role,department:'Financeiro'},masterCookie);assert.equal(created.status,200);const credential=await created.json();assert.equal(credential.temporaryPassword.length,8);
  const finLogin=await post('login',{username:'financeiro.teste',password:credential.temporaryPassword});assert.equal(finLogin.status,200);const financeCookie=finLogin.headers.get('set-cookie').split(';')[0];assert.equal((await auth.readSession(db,financeCookie)).role,'financeiro');
  assert.equal((await post('users',{},financeCookie)).status,403);
- await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('req-finance','request',?,1)").bind(JSON.stringify({authorId:'outro',status:'execution',items:[],quotes:[]})).run();
+ await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('req-finance','request',?,1)").bind(JSON.stringify({authorId:'outro',status:'execution',items:[],quotes:[],generalApproval:{actor:'Diretora Geral TESTE',at:now,reason:'Necessidade aprovada para teste'}})).run();
+ await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('req-finance-unapproved','request',?,1)").bind(JSON.stringify({authorId:'outro',status:'general_review',items:[],quotes:[]})).run();
  await bucket.put('private-finance-file','%PDF-1.4 TESTE');
+ await bucket.put('private-finance-file-unapproved','%PDF-1.4 TESTE SEM APROVACAO');
  await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('file-finance','budget_file',?,1)").bind(JSON.stringify({requestId:'req-finance',key:'private-finance-file',name:'TESTE-nf.pdf',size:14,visibility:'internal',author:'Master',at:now})).run();
+ await db.prepare("INSERT INTO records(id,kind,data,version) VALUES ('file-finance-unapproved','budget_file',?,1)").bind(JSON.stringify({requestId:'req-finance-unapproved',key:'private-finance-file-unapproved',name:'TESTE-sem-aprovacao.pdf',size:27,visibility:'internal',author:'Master',at:now})).run();
  const files=(path,init={})=>filesEndpoint(new Request(origin+'/api/files'+path,{...init,headers:{Origin:origin,Cookie:financeCookie,...init.headers}}),env);
  const listed=await files('?requestId=req-finance');assert.equal(listed.status,200);assert.equal((await listed.json()).files[0].name,'TESTE-nf.pdf');assert.equal((await files('/file-finance')).status,200);
+ assert.equal((await files('?requestId=req-finance-unapproved')).status,404,'financeiro não lista anexos antes da aprovação da Diretora Geral');
+ assert.equal((await files('/file-finance-unapproved')).status,404,'financeiro não baixa anexos antes da aprovação da Diretora Geral');
  assert.equal((await files('',{method:'POST',body:new FormData()})).status,403,'financeiro não anexa nem altera documentos');
  console.log('PASS: Financeiro role creation/login, read-only navigation, all-sector follow-up, private document reading, denied purchases/fiscal writes/uploads/user management. No real messages.');
 }finally{await mf.dispose()}

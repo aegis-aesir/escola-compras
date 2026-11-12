@@ -1,4 +1,5 @@
 import {readSession, type LocalUser} from './local-auth';
+import {canFinanceReadRequest} from '../app/access';
 
 type FileEnv={DB?:D1Database;BUCKET?:R2Bucket};
 type FileRecord={id:string;requestId:string;key:string;name:string;size:number;visibility:'request'|'internal';author:string;at:string};
@@ -14,6 +15,7 @@ async function accessible(db:D1Database,id:string,user:LocalUser){
     if(r.authorId!==user.id)throw new FileError('Solicitação não encontrada.',404);
     return {...r,status:'draft'};
   }
+  if(user.role==='financeiro'&&!canFinanceReadRequest(r))throw new FileError('Solicitação não encontrada.',404);
   if(!canReadInternal(user)&&!(user.role==='solicitante'&&r.authorId===user.id)&&!(user.role==='geral'&&r.status==='general_review'))throw new FileError('Solicitação não encontrada.',404);
   return r;
 }
