@@ -7,7 +7,7 @@ async function call(path,body,session=cookie){const r=await fetch(localBase+path
 const id=randomUUID(),values={title:'TESTE LOCAL rascunho incompleto',department:'Administrativo',neededBy:'',reason:'',kind:'monthly',fields:{},items:[{name:'',quantity:1,unit:'un.',spec:''}],references:[],subscriptionPrices:{}};
 assert.equal((await call('/api/drafts',{id,version:0,values},general)).status,403);
 assert.equal((await call('/api/drafts',{id,version:0,values})).status,200);
-assert.equal((await call('/api/drafts')).data.drafts.find(d=>d.id===id).values.reason,'');
+const ordinaryDraft=(await call('/api/drafts')).data.drafts.find(d=>d.id===id);assert.equal(ordinaryDraft.values.reason,'');assert.equal(ordinaryDraft.status,'draft');
 assert.equal((await call('/api/drafts',null,other)).data.drafts.some(d=>d.id===id),false);
 assert.equal((await call('/api/drafts',{id,version:1,values},other)).status,409);
 assert.equal((await call('/api/drafts',{id,version:0,values})).status,409);

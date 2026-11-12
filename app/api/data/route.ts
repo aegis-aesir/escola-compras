@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { currentLocalUser } from '../../local-session';
 import {parseBudgetForm,budgetMonth} from '../../budget';
+import {canSubmitDeferredDraft,deferredDraftRecord} from '../../deferred-draft';
 import {budgetRecordsAction,readBudgetRecords,closedBudgetMonth} from '../../../lib/budget-records';
 import { listLocalUsers } from '../../../lib/local-auth';
 import { visibleRequests, canCreateRequest, canFinanceReadRequest } from '../../access';
@@ -86,7 +87,7 @@ export async function POST(req:Request){try{
     }
     return Response.json({ok:true});
   }
-  let id:string=crypto.randomUUID(),kind='',data:any,action='',old:any;
+  let id:string=crypto.randomUUID(),kind='',data:any,action='',old:any,deferredDraft:ReturnType<typeof deferredDraftRecord>|undefined;
   if(b.action==='request'){
     if(!canCreateRequest(me.role))throw new AppError('Seu perfil permite apenas aprovar ou recusar pedidos.',403);
     if(b.draftId){
@@ -94,11 +95,12 @@ export async function POST(req:Request){try{
       if(!draft||draft.authorId!==me.id)throw new AppError('Rascunho não encontrado.',404);
       if(draft.kind==='request')return Response.json({ok:true,id:draft.id});
       if(draft.kind!=='request_draft'||draft.version!==b.draftVersion)throw new AppError('Rascunho atualizado em outra aba. Reabra para conferir.',409);
+      if(draft.status==='deferred'&&!canSubmitDeferredDraft(draft,now))throw new AppError(`Este rascunho adiado poderá ser enviado a partir de ${String(draft.availableMonth).split('-').reverse().join('/')}.`,409);
       old=draft;id=draft.id;
     }
     const input=requestSchema.parse(b.data);const form=parseBudgetForm(b.data?.form,input.items,{at:now});if(closedBudgetMonth(budgetRecords,String(form.fields.referenceMonth)))throw new AppError('O mês está fechado. Reabra antes de incluir solicitações.');if(!settings.departments.includes(input.department))throw new AppError('Selecione um setor cadastrado.');
     if(me.role==='solicitante'&&input.department!==me.department)throw new AppError('Você só pode solicitar para seu setor.',403);
-    kind='request';data={...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'pending',quotes:[],createdAt:now,updatedAt:now};action='Solicitação criada; aguardando a Diretoria Administrativa iniciar a estimativa';
+    kind='request';data={...input,priority:form.kind==='emergency'?'Emergencial':form.fields.requestPriority,form,formDeclared:{actor:me.name,at:now},code:'CE-'+id.slice(0,8).toUpperCase(),authorId:me.id,authorName:me.name,status:'pending',quotes:[],createdAt:now,updatedAt:now,...(old?.status==='deferred'?{reusedFrom:{requestId:old.sourceRequestId,code:old.sourceCode,deferredAt:old.deferredAt}}:{})};action=old?.status==='deferred'?'Nova solicitação criada a partir do pedido adiado '+old.sourceCode:'Solicitação criada; aguardando a Diretoria Administrativa iniciar a estimativa';
   }else if(b.action==='resubmit_request'){
     old=target;if(!old)throw new AppError('Solicitação não encontrada.',404);
     if(!canCreateRequest(me.role)||(me.role==='solicitante'&&old.authorId!==me.id))throw new AppError('Seu perfil não permite complementar este pedido.',403);
@@ -126,12 +128,23 @@ export async function POST(req:Request){try{
     old=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;if(!old)throw new AppError('Solicitação não encontrada.',404);
     if(old.version!==b.version)throw new AppError('Esta solicitação foi atualizada. Recarregue antes de continuar.',409);
     id=old.id;kind='request';data={...old,updatedAt:now};
+    if(b.action==='defer_request'||(b.action==='decide_need'&&b.choice==='defer')){
+      if(all.some(record=>record.kind==='request_draft'&&record.sourceRequestId===old.id))throw new AppError('Este pedido já possui uma cópia adiada. Recarregue antes de continuar.',409);
+      b.deferredDraftId=crypto.randomUUID();
+    }
     const result=transition(old,b,me,all.filter(r=>r.kind==='supplier'),settings,now);data=result.data;action=result.action;
+    if(old.status!=='deferred'&&data.status==='deferred'&&data.deferred?.draftId)deferredDraft=deferredDraftRecord(data,data.deferred.draftId,now);
   }
   if(kind==='request'&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(data)))throw new AppError('O mês está fechado. Reabra antes de alterar.');
   const openMonthGuard=" AND NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=? AND json_extract(closing.data,'$.status')='Concluído')";
   const write=old?db.prepare('UPDATE records SET kind=?,data=?,version=version+1 WHERE id=? AND version=?'+(kind==='request'&&!archiveAction?openMonthGuard+openMonthGuard:'')).bind(kind,JSON.stringify(data),id,old.version,...(kind==='request'&&!archiveAction?[budgetMonth(old)||'',budgetMonth(data)||'']:[])):db.prepare('INSERT INTO records (id,kind,data,version) SELECT ?,?,?,1'+(kind==='request'?' WHERE NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind=\'budget_closing\' AND json_extract(closing.data,\'$.month\')=? AND json_extract(closing.data,\'$.status\')=\'Concluído\')':'')).bind(id,kind,JSON.stringify(data),...(kind==='request'?[budgetMonth(data)||'']:[]));
   const log=db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),id,me.name,action,now);
-  const result=await db.batch([write,log]);if(result[0].meta.changes!==1)throw new AppError('Outra pessoa atualizou este registro. Recarregue a página.',409);
+  if(deferredDraft){
+    const {id:draftId,...draftData}=deferredDraft;
+    const draftWrite=db.prepare("INSERT INTO records(id,kind,data,version) SELECT ?,'request_draft',?,1 WHERE EXISTS(SELECT 1 FROM records WHERE id=? AND kind='request' AND version=? AND json_extract(data,'$.authorId')=?) AND NOT EXISTS(SELECT 1 FROM records WHERE kind='request_draft' AND json_extract(data,'$.sourceRequestId')=?) AND NOT EXISTS(SELECT 1 FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month') IN (?,?) AND json_extract(data,'$.status')='Concluído')").bind(draftId,JSON.stringify(draftData),old.id,old.version,old.authorId,old.id,budgetMonth(old)||'',budgetMonth(data)||'');
+    const result=await db.batch([draftWrite,write,log]);if(result[0].meta.changes!==1||result[1].meta.changes!==1)throw new AppError('Outra pessoa atualizou este registro. Recarregue a página.',409);
+  }else{
+    const result=await db.batch([write,log]);if(result[0].meta.changes!==1)throw new AppError('Outra pessoa atualizou este registro. Recarregue a página.',409);
+  }
   return Response.json({ok:true,id});
 }catch(e){return fail(e)}}
