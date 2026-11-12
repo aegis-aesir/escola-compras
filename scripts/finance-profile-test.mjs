@@ -12,8 +12,8 @@ const {budgetRecordsAction}=await import('../outputs/finance-profile/lib/budget-
 assert.deepEqual(access.visibleViews('financeiro'),['budget','requests','execution']);
 assert.equal(access.roleLabels.financeiro,'Financeiro');assert.equal(access.canCreateRequest('financeiro'),false);
 const me={id:'user:financeiro.teste',role:'financeiro',name:'TESTE Financeiro'},now='2026-11-11T15:00:00.000Z';
-const purchases=['admin_review','general_review','quoting','execution','received','rejected'].map((status,i)=>({id:'r'+i,authorId:'outra.pessoa',status,items:[],quotes:[],management:{contractedAmount:50,realizedAmount:45}}));
-assert.deepEqual(access.visibleRequests(purchases,me),purchases,'financeiro acompanha todos os setores e etapas');
+const purchases=['admin_review','general_review','rejected','quoting','execution','received'].map((status,i)=>({id:'r'+i,authorId:'outra.pessoa',status,items:[],quotes:[],management:{contractedAmount:50,realizedAmount:45},...(i>=3?{generalApproval:{actor:'Diretora Geral TESTE',at:now,reason:'Necessidade aprovada para teste'}}:{})}));
+assert.deepEqual(access.visibleRequests(purchases,me),purchases.slice(3),'financeiro acompanha somente pedidos já aprovados pela Diretora Geral');
 for(const action of ['estimate','admin_review','approve','reject','local_contact','national','quote','select','execution_note','ordered','received','restart_estimate','budget_management','return_request','defer_request','resume_request','reopen_request','decide_need'])assert.throws(()=>transition(purchases[0],{action,reason:'Tentativa fictícia não autorizada'},me,[],{},now),e=>e.status===403,action);
 await assert.rejects(()=>budgetRecordsAction({}, {action:'budget_invoice'},me,[],{},now),e=>e.status===403);
 const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("test")}}',d1Databases:['DB'],r2Buckets:['BUCKET']});

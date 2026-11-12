@@ -5,8 +5,10 @@ export function visibleViews(role:Member['role']) {
   return allowedViewsForRole(role);
 }
 export const canCreateRequest=(role:Member['role'])=>['admin','administrativo','solicitante'].includes(role);
+export const canFinanceReadRequest=(request:Pick<Purchase,'generalApproval'>)=>!!request.generalApproval;
 export function visibleRequests(requests:Purchase[],me:{id:string;role:Member['role']}):Purchase[] {
-  if(me.role==='admin'||me.role==='administrativo'||me.role==='financeiro')return requests;
+  if(me.role==='admin'||me.role==='administrativo')return requests;
+  if(me.role==='financeiro')return requests.filter(canFinanceReadRequest);
   return requests.filter(r=>me.role==='solicitante'?r.authorId===me.id:r.status==='general_review'&&!r.archived).map(r=>({
     id:r.id,version:r.version,code:r.code,title:r.title,authorId:r.authorId,authorName:r.authorName,
     department:r.department,priority:r.priority,neededBy:r.neededBy,reason:r.reason,items:r.items,
