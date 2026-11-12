@@ -1,6 +1,9 @@
 'use client';
 import {useEffect,useMemo,useState,type ReactNode} from 'react';
 import {Archive,ChevronLeft,ChevronRight,CircleCheck,ClipboardList,FileText,KeyRound,LayoutDashboard,LogOut,Menu,MessageCircle,PackageCheck,Scale,Search,Settings2,Store,X,type LucideIcon} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import AppearanceControl from './appearance-control';
 import {formatManausDate,readSidebarPreference,sidebarPreferenceKey,type SidebarPreference} from './dashboard-shell-state';
 
@@ -31,6 +34,7 @@ type Props={
 };
 
 export default function DashboardShell({view,allowedViews,userName,roleLabel,pendingApprovals,onNavigate,children}:Props){
+  const router=useRouter();
   const [sidebar,setSidebar]=useState<SidebarPreference>('compact');
   const [mobileOpen,setMobileOpen]=useState(false);
   const allowed=useMemo(()=>new Set(allowedViews),[allowedViews]);
@@ -38,8 +42,7 @@ export default function DashboardShell({view,allowedViews,userName,roleLabel,pen
   const activeLabel=navigation.find(item=>item.id===view)?.label||'Central de Compras';
   const firstName=userName.trim().split(/\s+/)[0]||'usuário';
 
-  useEffect(()=>{setSidebar(readSidebarPreference(window.localStorage))},[]);
-  useEffect(()=>{setMobileOpen(false)},[view]);
+  useEffect(()=>{let active=true;queueMicrotask(()=>{if(active)setSidebar(readSidebarPreference(window.localStorage))});return()=>{active=false}},[]);
   useEffect(()=>{
     if(!mobileOpen)return;
     const close=(event:KeyboardEvent)=>{if(event.key==='Escape')setMobileOpen(false)};
@@ -53,24 +56,24 @@ export default function DashboardShell({view,allowedViews,userName,roleLabel,pen
   }
   async function logout(){
     await fetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-    window.location.assign('/login');
+    router.replace('/login');router.refresh();
   }
 
   return <div className="app-shell" data-sidebar={sidebar} data-mobile-nav={mobileOpen?'open':'closed'}>
     <button type="button" className="nav-backdrop" aria-label="Fechar navegação" onClick={()=>setMobileOpen(false)}/>
     <aside className="sidebar" id="dashboard-navigation">
       <div className="sidebar-brand-row">
-        <a className="brand" href="/" aria-label="Central de Compras do Colégio Estrelas">
-          <span className="brand-logo-frame"><img src="/estrela-2026.png" alt=""/></span>
+        <Link className="brand" href="/" aria-label="Central de Compras do Colégio Estrelas">
+          <span className="brand-logo-frame"><Image src="/estrela-2026.png" alt="" width={42} height={42} priority/></span>
           <span className="brand-copy"><strong>Colégio Estrelas</strong><small>Central de Compras</small></span>
-        </a>
+        </Link>
         <button type="button" className="sidebar-close" aria-label="Fechar navegação" onClick={()=>setMobileOpen(false)}><X size={19}/></button>
       </div>
       <button type="button" className="sidebar-toggle" aria-expanded={sidebar==='expanded'} aria-controls="dashboard-navigation" onClick={()=>changeSidebar(sidebar==='expanded'?'compact':'expanded')}>
         {sidebar==='expanded'?<ChevronLeft size={18}/>:<ChevronRight size={18}/>}<span>{sidebar==='expanded'?'Recolher menu':'Expandir menu'}</span>
       </button>
       <nav role="navigation" aria-label="Navegação principal">
-        {visibleNavigation.map(({id,label,Icon})=><button type="button" key={id} className={'nav-item '+(view===id?'active':'')} aria-current={view===id?'page':undefined} aria-label={label} title={sidebar==='compact'?label:undefined} onClick={()=>onNavigate(id)}>
+        {visibleNavigation.map(({id,label,Icon})=><button type="button" key={id} className={'nav-item '+(view===id?'active':'')} aria-current={view===id?'page':undefined} aria-label={label} title={sidebar==='compact'?label:undefined} onClick={()=>{onNavigate(id);setMobileOpen(false)}}>
           <Icon size={20}/><span className="nav-copy">{label}</span>{id==='approvals'&&pendingApprovals>0?<b aria-label={`${pendingApprovals} pendentes`}>{pendingApprovals}</b>:null}{id==='whatsapp'?<span className="dot" aria-hidden="true"/>:null}
         </button>)}
       </nav>
@@ -82,7 +85,7 @@ export default function DashboardShell({view,allowedViews,userName,roleLabel,pen
       <header className="topbar">
         <div className="topbar-context">
           <button type="button" className="mobile-menu-button icon-button" aria-label="Abrir navegação" aria-expanded={mobileOpen} aria-controls="dashboard-navigation" onClick={()=>setMobileOpen(true)}><Menu size={20}/></button>
-          <span className="topbar-logo"><img src="/estrela-2026.png" alt=""/></span>
+          <span className="topbar-logo"><Image src="/estrela-2026.png" alt="" width={46} height={46} priority/></span>
           <div><strong>Olá, {firstName}</strong><small>{formatManausDate()} · {activeLabel}</small></div>
         </div>
         <div className="topbar-actions">
