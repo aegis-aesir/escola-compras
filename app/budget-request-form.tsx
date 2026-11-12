@@ -23,7 +23,7 @@ const blankSubscription=():Subscription=>({plan:'',cycle:'Mensal',start:'',end:'
 const blankItem=(kind:BudgetKind):Item=>({name:'',quantity:1,unit:kind==='digital'?'licença':'un.',spec:'',category:'',...(kind==='digital'?{subscription:blankSubscription()}:{})});
 const blankReference=():PreliminaryReference=>({itemIndex:0,supplier:'',currency:'BRL',reference:''});
 
-export default function BudgetRequestForm({data,busy,error,onSave,request,draft,onDraftChange,attachments}:{data:Snapshot;busy:boolean;error:string;onSave:(values:unknown)=>void;request?:Purchase;draft?:RequestDraftValues;attachments?:ReactNode;onDraftChange?:(values:RequestDraftValues)=>void}){
+export default function BudgetRequestForm({data,busy,error,onSave,request,draft,onDraftChange,attachments,submitBlockedReason}:{data:Snapshot;busy:boolean;error:string;onSave:(values:unknown)=>void;request?:Purchase;draft?:RequestDraftValues;attachments?:ReactNode;onDraftChange?:(values:RequestDraftValues)=>void;submitBlockedReason?:string}){
  const original=request?.form;
  const [kind,setKind]=useState<BudgetKind>(draft?.kind??original?.kind??'monthly');
  const [fields,setFields]=useState<BudgetForm['fields']>({...draft?.fields??original?.fields});
@@ -81,6 +81,6 @@ export default function BudgetRequestForm({data,busy,error,onSave,request,draft,
  {request&&<BudgetField label="Resposta à solicitação de complementação *"><textarea value={String(fields.correctionResponse??'')} onChange={e=>setField('correctionResponse',e.target.value)} required minLength={5} maxLength={5000}/></BudgetField>}
  {attachments}
  <fieldset className="budget-section"><legend>Declaração e aceite</legend><p className="muted">Declaro que revisei as informações, quantidades, justificativas e verificações deste formulário e assumo a responsabilidade pelas informações prestadas.{kind==='emergency'?' Declaro que a justificativa da emergência descreve a ocorrência, os riscos e a impossibilidade de aguardar o ciclo regular.':''} O aceite será registrado com o usuário autenticado e a data/hora do servidor.</p><label className="budget-check"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} required/>Li e confirmo a declaração deste envio como {data.me.name}.</label><p className="muted">Este aceite autenticado substitui a assinatura digitada do formulário; não é assinatura digital certificada. Os anexos são opcionais e permanecem vinculados à solicitação.</p></fieldset>
- {(error||localError)&&<div role="alert" className="alert error">{error||localError}</div>}<div className="form-end"><button className="button primary" disabled={busy}>{busy?'Salvando…':request?'Reenviar com complementação':'Enviar para estimativa'}</button></div>
+ {(error||localError)&&<div role="alert" className="alert error">{error||localError}</div>}{submitBlockedReason&&<div className="note" role="status"><b>Envio disponível no próximo ciclo</b><p>{submitBlockedReason}</p><small>Você pode revisar, editar e anexar documentos agora. O sistema continua salvando automaticamente.</small></div>}<div className="form-end"><button className="button primary" disabled={busy||!!submitBlockedReason}>{busy?'Salvando…':request?'Reenviar com complementação':'Enviar para estimativa'}</button></div>
  </form>;
 }

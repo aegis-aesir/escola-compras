@@ -60,6 +60,9 @@ for(const [status,expectedView] of Object.entries(administrativeStatusView)){
 
 assert.equal(navigation.requestMatchesView({status:'general_review',archived:null},'general_approval','geral'),true);
 assert.equal(navigation.requestMatchesView({status:'admin_review',archived:null},'general_approval','geral'),false);
+assert.equal(navigation.requestMatchesView({status:'admin_review',archived:null,generalReturn:{reason:'Apurar quantidade',actor:'Diretora Geral',at:'2026-11-12T12:00:00.000Z'}},'estimates','administrativo'),true,'pedido devolvido pela Diretoria Geral volta à etapa da Diretoria Administrativa');
+assert.equal(navigation.requestMatchesView({status:'admin_review',archived:null,generalReturn:{reason:'Apurar quantidade',actor:'Diretora Geral',at:'2026-11-12T12:00:00.000Z'}},'general_approval','geral'),false,'pedido devolvido sai da fila da Diretoria Geral');
+assert.equal(navigation.requestMatchesView({status:'deferred',archived:null,deferred:{reason:'Próximo mês',actor:'Diretora Geral',at:'2026-11-12T12:00:00.000Z',draftId:'00000000-0000-4000-8000-000000000001',availableMonth:'2026-12'}},'requests','solicitante'),true,'setor continua acompanhando o original adiado');
 assert.equal(navigation.requestMatchesView({status:'pending',archived:null},'requests','financeiro'),false,'Financeiro não acompanha solicitação antes da aprovação da Diretora Geral');
 assert.equal(navigation.requestMatchesView({status:'quoting',archived:null},'requests','financeiro'),false,'Financeiro não classifica pedido sem o registro da aprovação da Diretora Geral');
 assert.equal(navigation.requestMatchesView({status:'quoting',archived:null,generalApproval:{actor:'Diretora Geral TESTE',at:'2026-11-12T12:00:00.000Z',reason:'Necessidade aprovada'}},'requests','financeiro'),true,'Financeiro acompanha o pedido aprovado antes da execução em Solicitação');

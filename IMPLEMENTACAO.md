@@ -16,6 +16,10 @@ Diretora Geral: Franciluce Lima. Responsável pela diretoria administrativa: ain
 
 O envio do setor não inicia a pesquisa sozinho. A solicitação fica aguardando a Diretoria Administrativa, que aciona a estimativa automática pela internet. A ponte processa somente pedidos já iniciados pela administração. Depois do resultado, a administração confere os dados e usa **Salvar e enviar para Diretoria Geral**; essa ação salva a conferência, registra a aprovação administrativa e libera o pedido para a decisão da Diretoria Geral.
 
+Na análise da necessidade, a Diretoria Geral também pode usar **Devolver para apuração administrativa** e informar a pendência. A solicitação volta para `admin_review`, preserva o parecer anterior e só retorna à fila da Diretoria Geral quando a Administração registrar a resposta e reenviar. Pendência, resposta, responsáveis e datas permanecem no histórico do pedido.
+
+O adiamento preserva o pedido original, a competência e todo o histórico com status `deferred`. Na mesma operação, o sistema cria para o autor uma cópia privada e editável em Meus rascunhos, identificada como **Adiado**, com protocolo de origem, motivo e mês em que poderá ser enviada. O setor pode editar e anexar documentos imediatamente, mas o envio definitivo é bloqueado até a competência seguinte. Ao enviar, a cópia vira um novo protocolo e registra o vínculo `reusedFrom`; o original não é alterado nem retomado.
+
 Não existe reaprovação de valor. A proposta real pode superar a estimativa sem voltar à diretoria geral. A estimativa e o preço real permanecem separados e identificados.
 
 ## Implementado no piloto
@@ -59,6 +63,8 @@ React/Vinext, Cloudflare Workers, D1, autenticação local e hospedagem Sites. D
 - node scripts/workflow-test.mjs (regras de papéis e prazo em dados fictícios)
 
 Cobertura: acesso anônimo negado, entradas inválidas, sequência obrigatória, parecer administrativo, aprovação da necessidade, contatos locais, impedimento de busca nacional antes do prazo, propostas, preço real acima da estimativa, execução, recebimento, concorrência e histórico. Regras de fim de semana, feriado e supressão da busca nacional quando existe proposta válida foram verificadas separadamente. Revisão visual confirmou filas, estimativa versus preço real e histórico.
+
+Validação adicional da devolução e do adiamento: `node scripts/budget-flow-test.mjs`, `node scripts/deferred-draft-test.mjs`, `node scripts/general-return-ui-test.mjs` e, com o servidor local, `node scripts/general-return-deferred-draft-http-test.mjs`. Os testes usam somente dados fictícios e não enviam mensagens externas.
 
 Fora desta versão: envio automático do pedido e acompanhamento da execução pelo agente, interpretação automática de propostas, execução de pagamentos bancários, estoque e compras divididas entre fornecedores. Anexos, registro documental de pagamentos/notas e complementação de pedidos devolvidos estão implementados; não executam transferências financeiras. Usuários locais podem ser desativados, excluídos e ter suas senhas redefinidas por um Master. A exclusão encerra sessões, oculta a conta e preserva identidade, pedidos e auditoria; o login fica reservado. O próprio acesso e o último Master são protegidos. A troca de senha é opcional no primeiro acesso e após redefinição, inclusive para contas antigas, sem alterar credenciais existentes. Validação específica: `node --test scripts/openclaw-test.mjs` e `node scripts/integration-test.mjs`, com banco isolado e sem mensagens reais.
 
