@@ -14,7 +14,7 @@ export function visibleRequests(requests:Purchase[],me:{id:string;role:Member['r
     department:r.department,priority:r.priority,neededBy:r.neededBy,reason:r.reason,items:r.items,
     reopeningHistory:r.reopeningHistory?.map(({at,actor,reason,previous})=>({at,actor,reason,previous:{decision:previous.decision,needDecision:previous.needDecision}})),
     archived:r.archived,archiveHistory:r.archiveHistory,createdAt:r.createdAt,updatedAt:r.updatedAt,status:r.status,quotes:[],effectiveReferenceMonth:typeof r.management?.referenceMonth==='string'?r.management.referenceMonth:undefined,form:r.form,formDeclared:r.formDeclared,returnForCorrection:r.returnForCorrection,needDecision:r.needDecision,deferred:r.deferred,originalScope:r.originalScope?{items:r.originalScope.items,form:r.originalScope.form}:undefined,
-    ...(me.role==='geral'?{estimate:r.estimate,adminReview:r.adminReview,management:generalContext(r.management)}:{}),
+    ...(me.role==='geral'?{estimate:r.estimate,adminReview:r.adminReview,management:generalContext(r.management),generalReturnHistory:r.generalReturnHistory}:{}),
   }));
 }
 

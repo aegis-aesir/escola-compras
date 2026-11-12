@@ -28,6 +28,7 @@ await act('budget_management',{data:management,submitToGeneral:true},master,400)
 const response='Abrangência confirmada com a relação atualizada de todas as turmas';
 await act('budget_management',{data:management,submitToGeneral:true,generalReturnResponse:response});
 request=await current();assert.equal(request.status,'general_review');assert.equal(request.generalReturn,undefined);assert.equal(request.generalReturnHistory[0].response,response);
+const generalReturned=(await get('/api/data',general)).requests.find(item=>item.id===id);assert.equal(generalReturned.generalReturnHistory[0].response,response,'a Diretoria Geral consulta a resposta e o histórico ao receber o pedido novamente');
 const beforeDefer=request;
 await act('decide_need',{choice:'defer',reason:'Reavaliar a necessidade no próximo mês',due:'2099-12-01'},general);
 request=await current();assert.equal(request.status,'deferred');assert.ok(request.deferred.draftId);const originalSnapshot=structuredClone(request);

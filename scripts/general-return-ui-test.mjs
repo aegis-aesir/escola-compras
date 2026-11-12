@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 const panel=await readFile('app/budget-record-panel.tsx','utf8');
 const drafts=await readFile('app/draft-request-form.tsx','utf8');
 const requestForm=await readFile('app/budget-request-form.tsx','utf8');
+const dataRoute=await readFile('app/api/data/route.ts','utf8');
 
 assert.match(panel,/Devolver para apuração administrativa/,'Diretoria Geral precisa da ação de devolução');
 assert.match(panel,/send\('return_to_admin'/,'a ação visual deve chamar a transição protegida');
@@ -17,5 +18,6 @@ for(const text of ['Adiado','sourceCode','availableMonth','deferReason']){
 }
 assert.match(requestForm,/submitBlockedReason/,'formulário precisa aceitar o bloqueio mensal de envio');
 assert.match(requestForm,/disabled=\{busy\|\|!!submitBlockedReason\}/,'somente o envio deve ficar bloqueado');
+assert.match(dataRoute,/deferredDraft\?' AND changes\(\)=1'/,'o pedido só pode ser adiado quando a inserção vinculada do rascunho ocorreu na mesma transação');
 
 console.log('PASS: devolução da Diretoria Geral e cópia adiada têm controles e identificação na interface.');
