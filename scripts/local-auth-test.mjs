@@ -25,6 +25,14 @@ try {
  const stored=await db.prepare("SELECT data FROM records WHERE kind='local_user'").all();
  assert.equal(stored.results.length,3);
  for(const u of users)assert.ok(!JSON.stringify(stored.results).includes(u.password),'No plaintext passwords in D1');
+ const inactive={id:'user:inativo.teste',version:1,username:'inativo.teste',name:'Inativo teste',role:'solicitante',department:'Administrativo',active:false,mustChangePassword:false,passwordHash:'not-used',createdAt:new Date().toISOString()};
+ await db.prepare("INSERT INTO records(id,kind,data,version) VALUES (?,'local_user',?,1)").bind(inactive.id,JSON.stringify(inactive)).run();
+ assert.deepEqual(await auth.listLoginUsers(db),[
+  {username:'diretoria.geral',name:'DG teste'},
+  {username:'master',name:'Master teste'},
+  {username:'setor.teste',name:'Setor teste'},
+ ],'login dropdown lists only active users without exposing roles or record metadata');
+ await db.prepare('DELETE FROM records WHERE id=?').bind(inactive.id).run();
  const bad=await post('login',{username:'master',password:'wrong'});assert.equal(bad.status,401);
  const login=await post('login',{username:'MASTER',password:users[0].password});assert.equal(login.status,200);
  const cookie=login.headers.get('set-cookie').split(';')[0];

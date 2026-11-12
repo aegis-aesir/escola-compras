@@ -37,6 +37,14 @@ export async function listLocalUsers(db:D1Database) {
   const rows=await db.prepare("SELECT id,data,version FROM records WHERE kind='local_user' AND json_extract(data,'$.deletedAt') IS NULL ORDER BY id").all<{id:string;data:string;version:number}>();
   return rows.results.map(r=>publicUser({...JSON.parse(r.data),id:r.id,version:r.version}));
 }
+export type LoginUserOption={username:string;name:string};
+export async function listLoginUsers(db:D1Database):Promise<LoginUserOption[]> {
+  const rows=await db.prepare(`SELECT json_extract(data,'$.username') AS username,json_extract(data,'$.name') AS name
+    FROM records
+    WHERE kind='local_user' AND json_extract(data,'$.active')=1 AND json_extract(data,'$.deletedAt') IS NULL
+    ORDER BY lower(json_extract(data,'$.name')),lower(json_extract(data,'$.username'))`).all<LoginUserOption>();
+  return rows.results.map(({username,name})=>({username,name}));
+}
 function cookieToken(cookie:string,allowDev:boolean) {
   const fields=cookie.split(';').map(p=>p.trim());
   const value=fields.find(p=>p.startsWith('__Host-estrelas_session='))?.slice('__Host-estrelas_session='.length)||
