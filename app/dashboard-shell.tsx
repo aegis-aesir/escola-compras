@@ -2,29 +2,19 @@
 /* Vinext currently requires native links/images in client shells to avoid loading a second React runtime. */
 /* eslint-disable @next/next/no-html-link-for-pages, @next/next/no-img-element, @next/next/no-location-assign-relative-destination */
 import {useEffect,useMemo,useState,type ReactNode} from 'react';
-import {Archive,ChevronLeft,ChevronRight,CircleCheck,ClipboardList,FileText,KeyRound,LayoutDashboard,LogOut,Menu,MessageCircle,PackageCheck,Scale,Search,Settings2,Store,X,type LucideIcon} from 'lucide-react';
+import {Archive,ChevronLeft,ChevronRight,CircleCheck,ClipboardCheck,ClipboardList,FileText,KeyRound,LayoutDashboard,LogOut,Menu,MessageCircle,PackageCheck,Scale,Search,Settings2,Store,X,type LucideIcon} from 'lucide-react';
 import AppearanceControl from './appearance-control';
 import {formatManausDate,readSidebarPreference,sidebarPreferenceKey,type SidebarPreference} from './dashboard-shell-state';
+import {primaryNavigationForRole,primaryParentView,processViewLabel,type ProcessView} from './process-navigation';
+import type {Member} from './model';
 
-export type DashboardView='archives'|'budget'|'overview'|'estimates'|'execution'|'requests'|'approvals'|'quotes'|'suppliers'|'whatsapp'|'settings';
-type NavigationItem={id:DashboardView;label:string;Icon:LucideIcon};
-const navigation:NavigationItem[]=[
-  {id:'overview',label:'Visão geral',Icon:LayoutDashboard},
-  {id:'budget',label:'Orçamento mensal',Icon:FileText},
-  {id:'requests',label:'Solicitações',Icon:ClipboardList},
-  {id:'estimates',label:'Estimativas',Icon:Search},
-  {id:'approvals',label:'Aprovações',Icon:CircleCheck},
-  {id:'quotes',label:'Cotações',Icon:Scale},
-  {id:'execution',label:'Execução de compras',Icon:PackageCheck},
-  {id:'suppliers',label:'Fornecedores',Icon:Store},
-  {id:'whatsapp',label:'Agente WhatsApp',Icon:MessageCircle},
-  {id:'archives',label:'Arquivadas',Icon:Archive},
-  {id:'settings',label:'Configurações',Icon:Settings2},
-];
+export type DashboardView=ProcessView;
+const navigationIcons:Record<DashboardView,LucideIcon>={overview:LayoutDashboard,requests:ClipboardList,analysis:ClipboardCheck,estimates:Search,general_approval:CircleCheck,quotes:Scale,execution:PackageCheck,budget:FileText,suppliers:Store,whatsapp:MessageCircle,archives:Archive,settings:Settings2};
 
 type Props={
   view:DashboardView;
   allowedViews:DashboardView[];
+  role:Member['role'];
   userName:string;
   roleLabel:string;
   pendingApprovals:number;
@@ -32,12 +22,13 @@ type Props={
   children:ReactNode;
 };
 
-export default function DashboardShell({view,allowedViews,userName,roleLabel,pendingApprovals,onNavigate,children}:Props){
+export default function DashboardShell({view,allowedViews,role,userName,roleLabel,pendingApprovals,onNavigate,children}:Props){
   const [sidebar,setSidebar]=useState<SidebarPreference>('compact');
   const [mobileOpen,setMobileOpen]=useState(false);
   const allowed=useMemo(()=>new Set(allowedViews),[allowedViews]);
-  const visibleNavigation=navigation.filter(item=>allowed.has(item.id));
-  const activeLabel=navigation.find(item=>item.id===view)?.label||'Central de Compras';
+  const visibleNavigation=primaryNavigationForRole(role).filter(item=>allowed.has(item.id));
+  const activeLabel=processViewLabel(view,role);
+  const activePrimary=primaryParentView(view);
   const firstName=userName.trim().split(/\s+/)[0]||'usuário';
 
   useEffect(()=>{let active=true;queueMicrotask(()=>{if(active)setSidebar(readSidebarPreference(window.localStorage))});return()=>{active=false}},[]);
@@ -71,12 +62,15 @@ export default function DashboardShell({view,allowedViews,userName,roleLabel,pen
         {sidebar==='expanded'?<ChevronLeft size={18}/>:<ChevronRight size={18}/>}<span>{sidebar==='expanded'?'Recolher menu':'Expandir menu'}</span>
       </button>
       <nav role="navigation" aria-label="Navegação principal">
-        {visibleNavigation.map(({id,label,Icon})=><button type="button" key={id} className={'nav-item '+(view===id?'active':'')} aria-current={view===id?'page':undefined} aria-label={label} title={sidebar==='compact'?label:undefined} onClick={()=>{onNavigate(id);setMobileOpen(false)}}>
-          <Icon size={20}/><span className="nav-copy">{label}</span>{id==='approvals'&&pendingApprovals>0?<b aria-label={`${pendingApprovals} pendentes`}>{pendingApprovals}</b>:null}{id==='whatsapp'?<span className="dot" aria-hidden="true"/>:null}
-        </button>)}
+        {visibleNavigation.map(({id,label})=>{const Icon=navigationIcons[id];const active=activePrimary===id;return <button type="button" key={id} className={'nav-item '+(active?'active':'')} aria-current={active?'page':undefined} aria-label={label} title={sidebar==='compact'?label:undefined} onClick={()=>{onNavigate(id);setMobileOpen(false)}}>
+          <Icon size={20}/><span className="nav-copy">{label}</span>{id==='general_approval'&&pendingApprovals>0?<b aria-label={`${pendingApprovals} pendentes`}>{pendingApprovals}</b>:null}
+        </button>})}
       </nav>
       <div className="sidebar-bottom">
-        <div className="user-row"><span className="user-avatar">{userName.slice(0,2).toUpperCase()||'CE'}</span><div><strong>{userName||'Carregando…'}</strong><small>{roleLabel}</small></div></div>
+        <details className="user-menu">
+          <summary className="user-row" aria-label="Abrir opções do usuário"><span className="user-avatar">{userName.slice(0,2).toUpperCase()||'CE'}</span><div><strong>{userName||'Carregando…'}</strong><small>{roleLabel}</small></div></summary>
+          <div className="user-menu-options">{allowed.has('settings')?<button type="button" onClick={()=>onNavigate('settings')}><Settings2 size={16}/>Configurações</button>:null}<a href="/alterar-senha"><KeyRound size={16}/>Alterar senha</a><button type="button" onClick={logout}><LogOut size={16}/>Sair</button></div>
+        </details>
       </div>
     </aside>
     <div className="workspace">
