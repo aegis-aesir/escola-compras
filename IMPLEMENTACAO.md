@@ -105,4 +105,10 @@ A área autenticada passou a usar uma navegação lateral na cor de destaque, co
 
 O cabeçalho mostra saudação, data de Manaus, área ativa e mantém Aparência, alteração de senha e saída. A camada final `app/redesign.css` padroniza cartões, métricas, tabelas, formulários, histórico, anexos, diálogos e painéis de orçamento sem mudar eventos, payloads, permissões ou regras. O componente `app/dashboard-shell.tsx` concentra somente navegação e sessão; `app/dashboard-shell-state.ts` contém a normalização da preferência e a data local testável.
 
+### Menu por etapas do processo orçamentário
+
+O menu administrativo segue a sequência **Dashboard → Solicitação → Análise ADM → Estimativa → Aprovação Diretoria → Cotação → Execução → Resumo Mensal**. As filas são exclusivas: `pending` fica em Análise ADM; `estimating` e `admin_review`, em Estimativa; `general_review`, em Aprovação Diretoria; `quoting` e `national`, em Cotação; `execution`, `approved`, `ordered` e `received`, em Execução. Ao avançar, o pedido sai da fila anterior sem perder histórico.
+
+O perfil Setor continua com uma única área **Minhas solicitações**, que mostra todos os pedidos próprios e atualiza somente o status visível. A Diretoria Geral recebe apenas Aprovação Diretoria. O Financeiro mantém Solicitação, Execução e Resumo Mensal em modo de acompanhamento. Fornecedores e Agente WhatsApp são acessos contextuais de Cotação; Arquivadas fica dentro de Solicitação; Configurações fica na área do usuário Master. A matriz está em `app/process-navigation.ts` e é validada por `node scripts/process-navigation-test.mjs`.
+
 Validações próprias: `node scripts/redesign-shell-test.mjs` e `node scripts/redesign-styles-test.mjs`. A inspeção visual foi feita em desktop e 390 px, nos temas claro e escuro, com menu compacto, expandido e móvel. O lint global ainda possui dívida anterior em arquivos não relacionados; o novo shell passa isoladamente em ESLint. Nenhuma mensagem real foi enviada na validação.

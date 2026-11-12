@@ -92,3 +92,12 @@ Para Complementação necessária, usar Pendências e esclarecimentos como únic
 - Testes: `node scripts/redesign-shell-test.mjs`, `node scripts/redesign-styles-test.mjs`, `node node_modules/typescript/bin/tsc --noEmit` e `npm.cmd run build`, além das suítes funcionais já listadas neste documento.
 - A mudança é exclusivamente visual. Não alterar permissões, APIs, fluxo de estimativa/aprovação, dados D1/R2, integração OpenClaw ou envio de WhatsApp para ajustar a apresentação.
 - A validação visual local cobriu desktop, celular de 390 px, menu compacto/expandido/sobreposto, tema claro/escuro e janela longa de solicitação. Nenhuma mensagem real foi enviada.
+
+## Menu por etapas aprovado em 12/11/2026
+
+- Administração e Master: Dashboard, Solicitação, Análise ADM, Estimativa, Aprovação Diretoria, Cotação, Execução e Resumo Mensal.
+- Cada solicitação administrativa ativa aparece em uma única fila: `pending` em Análise ADM; `estimating`/`admin_review` em Estimativa; `general_review` em Aprovação Diretoria; `quoting`/`national` em Cotação; `execution`/`approved`/`ordered`/`received` em Execução.
+- O Setor não perde o acompanhamento quando o pedido avança: **Minhas solicitações** continua exibindo todos os registros próprios, com o status atualizado e sem controles internos.
+- Fornecedores e Agente WhatsApp ficam dentro de Cotação; Arquivadas dentro de Solicitação; Configurações na área do usuário Master.
+- Implementação central: `app/process-navigation.ts`. Teste: `node scripts/process-navigation-test.mjs`.
+- A reorganização não cria estados, não migra dados e não altera aprovações, permissões, APIs ou a integração OpenClaw.
