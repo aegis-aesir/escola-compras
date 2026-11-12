@@ -2,6 +2,7 @@ import {z} from 'zod';
 import type {Purchase,Member,Settings} from './model';
 import {quoteTotal} from './model';
 import {parseManagement} from './budget';
+import {deferredDraftRecord} from './deferred-draft';
 import {managementSections,canCompareCommercial,commercialFieldKeys} from './budget-fields';
 import {FlowError,todayManaus} from './workflow';
 
@@ -82,6 +83,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   }
   if(b.action==='resume_request'){
     permit('administrativo');if(old.status!=='deferred')throw new FlowError('Somente pedidos adiados podem ser retomados.');
+    if(old.deferred?.draftId)throw new FlowError('O setor já recebeu uma cópia editável em rascunho; o pedido original permanece adiado.');
     const month=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).parse(b.referenceMonth);
     data.correctionHistory=[...(old.correctionHistory||[]),{at:now,actor:me.name,reason,previous:{form:old.form,management:old.management,needDecision:old.needDecision,estimate:old.estimate,referenceMonth:old.form?.fields.referenceMonth}}];
     data.management={...old.management,referenceMonth:month};data.status='pending';
@@ -91,7 +93,9 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   }
   if(b.action==='defer_request'){
     if(me.role==='geral'){if(old.status!=='general_review')throw new FlowError('Aguarde o encaminhamento administrativo.');}else permit('administrativo');preApproval();
-    data.status='deferred';data.deferred={reason,at:now,actor:me.name};
+    const draftId=z.string().uuid().parse(b.deferredDraftId);
+    data.status='deferred';data.deferred={reason,at:now,actor:me.name,draftId};
+    data.deferred.availableMonth=deferredDraftRecord(data,draftId,now).availableMonth;
     return {data,action:'Pedido adiado sem transferência automática de mês: '+reason};
   }
   permit('geral');if(old.status!=='general_review'||!old.adminReview||!old.estimate)throw new FlowError('A decisão exige estimativa e parecer administrativo.');
@@ -104,7 +108,12 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   const conditions=z.string().trim().max(2000).optional().parse(b.conditions),due=b.due?date.parse(b.due):undefined;
   data.needDecision={choice,itemIndexes:indexes,reason,conditions,due,actor:me.name,at:now};
   if(choice==='reject'){data.status='rejected';data.decision=reason;return {data,action:'Necessidade recusada pela diretoria geral: '+reason}}
-  if(choice==='defer'){data.status='deferred';data.deferred={reason,at:now,actor:me.name};return {data,action:'Necessidade adiada pela diretoria geral: '+reason}}
+  if(choice==='defer'){
+    const draftId=z.string().uuid().parse(b.deferredDraftId);
+    data.status='deferred';data.deferred={reason,at:now,actor:me.name,due,draftId};
+    data.deferred.availableMonth=deferredDraftRecord(data,draftId,now).availableMonth;
+    return {data,action:'Necessidade adiada pela diretoria geral: '+reason};
+  }
   if(choice==='partial'||choice==='provisional'){
     const quantities=z.record(z.number().positive()).optional().parse(b.quantities)||{};
     if(Object.keys(quantities).some(k=>!indexes.includes(Number(k))||quantities[k]>old.items[Number(k)].quantity))throw new FlowError('As quantidades autorizadas não podem ampliar o pedido.');
