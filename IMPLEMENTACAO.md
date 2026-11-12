@@ -18,6 +18,8 @@ O envio do setor não inicia a pesquisa sozinho. A solicitação fica aguardando
 
 Na análise da necessidade, a Diretoria Geral também pode usar **Devolver para apuração administrativa** e informar a pendência. A solicitação volta para `admin_review`, preserva o parecer anterior e só retorna à fila da Diretoria Geral quando a Administração registrar a resposta e reenviar. Pendência, resposta, responsáveis e datas permanecem no histórico do pedido.
 
+Enquanto a solicitação ainda aguarda a decisão da Diretoria Geral, a Diretoria Administrativa pode abrir **Conferência administrativa** e usar **Salvar alterações na análise administrativa**. Uma revisão válida atualiza imediatamente o parecer mostrado à DG, mantém o pedido em `general_review` e registra autoria, data e nova versão no histórico. Depois da aprovação geral, esta regra não altera nem reaproveita a decisão já registrada.
+
 O adiamento preserva o pedido original, a competência e todo o histórico com status `deferred`. Na mesma operação, o sistema cria para o autor uma cópia privada e editável em Meus rascunhos, identificada como **Adiado**, com protocolo de origem, motivo e mês em que poderá ser enviada. O setor pode editar e anexar documentos imediatamente, mas o envio definitivo é bloqueado até a competência seguinte. Ao enviar, a cópia vira um novo protocolo e registra o vínculo `reusedFrom`; o original não é alterado nem retomado.
 
 Não existe reaprovação de valor. A proposta real pode superar a estimativa sem voltar à diretoria geral. A estimativa e o preço real permanecem separados e identificados.

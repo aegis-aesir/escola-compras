@@ -9,6 +9,7 @@ const dataRoute=await readFile('app/api/data/route.ts','utf8');
 assert.match(panel,/Devolver para apuração administrativa/,'Diretoria Geral precisa da ação de devolução');
 assert.match(panel,/send\('return_to_admin'/,'a ação visual deve chamar a transição protegida');
 assert.match(panel,/Resposta à pendência da Diretoria Geral/,'Diretoria Administrativa precisa responder à pendência');
+assert.match(panel,/Salvar alterações na análise administrativa/,'a Diretoria Administrativa precisa de uma ação explícita para revisar o parecer já encaminhado');
 assert.match(panel,/generalReturnHistory/,'o histórico das devoluções precisa permanecer consultável');
 assert.match(panel,/r\.status==='deferred'&&!r\.deferred\?\.draftId/,'retomada legada só pode aparecer sem a nova cópia');
 assert.match(panel,/Cópia editável enviada ao setor/,'o original adiado deve indicar a criação da cópia');

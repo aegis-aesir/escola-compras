@@ -44,6 +44,11 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
       data.status='general_review';
       return {data,action:'Conferência salva; Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview};
     }
+    if(old.status==='general_review'&&!old.generalApproval){
+      ensureAdministrativeReview(data);
+      data.adminReview=`${String(m.recommendation)}. Prioridade validada: ${String(m.validatedPriority)}.`;
+      return {data,action:'Análise administrativa revisada durante a aprovação da Diretoria Geral: '+data.adminReview};
+    }
     return {data,action:'Controles administrativos e de execução atualizados'};
   }
   const reason=reasonSchema.parse(b.reason);
