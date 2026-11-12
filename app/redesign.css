@@ -251,14 +251,14 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
 }
 
 @media(max-width:900px) {
-  .sidebar {width:min(86vw,var(--ui-sidebar-expanded));transform:translateX(-105%)}
-  .app-shell[data-mobile-nav="open"] .sidebar {transform:translateX(0)}
+  .sidebar {width:min(86vw,var(--ui-sidebar-expanded));visibility:hidden;transform:translateX(-105%)}
+  .app-shell[data-mobile-nav="open"] .sidebar {visibility:visible;transform:translateX(0)}
   .app-shell[data-sidebar] .workspace {width:100%;margin-left:0}
   .app-shell[data-sidebar] .brand-copy,.app-shell[data-sidebar] .nav-copy,.app-shell[data-sidebar] .sidebar .user-row>div {opacity:1}
   .app-shell[data-sidebar] .sidebar-toggle {display:none}
   .sidebar-close {display:inline-grid;place-items:center;flex:none;width:40px;height:40px;margin-left:auto;border:1px solid #ffffff30;border-radius:9px;background:#ffffff12;color:#fff}
-  .nav-backdrop {display:block;position:fixed;z-index:35;inset:0;border:0;background:#08132199;opacity:0;pointer-events:none;transition:opacity .2s ease}
-  .app-shell[data-mobile-nav="open"] .nav-backdrop {opacity:1;pointer-events:auto}
+  .nav-backdrop {display:block;position:fixed;z-index:35;inset:0;visibility:hidden;border:0;background:#08132199;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .app-shell[data-mobile-nav="open"] .nav-backdrop {visibility:visible;opacity:1;pointer-events:auto}
   .mobile-menu-button {display:inline-flex}
   .topbar-logo {display:none}
   .topbar-context strong {max-width:42vw}
