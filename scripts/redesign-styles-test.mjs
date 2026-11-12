@@ -30,6 +30,7 @@ assert.match(redesign,/\.modal-body[^}]*overflow-y:\s*auto/,'long dialog bodies 
 assert.match(redesign,/max-height:\s*calc\(100dvh\s*-\s*16px\)/,'mobile dialogs must fit the dynamic viewport');
 assert.match(redesign,/@media\s*\(max-width:\s*900px\)[\s\S]*\.sidebar\s*\{[^}]*visibility:\s*hidden/,'closed mobile navigation must be hidden from assistive technology');
 assert.match(redesign,/\[data-mobile-nav="open"\]\s+\.sidebar\s*\{[^}]*visibility:\s*visible/,'open mobile navigation must become visible to assistive technology');
+assert.match(redesign,/@media\s*\(min-width:\s*901px\)[\s\S]*?\[data-sidebar="compact"\][^}]*\.sidebar:has\(\.user-menu\[open\]\)[^}]*\{[^}]*overflow:\s*visible/,'desktop compact user menu must not be clipped without disabling mobile sidebar scrolling');
 assert.match(history,/className="request-history"/,'request history needs its own visual region');
 assert.match(appearance,/:root\[data-theme="dark"\]/,'dark theme must remain supported');
 console.log('PASS: global redesign tokens and shared component contracts are present.');

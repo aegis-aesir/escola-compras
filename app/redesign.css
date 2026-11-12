@@ -95,6 +95,7 @@ dialog::backdrop {background:color-mix(in srgb,#07101f 64%,transparent);backdrop
 .user-menu {position:relative}
 .user-menu>summary {width:100%;list-style:none;cursor:pointer}
 .user-menu>summary::-webkit-details-marker {display:none}
+@media(min-width:901px) {.app-shell[data-sidebar="compact"] .sidebar:has(.user-menu[open]) {overflow:visible}}
 .user-menu-options {position:absolute;z-index:50;left:calc(100% + 10px);bottom:0;display:grid;width:220px;padding:7px;border:1px solid var(--line);border-radius:11px;background:var(--surface);box-shadow:var(--ui-shadow)}
 .app-shell[data-sidebar="expanded"] .user-menu-options {right:0;bottom:64px;left:0;width:auto}
 .user-menu-options a,.user-menu-options button {display:flex;align-items:center;gap:9px;width:100%;min-height:40px;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:11px;font-weight:700;text-align:left;text-decoration:none}

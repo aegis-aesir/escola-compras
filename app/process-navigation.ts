@@ -62,7 +62,8 @@ export function requestMatchesView(request:Pick<Purchase,'status'|'archived'>,vi
   if(view==='archives')return !!request.archived;
   if(request.archived)return false;
   if(view==='requests'){
-    if(role==='solicitante'||role==='financeiro')return true;
+    if(role==='solicitante')return true;
+    if(role==='financeiro')return !['execution','approved','ordered','received'].includes(request.status);
     return ['correction','deferred','rejected'].includes(request.status);
   }
   if(view==='analysis')return request.status==='pending';

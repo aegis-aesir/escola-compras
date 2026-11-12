@@ -29,6 +29,7 @@ const primaryNavigation=adminMarkup.match(/<nav[^>]*aria-label="Navegação prin
 for(const auxiliary of ['Fornecedores','Agente WhatsApp','Arquivadas','Configurações'])assert.ok(!primaryNavigation.includes(`aria-label="${auxiliary}"`),`${auxiliary} não deve ocupar uma etapa principal`);
 assert.match(adminMarkup,/aria-label="Abrir opções do usuário"/,'Configurações deve ficar na área do usuário');
 assert.match(adminMarkup,/>Configurações</,'Master mantém o acesso às configurações');
+for(const label of ['Abrir configurações','Alterar senha','Sair'])assert.match(adminMarkup,new RegExp(`aria-label="${label}"`),`opção ${label} precisa de nome acessível`);
 
 const sectorMarkup=renderShell('solicitante','requests',['requests']);
 assert.match(sectorMarkup,/aria-label="Minhas solicitações"/,'Setor recebe uma única área contínua de acompanhamento');

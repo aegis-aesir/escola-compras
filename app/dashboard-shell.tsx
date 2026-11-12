@@ -69,7 +69,7 @@ export default function DashboardShell({view,allowedViews,role,userName,roleLabe
       <div className="sidebar-bottom">
         <details className="user-menu">
           <summary className="user-row" aria-label="Abrir opções do usuário"><span className="user-avatar">{userName.slice(0,2).toUpperCase()||'CE'}</span><div><strong>{userName||'Carregando…'}</strong><small>{roleLabel}</small></div></summary>
-          <div className="user-menu-options">{allowed.has('settings')?<button type="button" onClick={()=>onNavigate('settings')}><Settings2 size={16}/>Configurações</button>:null}<a href="/alterar-senha"><KeyRound size={16}/>Alterar senha</a><button type="button" onClick={logout}><LogOut size={16}/>Sair</button></div>
+          <div className="user-menu-options">{allowed.has('settings')?<button type="button" aria-label="Abrir configurações" onClick={()=>onNavigate('settings')}><Settings2 size={16}/>Configurações</button>:null}<a href="/alterar-senha" aria-label="Alterar senha"><KeyRound size={16}/>Alterar senha</a><button type="button" aria-label="Sair" onClick={logout}><LogOut size={16}/>Sair</button></div>
         </details>
       </div>
     </aside>

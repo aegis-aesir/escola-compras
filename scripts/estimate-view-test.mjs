@@ -14,7 +14,8 @@ const {isVisibleInEstimateView}=await import('../outputs/estimate-view-test.mjs?
 
 assert.equal(isVisibleInEstimateView({status:'estimating'}),true,'pedidos aguardando pesquisa aparecem em Estimativas');
 assert.equal(isVisibleInEstimateView({status:'admin_review',estimate:{total:250}}),true,'estimativas concluídas continuam visíveis após seguirem para análise');
-assert.equal(isVisibleInEstimateView({status:'quoting',estimate:{total:250}}),true,'a estimativa permanece consultável nas etapas posteriores');
-assert.equal(isVisibleInEstimateView({status:'admin_review'}),false,'pedido sem pesquisa nem estimativa não aparece como resultado');
+assert.equal(isVisibleInEstimateView({status:'quoting',estimate:{total:250}}),false,'a estimativa deixa a fila quando o pedido avança para cotação');
+assert.equal(isVisibleInEstimateView({status:'admin_review'}),true,'a conferência administrativa permanece na etapa Estimativa');
+assert.equal(isVisibleInEstimateView({status:'pending'}),false,'pedido ainda não iniciado pertence à Análise ADM');
 
-console.log('Estimate view: pending and completed estimates remain visible.');
+console.log('Estimate view: only research and administrative conference remain in the Estimativa queue.');

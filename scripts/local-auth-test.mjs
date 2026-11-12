@@ -105,7 +105,7 @@ try {
  assert.equal((await post('login',{username:'unknown',password:'wrong'})).status,429,'bounded login attempts');
  const own={id:'r1',authorId:'sector',status:'estimating',quotes:[{secret:'supplier'}],estimate:{total:999},executionNotes:[{secret:'internal'}],items:[],title:'Pedido'};
  const pending={...own,id:'r2',authorId:'someone',status:'general_review',adminReview:'Parecer necessário'};
- assert.deepEqual(access.visibleViews('geral'),['approvals']);assert.deepEqual(access.visibleViews('solicitante'),['requests']);
+ assert.deepEqual(access.visibleViews('geral'),['general_approval']);assert.deepEqual(access.visibleViews('solicitante'),['requests']);
  assert.equal(access.canCreateRequest('geral'),false);assert.equal(access.canCreateRequest('admin'),true);
  const sectorRequests=access.visibleRequests([own,pending],{id:'sector',role:'solicitante'});assert.equal(sectorRequests.length,1);assert.equal(sectorRequests[0].estimate,undefined);assert.equal(sectorRequests[0].executionNotes,undefined);assert.deepEqual(sectorRequests[0].quotes,[]);
  const generalRequests=access.visibleRequests([own,pending],{id:'dg',role:'geral'});assert.equal(generalRequests.length,1);assert.equal(generalRequests[0].adminReview,pending.adminReview);assert.deepEqual(generalRequests[0].quotes,[]);
