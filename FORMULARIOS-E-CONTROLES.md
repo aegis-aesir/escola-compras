@@ -22,17 +22,19 @@ Os detalhes do pedido reúnem conferência e parecer da necessidade em um único
 
 Para reavaliar uma solicitação **Não aprovada**, Master ou Diretoria Administrativa abre o pedido em Solicitações e usa **Reabrir para análise → Justificativa da reabertura → Confirmar reabertura**. A recusa e o parecer anteriores ficam no histórico; o pedido mantém seus itens, identidade e competência. Com estimativa existente, retorna à análise administrativa; sem ela, passa primeiro pela pesquisa. A recomendação e a prioridade validada devem ser novamente preenchidas antes de uma nova decisão da DG. O setor e a DG consultam o histórico da reabertura sem acesso aos controles internos anteriores. Pedidos com aprovação ou propostas de compra exigem conferência do histórico antes de qualquer reabertura; não são alterados por essa ação. Meses fechados continuam exigindo reabertura do mês.
 
-Devolver exige motivo e prazo. Adiar não transfere o mês automaticamente. Retomar exige justificativa e competência efetiva; a original fica preservada e o pedido exige nova estimativa/análise/decisão da necessidade. A área mensal identifica entradas e saídas sem repetir o valor nas duas competências. Pedidos antigos permanecem sem competência até classificação administrativa explícita.
+Devolver exige motivo e prazo. Adiar mantém uma única solicitação/protocolo em `deferred`, sem transferir o mês automaticamente; a revisão editável com autosave e anexos fica em `deferredEdit`. O autor usa **Revisar e reapresentar solicitação adiada** a partir de `availableMonth` (normalmente o mês seguinte à competência adiada); o Master pode antecipar com justificativa. `reapply_deferred` preserva a rodada anterior em `roundHistory`, mantém ID/protocolo/autoria/anexos, calcula a competência do novo envio no servidor em Manaus e retorna a `pending` para nova estimativa/análise/decisão da necessidade. Mês fechado exige reabertura. Cópias legadas ainda não enviadas são incorporadas ao histórico, sem apagar arquivos ou consolidar pedidos independentes já enviados; `resume_request` orienta a reapresentação completa. A área mensal consulta as rodadas de cada competência sem duplicar o pedido. Pedidos antigos permanecem sem competência até classificação administrativa explícita.
 
 ## Financeiro
 
-Perfil de consulta atribuído por um Master: orçamento mensal, todos os pedidos, execução, notas, tributos, vencimentos, pagamentos, fechamentos/versões e anexos privados. Use Consultar na linha do documento fiscal para ver os detalhes e pendências. Não registra nem altera documentos/pagamentos, aprova, escolhe fornecedores, arquiva solicitações ou opera WhatsApp. As permissões são verificadas na API e no armazenamento de anexos.
+Perfil de consulta atribuído por um Master: acompanha pedidos de todos os setores somente quando a necessidade já tem aprovação da Diretora Geral (`generalApproval`), além do orçamento mensal, execução, notas, tributos, vencimentos, pagamentos, fechamentos/versões e anexos privados vinculados aos pedidos permitidos. Solicitações sem aprovação, seus registros fiscais, históricos e anexos não são entregues ao Financeiro. Rascunhos, revisões privadas e rodadas sem aprovação também ficam fora da projeção. Use Consultar na linha do documento fiscal para ver os detalhes e pendências autorizados. Não registra nem altera documentos/pagamentos, aprova, escolhe fornecedores, arquiva solicitações, anexa, opera WhatsApp ou gerencia usuários. A API não entrega usuários, cadastro separado de fornecedores ou informações da integração; as permissões também são verificadas no armazenamento de anexos.
 
 ## Diretoria Geral
 
 Aprova a necessidade integral, parte identificada de itens/quantidades, medida provisória emergencial, adia ou rejeita, com motivo e condições. A aprovação parcial reduz efetivamente o escopo que segue às cotações; o pedido original permanece no histórico. A medida provisória não autoriza a solução definitiva, que precisa de solicitação vinculada e fluxo próprio.
 
 Não há campo de teto financeiro, aprovação de valor ou reaprovação por preço real acima da estimativa. Parecer e estimativa são contexto informativo. O perfil não administra fornecedores, compras ou pagamentos.
+
+**Prazo pertinente à decisão** é uma data opcional associada à decisão e às condições registradas pela Diretoria Geral; fica salva em `needDecision.due` e aparece na consulta da decisão. Ao escolher **Adiar**, o rótulo passa a **Data prevista para reavaliar a solicitação** e a data é obrigatória. É um prazo de acompanhamento: não agenda compra, não muda automaticamente a competência e não define a liberação da reapresentação, que usa `availableMonth`.
 
 ## Pesquisa e propostas
 
@@ -68,7 +70,7 @@ O calendário usa America/Manaus e os feriados cadastrados: prazos fixos do mês
 
 Testes da reabertura: `node scripts/reopen-request-test.mjs`; com servidor local, `node scripts/reopen-request-http-test.mjs`.
 
-Testes isolados: `node scripts/administrative-stages-test.mjs`, `node scripts/budget-test.mjs`, `node scripts/budget-flow-test.mjs`, `node scripts/budget-files-test.mjs`, `node scripts/budget-records-test.mjs`, `node scripts/quote-comparison-test.mjs`. Com servidor apenas em 127.0.0.1:5173: `node scripts/budget-http-test.mjs` e `node scripts/smoke-test.mjs`.
+Testes isolados: `node scripts/administrative-stages-test.mjs`, `node scripts/budget-test.mjs`, `node scripts/budget-flow-test.mjs`, `node scripts/budget-files-test.mjs`, `node scripts/budget-records-test.mjs`, `node scripts/quote-comparison-test.mjs`. Nesta worktree Compras, com servidor somente em http://127.0.0.1:5185: `node scripts/budget-http-test.mjs` e `node scripts/smoke-test.mjs`. A porta é resolvida pelo manifesto do módulo; não usar a porta 5173 do coordenador.
 
 Os testes usam dados fictícios, armazenamento local/temporário e não chamam fornecedores. Verificação de tipos e build continuam nos comandos existentes.
 
