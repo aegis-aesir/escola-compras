@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+await build({entryPoints:['app/master-record-list.ts'],outfile:'outputs/unified-archives.mjs',bundle:true,platform:'node',format:'esm'});
+const {masterRecordList}=await import('../outputs/unified-archives.mjs?'+Date.now());
+const drafts=[{id:'draft-active',values:{title:'Pilhas',department:'Tecnologia'},updatedAt:'2026-11-13T12:00:00Z'}, {id:'draft-archived',values:{title:'Rascunho manutenção',department:'Manutenção'},updatedAt:'2026-11-12T12:00:00Z',archivedAt:'2026-11-13T11:00:00Z',archivedBy:'Master'}];
+const requests=[{id:'request-active',title:'Compra ativa',status:'pending'}, {id:'request-archived',title:'Lâmpada',code:'CE-LAMPADA',authorName:'Victor',department:'Tecnologia',status:'admin_review',archived:{at:'2026-11-13T13:00:00Z',actor:'Master'}}];
+const archives=masterRecordList(drafts,requests,'archives');
+assert.deepEqual(archives.map(row=>row.id),['request-archived','draft-archived'],'mesma lista com os dois tipos, ordenados pela data do arquivo');
+assert.equal(archives[0].request,requests[1]);assert.equal(archives[1].draft,drafts[1]);
+assert.deepEqual(masterRecordList(drafts,requests,'drafts').map(row=>row.id),['draft-active']);
+assert.equal(masterRecordList(drafts,requests,'archives','CE-LAMPADA')[0].id,'request-archived');
+assert.equal(masterRecordList(drafts,requests,'archives','manutenção')[0].id,'draft-archived');
+assert.equal(masterRecordList(drafts,requests,'archives','inexistente').length,0);
+console.log('PASS: arquivo único combina solicitações e rascunhos, preserva ações, ordem, busca e separação de ativos.');

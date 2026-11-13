@@ -74,7 +74,7 @@ assert.equal(navigation.requestMatchesView({status:'execution',archived:null,gen
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'execution','admin'),false,'arquivadas não permanecem nas filas ativas');
 assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'2026-11-12'}},'archives','admin'),true,'arquivadas ficam na consulta auxiliar');
 
-assert.deepEqual(navigation.contextualActionsForView('requests','admin'),[{view:'archives',label:'Arquivadas'},{view:'drafts',label:'Rascunhos dos setores'}],'Master abre arquivadas e rascunhos dentro de Solicitação');
+assert.deepEqual(navigation.contextualActionsForView('requests','admin'),[{view:'drafts',label:'Rascunhos e arquivadas'}],'Master abre a área unificada dentro de Solicitação');
 assert.deepEqual(navigation.contextualActionsForView('requests','administrativo'),[],'Diretoria Administrativa não recebe o controle exclusivo de arquivamento');
 assert.deepEqual(navigation.contextualActionsForView('quotes','admin'),[
   {view:'suppliers',label:'Fornecedores'},

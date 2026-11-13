@@ -16,7 +16,7 @@ const administrativeSteps:PrimaryNavigationItem[]=[
 ];
 
 const labels:Record<ProcessView,string>={
-  overview:'Dashboard',requests:'Solicitação',analysis:'Análise ADM',estimates:'Estimativa',general_approval:'Aprovação Diretoria',quotes:'Cotação',execution:'Execução',budget:'Resumo Mensal',suppliers:'Fornecedores',whatsapp:'Agente WhatsApp',archives:'Arquivadas',drafts:'Rascunhos dos setores',settings:'Configurações',
+  overview:'Dashboard',requests:'Solicitação',analysis:'Análise ADM',estimates:'Estimativa',general_approval:'Aprovação Diretoria',quotes:'Cotação',execution:'Execução',budget:'Resumo Mensal',suppliers:'Fornecedores',whatsapp:'Agente WhatsApp',archives:'Solicitações e rascunhos',drafts:'Solicitações e rascunhos',settings:'Configurações',
 };
 
 export function primaryNavigationForRole(role:Member['role']):PrimaryNavigationItem[]{
@@ -54,7 +54,7 @@ export function primaryParentView(view:ProcessView):ProcessView{
 }
 
 export function contextualActionsForView(view:ProcessView,role:Member['role']):ContextualNavigationItem[]{
-  if(view==='requests'&&role==='admin')return [{view:'archives',label:'Arquivadas'},{view:'drafts',label:'Rascunhos dos setores'}];
+  if(view==='requests'&&role==='admin')return [{view:'drafts',label:'Rascunhos e arquivadas'}];
   if(view==='quotes'&&(role==='admin'||role==='administrativo'))return [
     {view:'suppliers',label:'Fornecedores'},
     {view:'whatsapp',label:'Agente WhatsApp'},

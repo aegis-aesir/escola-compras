@@ -126,6 +126,15 @@ dialog[open]>fieldset>.modal-body {position:absolute;inset:0;height:auto}
 .page-heading p {max-width:850px;margin-top:9px;color:var(--muted);font-size:12px;line-height:1.65;overflow-wrap:anywhere}
 .page-actions {display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:none}
 .page-actions>.button {height:auto;min-height:var(--ui-control-height)}
+.management-tabs {display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;padding:6px;margin:0 0 22px;border:1px solid var(--line);border-radius:var(--ui-radius);background:var(--surface,#fff);width:fit-content;max-width:100%}
+.management-tabs>button {display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:12px 18px;border:1px solid transparent;border-radius:var(--ui-radius-sm);background:transparent;color:var(--muted);font-size:12px;font-weight:650;white-space:normal;text-align:center}
+.management-tabs>button:hover {background:var(--accent-soft);color:var(--ink)}
+.management-tabs>button[aria-pressed="true"] {background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 22%,var(--line))}
+.management-tabs>button:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+.management-tabs>button>svg {flex-shrink:0}
+.management-tabs>button>span {padding:2px 7px;border-radius:999px;background:var(--canvas);color:var(--ink);font-size:10px}
+.management-tabs-in-panel {margin:18px var(--ui-space) 0;max-width:calc(100% - 2 * var(--ui-space))}
+@media(max-width:600px){.management-tabs{width:100%;display:grid;grid-template-columns:1fr}.management-tabs>button{justify-content:flex-start;padding:12px 14px}}
 
 .metrics {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}
 .metric {position:relative;padding:20px;overflow:hidden}
