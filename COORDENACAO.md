@@ -45,12 +45,15 @@ O usuário autorizou criar os quatro chats e inserir os prompts. Foram criados n
 | CEEA Manager — Conhecimento e POPs | `01a1d60f-dda9-7481-a014-a78263722dbd` | `conhecimento-pops` / `codex/conhecimento-pops` |
 | CEEA Manager — Tarefas e responsabilidades | `01a1d60f-e094-7fc2-8c4b-6cebe56cf5e2` | `tarefas` / `codex/tarefas` |
 | CEEA Manager — Integração Escolar Manager | `01a1d60f-e3b0-7a81-9cee-4921a543113f` | `integracao-escolar-manager` / `codex/integracao-escolar-manager` |
+| CEEA Manager — Compras | `01a1d61a-0176-7140-afd1-f037f52fc598` | `compras` / `codex/compras` |
 
 Os prompts iniciam pela auditoria e pelo planejamento dos requisitos ainda indefinidos. A criação dos chats não autoriza implementação de decisões de negócio pendentes.
 
 ### Quinto módulo: Compras
 
 O usuário autorizou a worktree e o chat **CEEA Manager — Compras** para continuar a evolução e as correções do módulo existente, sem reconstruí-lo. Pasta `.worktrees/compras`, branch `codex/compras`, porta 5185. O coordenador mantém a main e a publicação. Aplicam-se todas as regras de entrega em `docs/modulos/compras/ENTREGA.md`, ambiente fictício e bloqueio de envios reais. Não aplicar autorizações antigas para exclusões/testes em produção ou publicação individual. O prompt deve exigir caminhos absolutos/workdir explícito, pois o cadastro de projeto continua sendo Compras na pasta pai.
+
+Worktree preparada a partir de `2b0d4e7`, com dependências próprias, chave fictícia nova, banco D1 exclusivamente local, flags de envio desativadas, hook por worktree e rastreamento de `origin/codex/compras`. Verificações: teste de configuração/portas dos cinco módulos, tipos, regras do fluxo, teste HTTP de rascunhos em 5185 e recusa de push dry-run a uma branch indevida. Servidor de teste encerrado. Nenhuma alteração de dados ou hospedagem de produção. O chat inicia por auditoria e aguarda uma tarefa concreta antes de mudar funcionalidades.
 
 ## Regras de trabalho paralelo
 
