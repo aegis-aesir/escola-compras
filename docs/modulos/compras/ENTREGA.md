@@ -1,4 +1,57 @@
-# Entrega atual de Compras — remoção do prazo da decisão — 13/11/2026
+# Entrega atual de Compras — Cotação colapsável e ícones — 13/11/2026
+
+## Escopo e resultado
+
+O usuário solicitou um bloco colapsável de Cotação nos detalhes da solicitação e ícones padronizados nos cabeçalhos, pois apenas Formulário Orçamentário tinha ícone.
+
+O novo componente `RequestQuotationPanel` reúne as ações existentes Registrar cotação/Preparar mensagem, comparativo e histórico de versões das propostas. É inserido no painel após a decisão da DG e antes de Execução; o painel legado também recebe o conteúdo. O bloco abre por padrão em `quoting`/`national` quando ativo. Fora dessas etapas permanece consultável e, sem propostas, explica a separação entre propostas comerciais e estimativas. Setor não recebe o bloco. Ações continuam restritas a Master/ADM, etapa compatível e pedido ativo; Financeiro e arquivados mantêm consulta, e versões antigas nunca oferecem seleção.
+
+Os cabeçalhos de formulário, conferência, estimativas, cotação, execução, prestação de contas, históricos, fontes, categorias e detalhes de propostas usam ícones da biblioteca Lucide já instalada, com 16 px e espaçamento de 8 px. Não foram criadas novas regras de compra, APIs ou contatos externos. A decisão da DG continua sendo sobre necessidade e escopo.
+
+- Branch: `codex/compras`; worktree exclusiva `C:\Users\aegis\Documents\ChatGPT\Compras\escola-compras\.worktrees\compras`; porta `5185`.
+- Base: `7a9a9dd7fade1e41c9343db5a7a62bb8d91abee7`, correção anterior do prazo já enviada.
+- SHA final: informado na resposta do chat; conferir com `git log -1 --format=%H`. Este arquivo integra o próprio commit.
+
+## Arquivos compartilhados e contratos
+
+- Novo: `app/request-quotation-panel.tsx`, composição visual das ações/comparativo/histórico existentes.
+- `app/dashboard.tsx`: passa o bloco pelo novo encaixe `quotations` de `BudgetRecordPanel`; remove o conteúdo avulso duplicado.
+- `app/budget-record-panel.tsx`: encaixe opcional `quotations`, inclusive no legado; ícones nos cabeçalhos.
+- `app/workflow-panel.tsx`, `app/estimate-criteria-panel.tsx`, `app/supplier-discovery-panel.tsx`: ícones em estimativas, critérios e consulta de fornecedores.
+- `app/quote-commercial-fields.tsx`: ícones nos detalhes das propostas, reaproveitando a mesma comparação/seleção.
+- `app/request-history.tsx`, `app/request-archive-details.tsx`: ícones nos históricos e informações preservadas.
+- `app/redesign.css`: alinhamento/espaçamento dos ícones limitado aos cabeçalhos colapsáveis do detalhe de solicitação.
+- Novo: `scripts/request-sections-test.mjs`, regressão de renderização/ordem/ícones e consulta por perfil/arquivamento; gera fixture visual fictícia em `outputs/request-sections/` (ignorado).
+- `scripts/general-return-ui-test.mjs`, `scripts/request-form-layout-test.mjs`: expectativas de cabeçalhos atualizadas para admitir ícones, mantendo as verificações de ordem e comportamento.
+- `FORMULARIOS-E-CONTROLES.md` e este arquivo: orientação e entrega.
+
+O único contrato de componente ampliado é a propriedade opcional `quotations?: ReactNode` do painel; nenhum contrato de dados/API foi alterado. Sem migrações, configurações, segredos, dependências ou alteração de modelos, rotas, autenticação, menu ou permissões. O coordenador deve conciliar alterações concorrentes nos componentes e no CSS compartilhado antes de integrar.
+
+## Verificações e resultados reais
+
+Todos os comandos foram executados com workdir explícito nesta worktree.
+
+- Regressão antes da implementação: `node scripts/request-sections-test.mjs` **falhou como esperado**, pela ausência de Cotação depois da decisão e antes da execução.
+- Após a implementação, **PASS** nas oito suítes: `request-sections-test.mjs`, `general-return-ui-test.mjs`, `request-form-layout-test.mjs`, `redesign-styles-test.mjs`, `estimate-criteria-ui-test.mjs`, `quote-comparison-test.mjs` (9 testes), `budget-flow-test.mjs` e `finance-profile-test.mjs`. As duas últimas preservam decisões estruturadas e Financeiro somente após aprovação, sem gravações indevidas. Testes usam dados fictícios e, quando necessário, D1/R2 temporários isolados.
+- `node node_modules/typescript/bin/tsc --noEmit --incremental false`: **PASS**.
+- `npm.cmd run build`: **PASS**.
+- `git diff --check`: **PASS**.
+- Revisão conforme `react-best-practices`: componentes no escopo do módulo, sem efeitos/fetches novos; cabeçalhos nativos `details/summary`, ícones decorativos, callbacks e bloqueios de perfil/etapa/arquivamento preservados.
+- Verificação visual no navegador em `http://127.0.0.1:5185/ui-check.html`: fixture gerada com os componentes reais e estilos do projeto, dados fictícios e sem autenticação/produção. Cotação foi observada aberta com ações/comparativo; ao recolher, o conteúdo deixou de aparecer. Ícones e alinhamento dos sete cabeçalhos visíveis conferidos. Captura local em `outputs/request-sections/cotacao-icones.png`, fora do Git. Servidor temporário de arquivos, sem ponte ou processamento de pesquisas.
+
+Limite: a checagem visual usa HTML renderizado dos componentes e interação nativa dos colapsáveis, não um fluxo autenticado completo do aplicativo. Não houve envio de mensagens, pesquisa externa, dados reais, migração ou publicação. As abas de produção não foram operadas.
+
+## Pendências e verificação pelo coordenador
+
+Sem pendência de implementação neste escopo. Revisar o SHA/branch informados, conciliar os arquivos compartilhados e publicar somente pelo fluxo do coordenador.
+
+Para conferir localmente: executar `node scripts/request-sections-test.mjs` para gerar a fixture ou iniciar o aplicativo em `http://127.0.0.1:5185` com dados fictícios. Abrir solicitação ativa em Cotação e conferir a ordem Formulário → Conferência → Estimativas → decisão da DG (quando aplicável) → Cotação → Execução → Prestação de contas. Recolher/expandir Cotação e verificar ações, comparativo e histórico. Conferir ausência de ações no Financeiro/arquivados e ausência do bloco para Setor. Não usar pesquisas/envios reais para validar a organização visual.
+
+---
+
+# Histórico — remoção do prazo da decisão — 13/11/2026
+
+Commit da entrega anterior: `7a9a9dd7fade1e41c9343db5a7a62bb8d91abee7`. Para a entrega atual, prevalece a seção acima.
 
 ## Escopo e comportamento resultante
 

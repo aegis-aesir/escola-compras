@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {readFile,writeFile} from 'node:fs/promises';
+import {budgetFixture} from './budget-fixture.mjs';
+
+const external=['react','react-dom','lucide-react'];
+await build({entryPoints:['app/budget-record-panel.tsx'],outfile:'outputs/request-sections/panel.mjs',bundle:true,platform:'node',format:'esm',external});
+const {BudgetRecordPanel}=await import('../outputs/request-sections/panel.mjs');
+const request={...budgetFixture(),id:'request-sections',code:'CE-LOCAL',version:1,status:'general_review',authorId:'sector',authorName:'TESTE LOCAL',quotes:[],createdAt:'2026-11-13T12:00:00Z',updatedAt:'2026-11-13T12:00:00Z',estimate:{total:30,freight:0,references:[]},adminReview:'Análise concluída'};
+const data={me:{id:'master',name:'TESTE Master',role:'admin',department:'Administrativo'},requests:[request],suppliers:[],members:[],activity:[],settings:{minQuotes:3,departments:['Administrativo']}};
+const render=element=>renderToStaticMarkup(element);
+const markup=render(createElement(BudgetRecordPanel,{request,data,busy:false,onSave:async()=>true,estimates:createElement('div',{id:'estimate-slot'}),quotations:createElement('div',{id:'quotation-slot'})}));
+const quotePosition=markup.indexOf('id="quotation-slot"');
+assert.ok(quotePosition>markup.indexOf('Decisão da necessidade')&&quotePosition<markup.indexOf('Execução</summary>'),'Cotação deve ficar depois da decisão da DG e antes da execução');
+for(const summary of markup.matchAll(/<summary\b[^>]*>([\s\S]*?)<\/summary>/g))assert.match(summary[1],/<svg\b/,'cada cabeçalho colapsável deve ter ícone');
+
+await build({entryPoints:['app/request-quotation-panel.tsx'],outfile:'outputs/request-sections/quotations.mjs',bundle:true,platform:'node',format:'esm',external});
+const {default:RequestQuotationPanel}=await import('../outputs/request-sections/quotations.mjs');
+const callbacks={onRegister:()=>{},onMessage:()=>{},onSelect:()=>{}};
+const quotesFor=(r,role='admin')=>render(createElement(RequestQuotationPanel,{request:r,role,minQuotes:3,busy:false,...callbacks}));
+const quoting={...request,status:'quoting',generalApproval:{actor:'DG TESTE',at:request.updatedAt,reason:'Aprovada'}};
+const active=quotesFor(quoting);
+assert.match(active,/<details[^>]*open=""[^>]*><summary>[\s\S]*?Cotação<\/summary>/);
+for(const label of ['Registrar cotação','Preparar mensagem','Comparativo de propostas'])assert.ok(active.includes(label),label);
+assert.doesNotMatch(quotesFor(request),/Registrar cotação|Preparar mensagem/,'não habilitar ações comerciais antes da etapa');
+assert.doesNotMatch(quotesFor(quoting,'financeiro'),/Registrar cotação|Preparar mensagem/,'Financeiro continua somente consulta');
+assert.doesNotMatch(quotesFor({...quoting,archived:{actor:'Master',at:request.updatedAt,reason:'Teste'}}),/Registrar cotação|Preparar mensagem/,'arquivamento mantém somente consulta');
+assert.equal(quotesFor(quoting,'solicitante'),'','Setor não recebe cotações internas');
+const quote={id:'quote-local',supplierId:'supplier',supplierName:'Fornecedor TESTE',prices:[10],freight:0,total:30,validUntil:'2099-12-31',deliveryDays:3,conditions:'Condições fictícias',createdAt:request.updatedAt};
+const historical=quotesFor({...quoting,quotes:[quote],quoteHistory:[{...quote,id:'old'}]});
+assert.ok(historical.includes('Fornecedor TESTE'));
+assert.ok(historical.includes('Versões anteriores das propostas (1)'));
+for(const summary of historical.matchAll(/<summary\b[^>]*>([\s\S]*?)<\/summary>/g))assert.match(summary[1],/<svg\b/,'cabeçalhos de propostas também precisam de ícones');
+const legacy=render(createElement(BudgetRecordPanel,{request:{...request,form:undefined},data:{...data,me:{...data.me,role:'geral'}},busy:false,onSave:async()=>true,quotations:createElement('div',{id:'legacy-quotations'})}));
+assert.ok(legacy.includes('id="legacy-quotations"'),'o encaixe das cotações também precisa funcionar em pedidos legados');
+
+await build({entryPoints:['app/workflow-panel.tsx'],outfile:'outputs/request-sections/workflow.mjs',bundle:true,platform:'node',format:'esm',external});
+const {default:WorkflowPanel}=await import('../outputs/request-sections/workflow.mjs');
+const uiRequest={...quoting,quotes:[quote],reopeningHistory:[{at:request.updatedAt,actor:'Master TESTE',reason:'Nova análise fictícia',previous:{decision:'Histórico preservado'}}]};
+const ui=render(createElement(BudgetRecordPanel,{request:uiRequest,data,busy:false,onSave:async()=>true,estimates:createElement(WorkflowPanel,{request:uiRequest,data,busy:false,onSave:async()=>true,onDecision:()=>{}}),quotations:createElement(RequestQuotationPanel,{request:uiRequest,role:'admin',minQuotes:3,busy:false,...callbacks})}));
+for(const summary of ui.matchAll(/<summary\b[^>]*>([\s\S]*?)<\/summary>/g))assert.match(summary[1],/<svg\b/,'todos os blocos da solicitação renderizada têm ícone');
+const css=(await Promise.all(['globals.css','appearance.css','budget.css','redesign.css'].map(file=>readFile('app/'+file,'utf8')))).join('\n');
+await writeFile('outputs/request-sections/ui-check.html',`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TESTE LOCAL · Blocos de Compras</title><style>${css}</style><body><main style="max-width:980px;margin:24px auto;padding:16px"><h1>Solicitação fictícia · Cotação e ícones</h1><div class="modal-body detail">${ui}</div></main></body></html>`);
+console.log('PASS: ordem dos blocos, ícones e Cotação colapsável com ações, consulta, arquivo e histórico preservados.');

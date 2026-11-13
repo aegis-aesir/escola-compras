@@ -195,6 +195,8 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
 .budget-read-value {min-height:40px;padding:10px 2px;color:var(--ink);font-size:12px;line-height:1.7}
 .budget-details {margin:16px 0;padding:0;border:1px solid var(--line);border-radius:var(--ui-radius-sm);background:var(--surface);overflow:hidden}
 .budget-details>summary {display:flex;align-items:center;min-height:48px;padding:13px 16px;color:var(--ink);font-size:12px;font-weight:750;cursor:pointer}
+.budget-details>summary,.detail details>summary {display:flex;align-items:center;gap:8px}
+.budget-details>summary svg,.detail details>summary svg {flex-shrink:0}
 .budget-details>summary:hover {background:var(--accent-soft);color:var(--accent)}
 .budget-details[open]>summary {margin:0;border-bottom:1px solid var(--line);background:var(--surface-soft)}
 .budget-details[open]>*:not(summary) {margin-left:16px;margin-right:16px}

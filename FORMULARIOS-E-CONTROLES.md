@@ -38,6 +38,8 @@ O campo **Prazo pertinente à decisão** foi removido do preenchimento por solic
 
 ## Pesquisa e propostas
 
+Nos detalhes da solicitação, **Cotação** é um bloco colapsável entre a decisão da Diretoria Geral e Execução. Reúne Registrar cotação, Preparar mensagem, Comparativo de propostas e Versões anteriores das propostas, conforme as permissões e a etapa existentes. Abre automaticamente nas etapas de cotação local/nacional de pedidos ativos; antes delas, informa que as propostas reais dependem da aprovação da necessidade. Setor não recebe o bloco; Financeiro e pedidos arquivados mantêm somente consulta. Os cabeçalhos colapsáveis da solicitação, incluindo os históricos, usam ícones Lucide de 16 px com alinhamento uniforme.
+
 A pesquisa continua integrada ao OpenClaw e separada das referências do setor. Para assinaturas, o protocolo atual de evidências não comprova o período de cobrança: as fontes são levantadas, e a administração registra a referência por licença para toda a vigência após conferência. Um preço mensal nunca é projetado silenciosamente como preço da vigência.
 
 A comparação e escolha comercial administrativa, originadas do mapa de cotações, aparecem somente após aprovação da necessidade e recebimento de propostas reais, inclusive em pedidos legados. Não são preenchidas durante a análise inicial nem com base apenas nas estimativas. O servidor impede alterações comerciais antecipadas; valores históricos inalterados são preservados. A origem automática ou o registro administrativo de uma proposta recebida não altera essas regras.
