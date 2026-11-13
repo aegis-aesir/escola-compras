@@ -186,6 +186,8 @@ O servidor valida todo o lote antes de gravar, preserva registros existentes, de
 
 ## Estimativas pelo agente coordinator
 
+Resultados parciais (12/11/2026): o painel exibe preço unitário, subtotal, fonte e data dos itens já validados, mesmo enquanto outro item está pendente. Usa a mesma validação de evidências do servidor e somente resultados da revisão e especificação atuais. O subtotal parcial exclui frete e não libera a aprovação. Pesquisa já encerrada com pendências não aparece como ainda em processamento. Assinaturas continuam exigindo conferência de vigência antes de usar preços como referência. Teste: `node scripts/partial-estimate-ui-test.mjs`.
+
 A ponte pesquisa fontes, lê até três páginas via `web_fetch` e passa trechos limitados ao agente existente `coordinator` por `openclaw gateway call agent`. Usa o modelo/configuração já definidos para esse agente, com custo normal desse provedor. Não cria outro agente nem altera o atendimento WhatsApp. O CLI é localizado no caminho Windows padrão; `OPENCLAW_CLI_PATH` permite indicar outra instalação.
 
 A execução utiliza sessão própria por processamento, `promptMode: minimal`, `extraSystemPrompt`, `disableMessageTool: true` e `deliver: false`. Não recebe credenciais do Site no subprocesso. O prompt instrui analisar apenas os textos fornecidos, não executar instruções de páginas nem usar ferramentas. A resposta JSON declara equivalência, moeda BRL, preço total, quantidade por embalagem, unidade e trechos literais. O servidor valida estrutura, fonte e evidências; a interpretação semântica é do agente e segue para conferência administrativa, não constitui aprovação de compra.

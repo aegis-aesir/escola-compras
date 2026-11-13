@@ -1,5 +1,6 @@
 'use client';
-import type { Snapshot, Purchase } from './model';
+import {money,type Snapshot,type Purchase} from './model';
+import {estimateProgress} from './estimate-progress';
 import { jobLabels } from './integration-model';
 type Props={data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>};
 const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Manaus'});
@@ -7,9 +8,11 @@ const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Man
 export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purchase}) {
   if(!data.integrations)return null;
   const jobs=data.integrations.jobs.filter(j=>j.requestId===r.id&&j.type==='estimate_search');
+  const progress=estimateProgress(r,jobs);
   if(!jobs.length&&!['estimating','pending'].includes(r.status))return null;
   return <section className="integration-research"><h3>Pesquisa automática · OpenClaw</h3>
     <p className="muted">O agente coordinator do OpenClaw analisa as páginas, identifica produto, unidade e preço e devolve as referências para o sistema preencher a estimativa. Quando todos os itens têm referência, calcula o total e encaminha para análise administrativa. Valores ambíguos ficam pendentes; estimativas não são propostas comerciais.</p>
+    {!r.estimate&&r.status==='estimating'&&<section className="note" aria-label="Resultado da estimativa por item"><h3>{progress.working?'Pesquisa em andamento':'Pesquisa concluída com pendências'}</h3><p>{progress.verified} de {r.items.length} itens com preço validado.</p>{progress.items.map(({item,job,reference,subtotal},index)=><div className="source-row" key={index}><strong>{item.name}</strong>{reference?<><p><b>{money(reference.unitPrice)} / {item.unit}</b> · {item.quantity} {item.unit} · Subtotal: <b>{money(subtotal!)}</b></p><a href={job!.priceEvidence!.url} target="_blank" rel="noopener noreferrer">{job!.priceEvidence!.title} ↗</a><small>Consultado em {date(job!.researchedAt!)}</small></>:<p>{job&&['review','failed'].includes(job.state)?`Preço pendente de validação. ${job.analysisReason||job.error||'Confira as fontes ou refaça a pesquisa.'}`:job?.state==='running'?'Pesquisando este item…':'Aguardando pesquisa deste item.'}</p>}</div>)}{progress.verified>0&&<p><b>Subtotal dos itens validados: {money(progress.partialTotal)}</b><br/>Frete não incluído. O total da solicitação será calculado após validar todos os itens.</p>}</section>}
     {r.status==='pending'&&<button className="button primary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Iniciar estimativa automática</button>}
     {r.status==='pending'&&<p className="note">A pesquisa ainda não começou. A Diretoria Administrativa deve iniciar a estimativa automática.</p>}
     {!data.integrations.bridgeConfigured&&<p className="note">A ponte ainda precisa ser configurada. As pesquisas ficam guardadas na fila.</p>}

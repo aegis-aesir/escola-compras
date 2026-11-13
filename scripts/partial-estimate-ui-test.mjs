@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+await build({entryPoints:['app/workflow-panel.tsx'],outfile:'outputs/partial-estimate-ui.mjs',bundle:true,platform:'node',format:'esm',external:['react','react-dom','lucide-react']});
+const {default:Panel}=await import('../outputs/partial-estimate-ui.mjs?'+Date.now());
+const now='2026-11-12T22:46:00Z',url='https://example.com/kit';
+const monitor={name:'Monitor Rhadium',unit:'un.',quantity:5,spec:'19 polegadas'},kit={name:'Kit CCI20',unit:'un.',quantity:3,spec:'Com fio'};
+const request={id:'pedido',status:'estimating',items:[monitor,kit],quotes:[]};
+const evidence={url,title:'Kit CCI20',text:'Kit CCI20. Preço R$ 76,55. Por unidade.',analysis:{status:'verified',sourceUrl:url,currency:'BRL',priceType:'total',priceAmount:76.55,packageQuantity:1,unit:'un.',reason:'Produto e unidade correspondem ao pedido.',productName:'Kit CCI20',productQuote:'Kit CCI20',priceQuote:'R$ 76,55',unitQuote:'Por unidade.',itemMatches:true,unitMatches:true}};
+const jobs=[monitor,kit].map((item,itemIndex)=>({id:'j'+itemIndex,requestId:'pedido',type:'estimate_search',itemIndex,item,state:'review',updatedAt:now,createdAt:now,researchedAt:now,analysisReason:itemIndex?'Produto correspondente.':'Marca e modelo diferentes.',...(itemIndex?{priceEvidence:evidence}:{}),sources:[]}));
+const data={me:{role:'admin'},integrations:{bridgeConfigured:true,jobs},suppliers:[]};
+const render=()=>renderToStaticMarkup(createElement(Panel,{request,data,busy:false,onSave:async()=>true}));
+let html=render();assert.match(html,/76,55/);assert.match(html,/229,65/);assert.match(html,/1 de 2 itens/);assert.match(html,/Marca e modelo diferentes/);assert.doesNotMatch(html,/O sistema está buscando preços/);assert.match(html,/Pesquisa concluída com pendências/);
+request.form={kind:'digital'};html=render();assert.doesNotMatch(html,/76,55|229,65/,'preço sem vigência validada não pode virar referência de assinatura');delete request.form;
+jobs[1].item={...kit,spec:'Outra especificação'};html=render();assert.doesNotMatch(html,/76,55|229,65/,'resultado de especificação antiga não deve aparecer como preço atual');
+console.log('PASS: preço parcial validado, subtotal, pendência específica e exclusão de resultado antigo.');
