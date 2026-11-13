@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import {localBase,localTestSession,testUsers} from './local-test-session.mjs';
+import {simplifiedBudgetFixture} from './budget-fixture.mjs';
+
+assert.equal(localBase,'http://127.0.0.1:5185','este teste pertence à worktree Compras');
+const master=await localTestSession(),sector=await localTestSession(testUsers[1]),general=await localTestSession(testUsers[2]);
+async function call(body,cookie=master,expected=200){
+ const response=await fetch(localBase+'/api/data',{method:body?'POST':'GET',headers:{Cookie:cookie,Origin:localBase,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+ const result=await response.json();assert.equal(response.status,expected,JSON.stringify(result));return result;
+}
+assert.equal((await call()).integrations.sendingEnabled,false,'não preparar tarefas se o envio local estiver habilitado');
+const key=crypto.randomUUID(),category='Categoria TESTE '+key;
+const fixture={...simplifiedBudgetFixture(),department:'Administrativo',title:'TESTE LOCAL seleção múltipla '+key};
+fixture.items=fixture.items.map(item=>({...item,category}));
+const created=await call({action:'request',data:fixture},sector),id=created.id;
+const current=async()=>(await call()).requests.find(request=>request.id===id);
+const act=async(action,extra={},cookie=master,expected=200)=>call({action,id,version:(await current()).version,...extra},cookie,expected);
+const makeSupplier=async(name,category,scope,phone)=>(await call({action:'supplier',data:{name:'TESTE LOCAL '+name+' '+key,category,scope,phone,contact:name+' TESTE'}})).id;
+const phoneBase=String(Date.now()).slice(-8);
+const a=await makeSupplier('Fornecedor A',category,'local','5592'+phoneBase+'1');
+const b=await makeSupplier('Fornecedor B',category.toUpperCase(),'local','5592'+phoneBase+'2');
+const national=await makeSupplier('Nacional',category,'national','5511'+phoneBase+'3');
+const wrong=await makeSupplier('Incompatível','Outra categoria TESTE '+key,'local','5592'+phoneBase+'4');
+await act('prepare_openclaw',{supplierIds:[a,b]},sector,403);
+await act('prepare_openclaw',{supplierIds:[a,b]},general,403);
+await act('prepare_openclaw',{supplierIds:[a,b]},master,409);
+const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date());
+await act('estimate',{data:{references:fixture.items.map(()=>({unitPrice:10,sourceName:'Fonte TESTE LOCAL',sourceUrl:'https://example.com/teste',researchedOn:today})),freight:0,notes:'Referência inteiramente fictícia, sem pesquisa externa.'}});
+await act('budget_management',{submitToGeneral:true,data:{quantityAssessment:'Adequadas',additionalDataStatus:'Não necessárias',recommendation:'Aprovar integralmente',validatedPriority:'Essencial'}});
+await act('decide_need',{choice:'approve',reason:'Necessidade fictícia autorizada para teste local'},general);
+const before=await current();
+await act('prepare_openclaw',{supplierIds:[a,wrong]},master,409);
+await act('prepare_openclaw',{supplierIds:[national]},master,409);
+const quoteJobs=async()=>(await call()).integrations.jobs.filter(job=>job.requestId===id&&job.type==='whatsapp_quote');
+assert.equal((await quoteJobs()).length,0,'seleção inválida não prepara parte do lote');
+await act('prepare_openclaw',{supplierIds:[a,b]});
+await act('prepare_openclaw',{supplierIds:[a,b]});
+const jobs=await quoteJobs();assert.equal(jobs.length,2);assert.ok(jobs.every(job=>job.state==='blocked'));
+assert.ok(jobs.every(job=>job.quotationTemplate.version==='contact-v1'&&job.quotationTemplate.text.includes('{{contato}}')));
+assert.deepEqual((await current()).items,before.items);
+assert.deepEqual((await current()).generalApproval,before.generalApproval);
+await call({action:'prepare_openclaw',id,version:before.version-1,supplierIds:[a]},master,409);
+await act('archive_request',{reason:'Arquivo do pedido fictício após teste de seleção múltipla'});
+await act('prepare_openclaw',{supplierIds:[a,b]},master,409);
+console.log('PASS HTTP 5185: Master, Setor e DG; aprovação, compatibilidade, seleção múltipla sem lote parcial inválido, versão, idempotência, arquivo e fila bloqueada. Sem envio real.');

@@ -21,6 +21,18 @@ Referência: [API de ferramentas do gateway](https://docs.openclaw.ai/gateway/to
 
 ## Funcionamento
 
+### Seleção múltipla e modelo genérico de cotação — 13/11/2026
+
+**Preparar mensagem** lista, por checkbox, os fornecedores cadastrados compatíveis com as categorias dos itens. Nenhum contato é selecionado automaticamente. `quoting` oferece somente locais; `national` admite locais e nacionais, preservando a elegibilidade da fila anterior. Fontes externas precisam de conferência e cadastro, e categorias de itens legados não são inferidas.
+
+O painel exibe um único modelo do pedido aprovado, com `{{contato}}`. A confirmação chama `prepare_openclaw` com `supplierIds` (1 a 100 IDs únicos); o servidor valida toda a seleção, compatibilidade, etapa e telefones antes de preparar as tarefas pela função idempotente existente. O contrato singular `supplierId` continua aceito para clientes anteriores. Master/ADM, versão e bloqueios de arquivamento/fechamento continuam verificados pela API. Selecionar contatos e copiar o modelo não chama esse endpoint.
+
+Cada tarefa nova guarda `quotationTemplate: {version: 'contact-v1', text, contact}`. No despacho, a ponte substitui somente o marcador inicial do contato, mantendo literalmente itens, quantidades, prazo e condições. É personalização determinística do cumprimento pelo contato/nome cadastrado, sem reescrita livre por IA, pesquisa ou mudança de modelo/credencial. O destinatário, conta `operacional`, número +55 92 9201-7107, roteamento, idempotencyKey e confirmação do provedor permanecem os existentes.
+
+Compatibilidade: `message` continua contendo a mensagem completa e endereçada para pontes anteriores; não contém o marcador genérico. Tarefas antigas sem `quotationTemplate` continuam enviando seu `message` original. Atualizar a ponte para usar a personalização no despacho sem limpar journals, reenfileirar envios incertos, alterar credenciais ou ativar chaves de envio. Esta mudança não habilita envio: ambas as chaves continuam obrigatórias, e o ambiente local permanece bloqueado. Preparação não é confirmação de envio.
+
+Testes sem contato externo: `node scripts/quotation-suppliers-test.mjs`, `node scripts/quotation-message-ui-test.mjs` e, com o servidor local de Compras em 127.0.0.1:5185, `node scripts/quotation-suppliers-http-test.mjs`. O teste HTTP recusa execução se o envio estiver habilitado no servidor local; o transporte da ponte é simulado integralmente nos testes isolados.
+
 O Site mantém tarefas no D1. A ponte local consulta a fila por HTTPS assinado
 com HMAC-SHA256 e chama o OpenClaw pelo endereço local `127.0.0.1:18789`.
 Não é necessário expor o gateway à internet. A ponte usa sua assinatura HMAC;
