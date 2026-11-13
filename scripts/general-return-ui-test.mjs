@@ -36,6 +36,6 @@ for(const text of ['Adiado','sourceCode','availableMonth','deferReason']){
 }
 assert.match(requestForm,/submitBlockedReason/,'formulário precisa aceitar o bloqueio mensal de envio');
 assert.match(requestForm,/disabled=\{busy\|\|!!submitBlockedReason\}/,'somente o envio deve ficar bloqueado');
-assert.match(dataRoute,/deferredDraft\?' AND changes\(\)=1'/,'o pedido só pode ser adiado quando a inserção vinculada do rascunho ocorreu na mesma transação');
+assert.match(dataRoute,/deferredDraft\|\|linkedDraft\?' AND changes\(\)=1'/,'adiamento e reanálise dependem da gravação da cópia vinculada na mesma transação');
 
 console.log('PASS: devolução da Diretoria Geral e cópia adiada têm controles e identificação na interface.');

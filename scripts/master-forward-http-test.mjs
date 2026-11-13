@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {localBase,localTestSession,testUsers} from './local-test-session.mjs';
+import {simplifiedBudgetFixture} from './budget-fixture.mjs';
+const master=await localTestSession(),sector=await localTestSession(testUsers[1]),general=await localTestSession(testUsers[2]);
+async function call(path,body,cookie=master){const r=await fetch(localBase+path,{method:body?'POST':'GET',headers:{Cookie:cookie,Origin:localBase,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()}}
+const fixture={...simplifiedBudgetFixture(),department:'Administrativo'},values={title:fixture.title,department:fixture.department,reason:fixture.reason,neededBy:'',kind:'monthly',fields:fixture.form.fields,items:fixture.items,references:[],subscriptionPrices:{}};
+const id=randomUUID();assert.equal((await call('/api/drafts',{id,version:0,values},sector)).status,200);
+const forward={action:'master_submit_draft',draftId:id,draftVersion:1,data:fixture,reason:'Encaminhar após conferir com o setor'};
+assert.equal((await call('/api/data',forward,sector)).status,403);assert.equal((await call('/api/data',forward,general)).status,403);
+assert.equal((await call('/api/data',{...forward,data:{...fixture,form:{...fixture.form,accepted:false}}})).status,400);
+assert.equal((await call('/api/drafts',{action:'archive',id,version:1},sector)).status,200);
+assert.equal((await call('/api/data',forward)).status,409);forward.draftVersion=2;
+assert.equal((await call('/api/data',forward)).status,200);
+assert.equal((await call('/api/data',forward)).data.id,id,'repetição não duplica');
+let snapshot=(await call('/api/data')).data,request=snapshot.requests.find(r=>r.id===id);
+assert.equal(request.authorName,testUsers[1].name);assert.notEqual(request.authorId,snapshot.me.id);assert.equal(request.formDeclared.actor,testUsers[0].name);assert.equal(request.status,'pending');assert.ok(request.correctionHistory[0].previous.draft.archivedAt);
+const repeat={action:'master_reanalysis',id,version:request.version,reason:'Reenviar após revisão pelo Master'};
+assert.equal((await call('/api/data',repeat,sector)).status,403);assert.equal((await call('/api/data',repeat)).status,200);assert.equal((await call('/api/data',repeat)).status,409);
+request=(await call('/api/data')).data.requests.find(r=>r.id===id);assert.equal(request.reanalysisHistory.length,1);assert.equal(request.authorName,testUsers[1].name);
+const created=await call('/api/data',{action:'request',data:fixture},sector);assert.equal(created.status,200);const original=(await call('/api/data')).data.requests.find(r=>r.id===created.data.id);
+assert.equal((await call('/api/data',{action:'defer_request',id:original.id,version:original.version,reason:'Adiar para testar intervenção do Master'})).status,200);
+const deferred=(await call('/api/drafts?scope=all')).data.drafts.find(d=>d.sourceRequestId===original.id);assert.ok(deferred.availableMonth);
+assert.equal((await call('/api/data',{action:'master_submit_draft',draftId:deferred.id,draftVersion:deferred.version,data:fixture,reason:'Master antecipa a cópia após avaliação'})).status,200);
+const forwarded=(await call('/api/data')).data.requests.find(r=>r.id===deferred.id);assert.equal(forwarded.reusedFrom.requestId,original.id);assert.equal(forwarded.authorName,testUsers[1].name);
+console.log('PASS HTTP: Master encaminha rascunho alheio/arquivado com aceite próprio, autoria preservada, idempotência e concorrência.');

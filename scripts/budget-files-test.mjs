@@ -19,11 +19,11 @@ try{
  const upload=(user,requestId,visibility='request',name='teste.pdf',contents='%PDF-1.4 TESTE')=>{const f=new FormData();f.set('requestId',requestId);f.set('visibility',visibility);f.set('file',new File([contents],name,{type:'application/pdf'}));return call('',user,{method:'POST',headers:{Origin:'https://example.com'},body:f})};
  await put('draft1','request_draft',{authorId:'user:setor',status:'draft',values:{title:''}});
  assert.equal((await upload('outro','draft1')).status,404);
- assert.equal((await upload('master','draft1')).status,404);
+ assert.equal((await call('?requestId=draft1','master')).status,200);
  assert.equal((await upload('setor','draft1','internal')).status,403);
  const draftUpload=await upload('setor','draft1');assert.equal(draftUpload.status,200);const draftFile=(await draftUpload.json()).id;
  assert.equal((await call('/'+draftFile,'setor')).status,200);
- assert.equal((await call('/'+draftFile,'master')).status,404);
+ assert.equal((await call('/'+draftFile,'master')).status,200);
  await db.prepare("UPDATE records SET data=json_set(data,'$.archivedAt','2026-11-12T00:00:00Z'),version=version+1 WHERE id='draft1'").run();
  assert.equal((await call('?requestId=draft1','setor')).status,404);
  assert.equal((await call('/'+draftFile,'setor')).status,404);

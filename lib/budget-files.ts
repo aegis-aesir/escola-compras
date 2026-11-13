@@ -13,7 +13,7 @@ async function accessible(db:D1Database,id:string,user:LocalUser){
   const r={...JSON.parse(row.data),version:row.version};
   if(row.kind==='request_draft'){
     if(r.archivedAt&&user.role!=='admin')throw new FileError('Solicitação não encontrada.',404);
-    if(r.authorId!==user.id)throw new FileError('Solicitação não encontrada.',404);
+    if(r.authorId!==user.id&&user.role!=='admin')throw new FileError('Solicitação não encontrada.',404);
     return {...r,status:'draft'};
   }
   if(user.role==='financeiro'&&!canFinanceReadRequest(r))throw new FileError('Solicitação não encontrada.',404);

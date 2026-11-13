@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {masterReanalysis} from './master-reanalysis';
 import {budgetTransition,ensureAdministrativeReview} from './budget-workflow';
 import { estimateSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
 import {normalizeQuote,quoteComparable} from './quote-comparison';
@@ -12,6 +13,7 @@ export function nextBusinessDay(at:string,holidays:string[]=[]){
 }
 export function localExpired(r:Purchase,at:string){return !r.archived&&r.status==='quoting'&&!!r.localDeadline&&r.localDeadline<=at&&!r.quotes.some(q=>q.validUntil>=todayManaus(at)&&quoteComparable(q,r));}
 export function transition(old:Purchase,b:any,me:{role:Member['role'];name:string},suppliers:Supplier[],settings:Settings,now:string){
+  if(b.action==='master_reanalysis')return masterReanalysis(old,b.reason,me,now);
   if(['archive_request','restore_request'].includes(b.action)){
     if(me.role!=='admin')throw new FlowError('Somente o Master pode arquivar ou restaurar solicitações.',403);
     const reason=z.string().trim().min(5,'Informe uma justificativa com pelo menos 5 caracteres.').max(2000).parse(b.reason),archiving=b.action==='archive_request';
