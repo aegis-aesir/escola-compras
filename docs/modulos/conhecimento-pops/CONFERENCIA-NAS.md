@@ -45,9 +45,9 @@ Foram encontradas 16 pastas diretamente na raiz, 200 pastas no total recursivo e
 
 1. Partir dos documentos prontos: catalogação, organização, busca e acesso são prioridades propostas. Não presumir que todos precisem ser convertidos em páginas editáveis.
 2. Prever arquivo original preservado e eventual versão de leitura vinculados ao mesmo documento; DOCX/PDF com nomes semelhantes não são automaticamente duplicatas ou versões equivalentes.
-3. Antes de importar, definir a fonte oficial e como tratar cópias e versões. Importação deve ter prévia revisável, vínculo da origem e controle de duplicidade; nenhuma importação foi autorizada/executada nesta etapa.
+3. Antes de importar, definir como tratar cópias e versões, usando `Doc's SIE` como referência principal conforme a decisão posterior do usuário. Importação deve ter prévia revisável, vínculo da origem e controle de duplicidade; nenhuma importação foi autorizada/executada nesta etapa.
 4. Não herdar o limite de 5 MiB de compras sem avaliar o acervo selecionado. Dimensionar o limite e a entrega privada dos arquivos no desenho técnico, sem alterar o módulo de compras.
 5. Busca por conteúdo de arquivos existentes exige extração e, em alguns casos, OCR; isso é um escopo diferente da busca apenas por título/categoria das páginas novas. Não prometer busca textual dos PDFs com base nesta conferência de metadados.
 6. As regras de leitura, edição, publicação/aprovação e revisão de POPs continuam pendentes; documentos prontos não comprovam autorização para publicação ou acesso geral.
 
-Próxima decisão prioritária: qual pasta ou conjunto de arquivos é a referência oficial vigente, especialmente entre `Fluxos e POP's - ADM`, `Doc's SIE` e as pastas setoriais.
+Atualização após a resposta do usuário: `Doc's SIE` foi definida como referência principal. A comparação completa por hash com as demais pastas está documentada em `COMPARACAO-ACERVO.md`, nesta pasta. A decisão substitui a pendência de escolher a fonte principal; seleção para importação e regras de publicação continuam abertas.

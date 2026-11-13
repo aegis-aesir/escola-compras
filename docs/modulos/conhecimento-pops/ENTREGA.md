@@ -1,7 +1,7 @@
 # Entrega — Conhecimento e POPs
 
 Data: 13/11/2026. Branch: `codex/conhecimento-pops`.
-Etapa entregue: auditoria, proposta inicial e conferência do acervo no NAS, exclusivamente documental.
+Etapa entregue: auditoria, proposta inicial, conferência e comparação por hash do acervo no NAS, exclusivamente documental.
 Base auditada: `fa211930be936b79aa5deee58ad3c3a307f9a927`.
 O SHA completo desta entrega documental será informado na resposta final do chat após o commit e a conferência do push; não se trata de implementação pronta para publicar.
 
@@ -12,13 +12,14 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 - Proposta, alternativas, decisões pendentes e pontos compartilhados em `AUDITORIA-E-PROPOSTA.md`, nesta pasta.
 - Vínculos futuros com Tarefas e Materiais documentados sem implementar esses módulos. Escolar Manager permanece apenas planejamento.
 - Conferência somente de leitura do NAS autorizada pelo usuário: estrutura, formatos, tamanhos e duplicidade amostral. Resultados agregados em `CONFERENCIA-NAS.md`; sem cópia/importação dos documentos.
+- Decisão do usuário registrada: `Doc's SIE` é a referência principal. Comparados todos os 1.719 arquivos por SHA-256; resultado organizacional em `COMPARACAO-ACERVO.md`. Inventário detalhado e scripts apenas locais/ignorados, sem documentos originais no Git.
 
 ## Pendências que impedem iniciar implementação
 
 - Usuário definir leitura, edição, privacidade dos rascunhos, gestão/herança de permissões e publicação/aprovação.
 - Usuário definir responsável/revisão/validade de POPs e poderes de arquivamento/restauração.
 - Escolha de abordagem, desenho aprovado e plano técnico subsequente; contratos compartilhados precisam de alinhamento com o coordenador antes de integração.
-- Definir fonte oficial do acervo, seleção para importação, tratamento de cópias/versões e necessidade de busca no texto dos arquivos existentes. Há arquivos que ultrapassam 5 MiB.
+- Fonte principal definida: `Doc's SIE`. Ainda pendem seleção para importação, inclusão dos 31 possíveis POPs complementares, uso das variantes BSC/BDG e necessidade de busca no texto dos arquivos existentes. Há arquivos que ultrapassam 5 MiB.
 
 ## Verificações e resultados reais
 
@@ -29,11 +30,14 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 - Revisão documental: escopo, acesso, publicação/histórico, anexos, busca, vínculos e limites confrontados com o pedido e os caminhos auditados.
 - Auditoria inicial: `git diff --cached --check` PASS para os dois documentos originais. Atualização NAS: `git diff --check` PASS; mudanças limitadas à documentação desta pasta.
 - Build, tipos, testes de aplicação, HTTP e inspeção visual não executados: somente documentação alterada. Não afirmar funcionamento de editor, busca ou permissões ainda não implementados.
-- Conferência NAS com `Test-Path`, `Get-ChildItem`, `Get-Item` e `Get-FileHash -Algorithm SHA256`: leitura bem-sucedida, 200 pastas recursivas e 1.719 arquivos filtrados; três pares amostrados de PDFs administrativos com hashes iguais. Não foram comparados todos os arquivos nem analisado seu texto/diagramação.
+- Na conferência inicial do NAS, `Test-Path`, `Get-ChildItem`, `Get-Item` e `Get-FileHash -Algorithm SHA256`: leitura bem-sucedida, 200 pastas recursivas e 1.719 arquivos filtrados; três pares amostrados de PDFs administrativos com hashes iguais. Naquela etapa não foram comparados todos os arquivos nem analisado seu texto/diagramação.
+- Atualização posterior, comparação completa: `python <worktree>/.ceea-workspace/compare_nas_readonly.py` terminou com código 0; 1.719 hashes calculados, sem erros. Dos 1.191 arquivos fora da referência: 403 idênticos, 14 de mesmo nome com bytes diferentes (XLSX) e 774 sem correspondência pelos critérios usados. Inclui 169/169 arquivos administrativos idênticos e 31 possíveis POPs complementares.
+- `python <worktree>/.ceea-workspace/report_nas_comparison.py`: PASS, código 0; partição/contagens/hashes reconciliados e metadados dos 1.719 arquivos relidos sem alteração detectada. Nova enumeração PowerShell: mesmos 1.719 caminhos; três pares revalidados independentemente com Get-FileHash, com os resultados esperados. Textos, células e vigência não analisados.
+- Comparação completa: `git diff --cached --check` PASS; staging conferido com exatamente os quatro Markdown desta pasta, sem inventário detalhado, scripts locais ou arquivos de produto.
 
 ## Arquivos e contratos
 
-- Somente os três Markdown desta pasta compõem a entrega acumulada; nesta atualização foram alterados os dois documentos anteriores e adicionado `CONFERENCIA-NAS.md`. Nenhum arquivo compartilhado de produto alterado.
+- Somente os quatro Markdown desta pasta compõem a entrega acumulada; nesta atualização foram alterados os três documentos anteriores e adicionado `COMPARACAO-ACERVO.md`. Nenhum arquivo compartilhado de produto alterado. Resultados locais detalhados não entram no Git.
 - Contratos/dependências propostos: navegação entre módulos, identidade e setores, capacidades documentais, tabelas prefixadas e anexos privados. Ainda não aprovados; detalhes na proposta.
 - Nenhuma dependência instalada, migração criada/aplicada ou configuração alterada. Nenhum segredo incluído.
 - Nenhum dado fictício de aplicação criado, banco consultado, servidor/ponte iniciado, mensagem enviada ou documento real copiado. O NAS foi acessado somente para a conferência autorizada, sem conectar o aplicativo a ele ou enviar conteúdo a serviços externos. Porta reservada conferida em código, sem teste de disponibilidade.
@@ -42,10 +46,10 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 
 1. Conferir o SHA completo encaminhado pelo usuário e o diff desta branch: deve conter somente esta pasta de documentação.
 2. Ler `AUDITORIA-E-PROPOSTA.md`, especialmente decisões pendentes e pontos compartilhados.
-   Ler também `CONFERENCIA-NAS.md` para os ajustes necessários ao uso dos documentos prontos.
+   Ler também `CONFERENCIA-NAS.md` e `COMPARACAO-ACERVO.md` para o acervo existente, a fonte principal aprovada e os grupos que precisam de revisão.
 3. Tratar a entrega como planejamento; não há migração nem funcionalidade a publicar.
 4. Aguardar as regras do usuário e o desenho aprovado antes de integrar código de produto. Não presumir histórico automaticamente compartilhado entre chats.
 
 ## Resumo copiável
 
-Conhecimento e POPs: auditoria e proposta documental na branch codex/conhecimento-pops, ambiente 127.0.0.1:5182; acervo do NAS conferido somente em leitura. São 1.719 arquivos gerais; há cópias idênticas confirmadas por amostra e arquivos acima de 5 MiB. Sem código de produto, importação, alterações compartilhadas, dependências ou migrações. Pendem fonte oficial do acervo e regras de acesso, publicação e revisão. Documentos em docs/modulos/conhecimento-pops/. Nenhuma publicação ou contato entre chats realizado. Acrescentar o SHA completo informado na resposta final.
+Conhecimento e POPs: Doc's SIE definida pelo usuário como referência principal; comparação SHA-256 de 1.719 arquivos concluída sem erros. Fora da referência: 403 idênticos, 14 variantes binárias de planilhas e 774 sem par identificado, incluindo 31 possíveis POPs complementares. Sem alterações nos originais, importação, código de produto, dependências ou migrações. Resumo em docs/modulos/conhecimento-pops/COMPARACAO-ACERVO.md; detalhes somente locais/ignorados. Pendem seleção para inclusão e regras de acesso/publicação. Branch codex/conhecimento-pops; acrescentar o SHA completo informado na resposta final.

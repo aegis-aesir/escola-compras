@@ -3,7 +3,7 @@
 Data: 13/11/2026. Etapa: planejamento, sem implementação de produto.
 Esta proposta não é um desenho aprovado nem autoriza instalar dependências, criar telas, endpoints ou migrações. As decisões abaixo permanecem abertas para o usuário.
 
-Atualização após o usuário informar que já possui os POPs: a conferência do acervo existente está em `CONFERENCIA-NAS.md`, nesta pasta. A prioridade proposta passa a incluir catalogar e disponibilizar os documentos prontos; conversão para o editor não é pressuposta. A fonte oficial, cópias, busca no conteúdo de arquivos e limites de tamanho precisam entrar no desenho antes de qualquer importação.
+Atualização após o usuário informar que já possui os POPs: a conferência do acervo existente está em `CONFERENCIA-NAS.md`, nesta pasta. A prioridade proposta passa a incluir catalogar e disponibilizar os documentos prontos; conversão para o editor não é pressuposta. O usuário definiu `Doc's SIE` como referência principal; resultados da comparação por hash com as demais pastas estão em `COMPARACAO-ACERVO.md`. Seleção de documentos, tratamento de variantes, busca no conteúdo de arquivos e limites de tamanho precisam entrar no desenho antes de qualquer importação.
 
 ## Ambiente conferido
 
