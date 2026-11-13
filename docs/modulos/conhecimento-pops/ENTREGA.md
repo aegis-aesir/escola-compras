@@ -1,7 +1,7 @@
 # Entrega — Conhecimento e POPs
 
 Data: 13/11/2026. Branch: `codex/conhecimento-pops`.
-Etapa entregue: auditoria, comparação do acervo e proposta organizada por setor com os 31 complementares incluídos, exclusivamente documental.
+Etapa entregue: proposta de acesso, edição e publicação por perfil/setor, aguardando aprovação; mantém auditoria e organização do acervo com os 31 complementares, exclusivamente documental.
 Base auditada: `fa211930be936b79aa5deee58ad3c3a307f9a927`.
 O SHA completo desta entrega documental será informado na resposta final do chat após o commit e a conferência do push; não se trata de implementação pronta para publicar.
 
@@ -14,11 +14,12 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 - Conferência somente de leitura do NAS autorizada pelo usuário: estrutura, formatos, tamanhos e duplicidade amostral. Resultados agregados em `CONFERENCIA-NAS.md`; sem cópia/importação dos documentos.
 - Decisão do usuário registrada: `Doc's SIE` é a referência principal. Comparados todos os 1.719 arquivos por SHA-256; resultado organizacional em `COMPARACAO-ACERVO.md`. Inventário detalhado e scripts apenas locais/ignorados, sem documentos originais no Git.
 - Nova decisão incorporada: incluir os 31 complementares na proposta e organizar o acervo por setor. `ORGANIZACAO-POR-SETOR.md` relaciona os 31 e consolida 557 conteúdos únicos em sete áreas documentais; preservados 962 caminhos de origem em catálogo somente local.
+- Proposta solicitada de regras por perfil/setor em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`: matriz dos cinco perfis, vínculo dos oito setores atuais, três públicos de leitura, editores indicados, rascunhos privados, aprovação por outra pessoa, responsáveis/revisões, anexos/histórico e arquivo/restauração. Todos esses direitos propostos continuam aguardando aprovação; nenhuma concessão foi aplicada.
 
 ## Pendências que impedem iniciar implementação
 
-- Usuário definir leitura, edição, privacidade dos rascunhos, gestão/herança de permissões e publicação/aprovação.
-- Usuário definir responsável/revisão/validade de POPs e poderes de arquivamento/restauração.
+- Usuário aprovar ou ajustar a proposta concreta de leitura, edição, rascunhos, concessões, publicação/aprovação, validade e arquivamento em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`. Não tratar a solicitação dessa proposta como aprovação das regras.
+- Após aprovação das regras, indicar editores, vínculos de RH/subáreas e responsáveis documentais, sem inventar usuários ou nomes nesta etapa.
 - Escolha de abordagem, desenho aprovado e plano técnico subsequente; contratos compartilhados precisam de alinhamento com o coordenador antes de integração.
 - Fonte principal e inclusão dos 31 na proposta estão definidas. Ainda pendem importação no aplicativo, uso das variantes BSC/BDG, necessidade de busca no texto dos arquivos existentes e limites para arquivos acima de 5 MiB. Não pedir novamente autorização para incluir os 31 na proposta.
 
@@ -38,10 +39,11 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 - Organização por setor: `python <worktree>/.ceea-workspace/organize_nas_catalog.py` PASS, código 0. Validados 559 arquivos selecionados, 557 hashes únicos, 526 conteúdos da referência + 31 complementares, códigos DOC 01 a 26 completos e 962 origens preservadas. Tamanho/data dos 559 e lista de arquivos da referência sem mudanças detectadas.
 - Conferência independente do JSON em PowerShell: 557 entradas/hashes únicos, 31 complementares, relatório AEE classificado em AEE, nenhum responsável inventado e nenhuma publicação definida. Agrupamentos complementares: 26 docentes, três convivência, um relatórios AEE e um avaliações adaptadas. O primeiro ensaio classificava AEE incorretamente devido ao prefixo numérico da pasta; o caso foi reproduzido, a regra corrigida e o catálogo final validado em `.ceea-workspace/nas-catalogo/20261113T182604Z/`.
 - Organização: validação Python do documento e catálogo PASS, com 31 linhas numeradas na proposta, 557 hashes únicos, 962 origens distintas, totais por setor reconciliados e formatos complementares 30 DOCX + um PPTX. `git diff --cached --check` PASS; staging contém somente os cinco Markdown deste módulo, sem arquivos originais ou catálogo detalhado local.
+- Proposta de governança: verificação documental Python PASS, cinco perfis existentes e oito setores atuais cobertos, situação explícita de aprovação pendente, acervo 557/31 preservado e seis documentos presentes. Revisados os exemplos de rascunho, restrição nominal, segregação de aprovação e revisão vencida; não são testes de regras implementadas. `git diff --cached --check` PASS, com somente quatro Markdown alterados/adicionados nesta etapa. Sem consulta ao NAS, servidor ou banco nesta etapa de regras.
 
 ## Arquivos e contratos
 
-- Somente os cinco Markdown desta pasta compõem a entrega acumulada; nesta atualização foram alterados os quatro documentos anteriores e adicionado `ORGANIZACAO-POR-SETOR.md`. Nenhum arquivo compartilhado de produto alterado. Resultados locais detalhados não entram no Git.
+- Somente os seis Markdown desta pasta compõem a entrega acumulada; nesta atualização foram alterados `AUDITORIA-E-PROPOSTA.md`, `ORGANIZACAO-POR-SETOR.md` e esta entrega, e adicionado `REGRAS-DE-ACESSO-E-PUBLICACAO.md`. Nenhum arquivo compartilhado de produto alterado. Resultados locais detalhados não entram no Git.
 - Contratos/dependências propostos: navegação entre módulos, identidade e setores, capacidades documentais, tabelas prefixadas e anexos privados. Ainda não aprovados; detalhes na proposta.
 - Nenhuma dependência instalada, migração criada/aplicada ou configuração alterada. Nenhum segredo incluído.
 - Nenhum dado fictício de aplicação criado, banco consultado, servidor/ponte iniciado, mensagem enviada ou documento real copiado. O NAS foi acessado somente para a conferência autorizada, sem conectar o aplicativo a ele ou enviar conteúdo a serviços externos. Porta reservada conferida em código, sem teste de disponibilidade.
@@ -52,9 +54,10 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 2. Ler `AUDITORIA-E-PROPOSTA.md`, especialmente decisões pendentes e pontos compartilhados.
    Ler também `CONFERENCIA-NAS.md` e `COMPARACAO-ACERVO.md` para o acervo existente, a fonte principal aprovada e os grupos que precisam de revisão.
    A seleção proposta atual e os 31 complementares incluídos estão em `ORGANIZACAO-POR-SETOR.md`.
+   A governança proposta está em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`; precisa de aprovação do usuário antes de implementação.
 3. Tratar a entrega como planejamento; não há migração nem funcionalidade a publicar.
 4. Aguardar as regras do usuário e o desenho aprovado antes de integrar código de produto. Não presumir histórico automaticamente compartilhado entre chats.
 
 ## Resumo copiável
 
-Conhecimento e POPs: Doc's SIE mantida como referência principal e os 31 complementares incluídos na proposta por decisão do usuário. Acervo proposto organizado por setor em 557 conteúdos únicos (526 da referência + 31), com 962 origens preservadas em catálogo local. Distribuição: Pedagógico 318, Administrativo 39, Financeiro 40, RH 45, Operacional 29, TI 30 e Institucional 56. Sem alteração do NAS, importação, código, dependências ou migrações. Proposta em docs/modulos/conhecimento-pops/ORGANIZACAO-POR-SETOR.md. Pendem regras de acesso/publicação e desenho de implementação. Branch codex/conhecimento-pops; acrescentar o SHA completo informado na resposta final.
+Conhecimento e POPs: proposta de acesso, edição e publicação pronta para aprovação em docs/modulos/conhecimento-pops/REGRAS-DE-ACESSO-E-PUBLICACAO.md. Mantidos Doc's SIE como referência e os 31 complementares no catálogo de 557 conteúdos únicos. Propostas: leitura por setor/comum, restritos nominais com exceção Master, editores indicados, aprovação por outra pessoa (ADM nas áreas administrativas; DG em Pedagógico/Institucional), revisão anual e histórico protegido. Nenhuma regra aprovada ou implementada, sem alteração do NAS, importação, código ou migrações. Branch codex/conhecimento-pops; acrescentar o SHA completo informado na resposta final.

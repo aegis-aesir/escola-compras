@@ -4,6 +4,8 @@ Data: 13/11/2026. Decisões do usuário: manter `Doc's SIE` como referência pri
 
 As três decisões estão incorporadas. Esta entrega organiza o catálogo proposto; não executa importação, publicação ou mudança no sistema. Inclusão na proposta não preenche responsável, aprovação documental, vigência ou permissão de acesso ainda indefinidos.
 
+As regras de acesso por perfil/setor e publicação foram propostas em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`, aguardando aprovação do usuário. As áreas abaixo continuam sendo organização documental, sem concessão automática de acesso.
+
 ## Escopo e contagem
 
 São 557 entradas de conteúdo: 526 conteúdos únicos dos 528 arquivos de `Doc's SIE`, mais 31 complementares distintos. As três cópias idênticas da matriz mestra pedagógica geram uma única entrada com três origens, reduzindo duas repetições no catálogo sem apagar arquivos.

@@ -5,6 +5,8 @@ Esta proposta não é um desenho aprovado nem autoriza instalar dependências, c
 
 Atualização após o usuário informar que já possui os POPs: a conferência do acervo existente está em `CONFERENCIA-NAS.md`, nesta pasta. A prioridade proposta passa a incluir catalogar e disponibilizar os documentos prontos; conversão para o editor não é pressuposta. O usuário definiu `Doc's SIE` como referência principal e autorizou incluir os 31 complementares na proposta. `ORGANIZACAO-POR-SETOR.md` organiza 557 conteúdos únicos (526 da referência + 31 complementares), sem alterar os originais. A comparação está em `COMPARACAO-ACERVO.md`. Tratamento das variantes não selecionadas, busca no conteúdo de arquivos e limites de tamanho ainda precisam entrar no desenho antes de qualquer importação.
 
+Proposta de governança detalhada, solicitada em seguida pelo usuário: `REGRAS-DE-ACESSO-E-PUBLICACAO.md`. Esse documento consolida as recomendações atuais de leitura, edição, rascunhos, compartilhamento, aprovação, publicação e revisão, todas aguardando aprovação. Não confundir decisões já tomadas sobre o acervo com aprovação dessa política.
+
 ## Ambiente conferido
 
 - Raiz Git: `C:/Users/aegis/Documents/ChatGPT/Compras/escola-compras/.worktrees/conhecimento-pops`.
@@ -55,11 +57,11 @@ A escolha não foi feita pelo usuário. Uma biblioteca apenas de arquivos não c
 
 | Decisão | Por que muda a implementação | Proposta para o usuário avaliar, ainda não aprovada |
 | --- | --- | --- |
-| Quem lê o quê? | Define árvore, busca, históricos e anexos permitidos; inclui Financeiro e DG. | Biblioteca geral e áreas restritas por setor; confirmar se existem exceções por usuário e quem pode consultar tudo. |
-| Quem cria, edita e administra acessos? | Define colaboradores, privacidade de rascunhos e administração da biblioteca. | Responsáveis por área, usando usuários existentes; confirmar se rascunhos são privados do autor ou compartilhados com editores. |
-| Quem publica páginas e POPs? Há aprovação por outra pessoa? | Publicação direta e submissão para aprovação têm estados e filas diferentes. | Separar editar de publicar; confirmar se vale para todos os documentos ou somente POPs e quem aprova cada setor. Não aplicar a aprovação de compras da DG. |
-| Como permissões se propagam? | Mover uma página pode expor conteúdo ou retirar acesso. | Herdar da área, permitindo apenas restrições nos descendentes; confirmar necessidade de exceções e quem pode mover entre áreas. |
-| O que torna um POP válido? | Define bloqueios de publicação e tratamento da revisão vencida. | Responsável e próxima revisão exigidos ao publicar POP; vencimento sinaliza revisão pendente sem retirar a publicação. Confirmar regra, periodicidade e quem pode arquivar/restaurar. |
+| Quem lê o quê? | Define árvore, busca, históricos e anexos permitidos; inclui Financeiro e DG. | Publicados do setor e institucionais comuns; diretorias leem publicados comuns/setoriais de todas as áreas; restritos exigem concessão nominal, com exceção administrativa expressa do Master. |
+| Quem cria, edita e administra acessos? | Define colaboradores, privacidade de rascunhos e administração da biblioteca. | Master gerencia acessos; diretorias editam seus escopos e usuários Setor/Financeiro podem ser indicados editores. Rascunhos privados do autor/coeditores e Master até submissão ao aprovador autorizado. |
+| Quem publica páginas e POPs? Há aprovação por outra pessoa? | Publicação direta e submissão para aprovação têm estados e filas diferentes. | ADM aprova áreas administrativas; DG aprova Pedagógico/Institucional; Master pode ser alternativa. Aprovador não pode ter criado/editado a revisão; regra para todos os conteúdos. Não aplicar aprovações de compras. |
+| Como permissões se propagam? | Mover uma página pode expor conteúdo ou retirar acesso. | Herdar da área e permitir restrições; compartilhamento além do público exige Master. Ampliar público publicado exige nova revisão/aprovação; não abre a pasta inteira ou versões antigas restritas. |
+| O que torna um POP válido? | Define bloqueios de publicação e tratamento da revisão vencida. | Responsável ativo, confirmação de revisão e próxima data; proposta anual com aviso sem retirada automática. Master/aprovador de área podem arquivar com motivo; Master restaura para nova revisão. |
 
 Nomes das primeiras áreas, categorias e responsáveis podem ser cadastrados depois, se forem configuráveis. Escolha de editor, organização interna dos arquivos e índices não precisam ser transferidas ao usuário como decisões de negócio. Necessidades de anexos maiores ou formatos diferentes devem ser informadas antes de fechar essa parte do escopo.
 
