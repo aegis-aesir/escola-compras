@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+await build({entryPoints:['app/draft-delete-dialog.tsx'],outfile:'outputs/draft-delete-dialog.mjs',bundle:true,platform:'node',format:'esm',external:['react','react-dom','lucide-react']});
+const {default:Dialog}=await import('../outputs/draft-delete-dialog.mjs');
+const draft={id:crypto.randomUUID(),version:2,values:{title:'Rascunho TESTE LOCAL'},authorName:'Setor TESTE',authorDepartment:'Administrativo',archivedAt:'2026-11-12T20:00:00Z'};
+const props={draft,busy:false,error:'',onClose(){},onConfirm:async()=>{throw Error('SSR não deve excluir')}};
+const markup=renderToStaticMarkup(createElement(Dialog,props));
+assert.match(markup,/<dialog[^>]*aria-labelledby=/,'a confirmação deve usar diálogo modal, independente da posição da lista');
+assert.match(markup,/Rascunho TESTE LOCAL/);assert.match(markup,/Setor TESTE/);assert.match(markup,/Confirmar exclusão/);assert.match(markup,/Cancelar/);
+const failed=renderToStaticMarkup(createElement(Dialog,{...props,error:'Rascunho atualizado; recarregue.'}));assert.match(failed,/role="alert"/);assert.match(failed,/Rascunho atualizado; recarregue/,'erro precisa ficar dentro da confirmação visível');
+const busy=renderToStaticMarkup(createElement(Dialog,{...props,busy:true}));assert.match(busy,/Excluindo…/);assert.doesNotMatch(busy,/<button(?![^>]*disabled)[^>]*>/,'bloquear novas ações enquanto a exclusão está em andamento');
+console.log('PASS: confirmação modal de exclusão, identificação do rascunho, erro visível e bloqueio durante processamento. Sem exclusão real.');

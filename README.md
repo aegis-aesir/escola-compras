@@ -1,6 +1,6 @@
-# vinext-starter
+# CEEA Manager
 
-A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
+Sistema de gestão do Colégio Estrelas, com o processo orçamentário, solicitações, análises, aprovações, cotações e execução de compras. Projeto existente em React/Vinext, Cloudflare D1/R2 e hospedagem Sites.
 
 ## Prerequisites
 

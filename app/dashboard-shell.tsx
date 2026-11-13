@@ -53,9 +53,9 @@ export default function DashboardShell({view,allowedViews,role,userName,roleLabe
     <button type="button" className="nav-backdrop" aria-label="Fechar navegação" onClick={()=>setMobileOpen(false)}/>
     <aside className="sidebar" id="dashboard-navigation">
       <div className="sidebar-brand-row">
-        <a className="brand" href="/" aria-label="Central de Compras do Colégio Estrelas">
+        <a className="brand" href="/" aria-label="CEEA Manager do Colégio Estrelas">
           <span className="brand-logo-frame"><img src="/estrela-2026.png" alt=""/></span>
-          <span className="brand-copy"><strong>Colégio Estrelas</strong><small>Central de Compras</small></span>
+          <span className="brand-copy"><strong>CEEA Manager</strong><small>Colégio Estrelas</small></span>
         </a>
         <button type="button" className="sidebar-close" aria-label="Fechar navegação" onClick={()=>setMobileOpen(false)}><X size={19}/></button>
       </div>

@@ -382,3 +382,5 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
 .master-records .record-actions .button {width:100%;min-width:0;white-space:normal;text-align:center;line-height:1.4}
 
 .master-records small {white-space:normal;overflow-wrap:anywhere}
+
+.master-records>.alert.success {position:fixed;right:24px;bottom:24px;z-index:50;width:min(440px,calc(100vw - 32px));margin:0;box-shadow:var(--ui-shadow-raised)}

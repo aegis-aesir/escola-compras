@@ -105,3 +105,14 @@ Em **Arquivadas**, Master recebe ações por tipo: rascunho → **Encaminhar par
 Permissões dos snapshots: Master/ADM mantêm registros completos; Setor/DG recebem somente os campos permitidos de cada rodada. Financeiro não recebe revisões/rascunhos ou rodadas sem aprovação da necessidade. Operacional/default, modelos, credenciais, DB/R2/domínio e chaves de envio não mudam. Nenhuma mensagem real nos testes.
 
 Testes: `single-request-test.mjs`, `single-request-http-test.mjs`, `general-return-deferred-draft-http-test.mjs`, `master-forward-http-test.mjs`, `budget-flow-test.mjs`, `budget-records-test.mjs`, `request-drafts-test.mjs`, `finance-profile-test.mjs`, tipos e build Sites. Verificação visual local: revisão com autosave/recuperação e ações de arquivo; confirmação de exclusão cancelada na UI, exclusão testada somente em dados fictícios locais.
+
+
+## Nome e confirmação de exclusão — 13/11/2026
+
+Nome do produto: **CEEA Manager**, aplicado no título da aba, marca do menu, login, rodapé, aparência e carregamento. Manter Colégio Estrelas como instituição e preservar domínio, IDs, DB/R2, usuários, regras e integrações.
+
+Correção de exclusão: a confirmação inline acima da tabela ficava fora do viewport quando o Master clicava nas linhas inferiores. Substituída por `DraftDeleteDialog`, com `showModal`, foco inicial em Cancelar, bloqueio durante processamento e erro focado dentro da janela. Sucesso aparece em aviso fixo visível. API, exclusão lógica e permissões permanecem iguais. Teste do componente em `scripts/draft-delete-dialog-test.mjs`; testar também confirmação, cancelamento, conflito de versão e resultado no navegador com dados locais.
+
+Em 13/11 o usuário autorizou testar a exclusão de qualquer rascunho real. Foi excluído um único rascunho sem título do Setor de teste, arquivado em 12/11 às 20:14:01; mensagem de sucesso e redução de 8 para 7 registros confirmadas. Essa autorização foi específica ao teste desta sessão, não permite excluir outros registros arbitrariamente em trabalhos futuros. Nenhuma solicitação foi excluída.
+
+Próximos módulos aprovados para discussão em **chats separados**: estoque, biblioteca de conhecimentos/POPs com organização estilo Notion, tarefas/responsabilidades estilo ClickUp/Asana e planejamento de integração com Escolar Manager. Consultar `ROADMAP.md`; não iniciar esses módulos sem o escopo do chat correspondente.

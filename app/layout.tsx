@@ -7,8 +7,8 @@ import "./redesign.css";
 import { appearanceBootstrap } from './appearance';
 
 export const metadata: Metadata = {
-  title: "Estrelas • Central de Compras",
-  description: "Central de compras do Colégio Estrelas. Solicitações, aprovações e cotações em um só lugar.",
+  title: "CEEA Manager | Colégio Estrelas",
+  description: "CEEA Manager do Colégio Estrelas. Solicitações, aprovações e cotações em um só lugar.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
