@@ -34,7 +34,7 @@ Aprova a necessidade integral, parte identificada de itens/quantidades, medida p
 
 Não há campo de teto financeiro, aprovação de valor ou reaprovação por preço real acima da estimativa. Parecer e estimativa são contexto informativo. O perfil não administra fornecedores, compras ou pagamentos.
 
-**Prazo pertinente à decisão** é uma data opcional associada à decisão e às condições registradas pela Diretoria Geral; fica salva em `needDecision.due` e aparece na consulta da decisão. Ao escolher **Adiar**, o rótulo passa a **Data prevista para reavaliar a solicitação** e a data é obrigatória. É um prazo de acompanhamento: não agenda compra, não muda automaticamente a competência e não define a liberação da reapresentação, que usa `availableMonth`.
+O campo **Prazo pertinente à decisão** foi removido do preenchimento por solicitação do usuário em 13/11/2026. Aprovação integral, parcial, medida provisória e rejeição não apresentam campo de prazo. Somente **Adiar** apresenta **Data prevista para reavaliar a solicitação**, obrigatória e registrada em `needDecision.due`. É um prazo de acompanhamento: não agenda compra, não muda automaticamente a competência e não define a liberação da reapresentação, que usa `availableMonth`. Datas de decisões anteriores permanecem preservadas e consultáveis.
 
 ## Pesquisa e propostas
 

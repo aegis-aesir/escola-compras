@@ -1,4 +1,54 @@
-# Entrega de Compras — documentação — 13/11/2026
+# Entrega atual de Compras — remoção do prazo da decisão — 13/11/2026
+
+## Escopo e comportamento resultante
+
+O usuário relatou que não conseguia apagar os segmentos da data no campo **Prazo pertinente à decisão** e solicitou remover o campo. O controle nativo de data parcialmente preenchido bloqueava o envio por validação do navegador, mesmo sendo opcional.
+
+O campo foi retirado da aprovação integral, aprovação parcial, medida provisória e rejeição. Somente **Adiar** mantém **Data prevista para reavaliar a solicitação**, obrigatória conforme a regra vigente. Ao mudar de Adiar para outra decisão, o controle é desmontado e deixa de participar da validação e do FormData. Não foi incluído botão para limpar a data.
+
+Datas de decisões anteriores continuam consultáveis. API, contrato de armazenamento, permissões, validações do servidor, competência, histórico e fluxo de solicitação única permanecem preservados.
+
+- Branch: `codex/compras`.
+- Worktree: `C:\Users\aegis\Documents\ChatGPT\Compras\escola-compras\.worktrees\compras`.
+- Porta reservada: `5185`.
+- Base desta correção: `b30ce17282a4769db5995ec127a46129f5ff579f` (entrega documental anterior, já enviada).
+- SHA final da correção: informado na resposta do chat; este arquivo integra o próprio commit. Conferir com `git log -1 --format=%H`.
+
+## Arquivos alterados e dependências
+
+- `app/budget-record-panel.tsx`: componente compartilhado do painel de Compras; exibe o controle de data somente no adiamento e ajusta a ajuda de competência para referir-se à solicitação.
+- `scripts/general-return-ui-test.mjs`: regressão no HTML renderizado da aprovação, garantindo ausência do campo de prazo.
+- `scripts/budget-flow-test.mjs`: mantém verificação de adiamento com data e acrescenta rejeição de adiamento sem data.
+- `FORMULARIOS-E-CONTROLES.md`: descrição atual da remoção do campo e preservação das datas históricas.
+- `docs/modulos/compras/ENTREGA.md`: registro desta correção; entrega anterior preservada abaixo como histórico.
+
+Sem dependências novas, migrações, configurações, segredos, mudanças de modelos, estilos, menu ou rotas. Sem contratos novos com outros módulos. O coordenador deve conciliar eventuais mudanças concorrentes no painel/documentação.
+
+## Testes executados e resultados reais
+
+Todos os comandos usaram workdir explícito desta worktree, sem servidor ou ponte de produção.
+
+- Antes da alteração, `node scripts/general-return-ui-test.mjs` **falhou como esperado**: “aprovar a necessidade não deve apresentar campo de prazo”, comprovando a presença do controle no HTML renderizado.
+- Após a alteração, `node scripts/general-return-ui-test.mjs`: **PASS**.
+- `node scripts/budget-flow-test.mjs`: **PASS**, incluindo obrigatoriedade da data apenas no adiamento e decisões estruturadas existentes.
+- `node scripts/single-request-test.mjs`: **PASS**, com dados fictícios e D1 temporário isolado; protocolo único, reapresentação, novas aprovações, privacidade dos snapshots e incorporação idempotente de cópia legada com anexo preservado.
+- `node node_modules/typescript/bin/tsc --noEmit --incremental false`: **PASS**.
+- `npm.cmd run build`: **PASS**, build Vinext concluído.
+- `git diff --check`: **PASS**.
+
+Validação da interface por renderização de HTML, sem verificação interativa no navegador nesta etapa. Nenhum dado real foi acessado ou alterado, e nenhuma pesquisa ou mensagem externa foi executada. Não houve publicação.
+
+## Pendências e passos para o coordenador
+
+Sem pendência de implementação neste escopo. Revisar e integrar somente a branch/SHA informados; publicação continua exclusiva do coordenador.
+
+Na validação local em `http://127.0.0.1:5185`, usar solicitação fictícia em `general_review`. Conferir que aprovação integral, parcial, medida provisória (em emergencial) e rejeição não exibem prazo; Adiar exibe a data de reavaliação e impede envio sem ela. Alternar de Adiar com data incompleta para Aprovar: o controle deve desaparecer, permitindo registrar a decisão quando os demais campos obrigatórios estiverem preenchidos. Consultar decisões anteriores para confirmar que datas já gravadas continuam visíveis. Não enviar mensagens a fornecedores para verificar esta mudança.
+
+---
+
+# Histórico — entrega documental anterior — 13/11/2026
+
+Commit desta entrega anterior: `b30ce17282a4769db5995ec127a46129f5ff579f`. O texto abaixo registra o escopo e as verificações da etapa documental anterior; para o campo de prazo e a entrega atual, prevalece a seção acima.
 
 ## Identificação e escopo
 
