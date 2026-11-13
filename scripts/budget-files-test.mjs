@@ -24,6 +24,10 @@ try{
  const draftUpload=await upload('setor','draft1');assert.equal(draftUpload.status,200);const draftFile=(await draftUpload.json()).id;
  assert.equal((await call('/'+draftFile,'setor')).status,200);
  assert.equal((await call('/'+draftFile,'master')).status,404);
+ await db.prepare("UPDATE records SET data=json_set(data,'$.archivedAt','2026-11-12T00:00:00Z'),version=version+1 WHERE id='draft1'").run();
+ assert.equal((await call('?requestId=draft1','setor')).status,404);
+ assert.equal((await call('/'+draftFile,'setor')).status,404);
+ assert.equal((await upload('setor','draft1')).status,404);
  await db.prepare("UPDATE records SET kind='request',data=?,version=version+1 WHERE id='draft1'").bind(JSON.stringify({authorId:'user:setor',status:'estimating'})).run();
  assert.equal((await call('/'+draftFile,'master')).status,200);
  assert.equal((await (await call('?requestId=draft1','setor')).json()).files.length,1);

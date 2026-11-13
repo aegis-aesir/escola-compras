@@ -10,7 +10,9 @@ export async function GET(req:Request){
  const all=user.role==='admin'&&new URL(req.url).searchParams.get('scope')==='all';
  const rows=await env.DB!.prepare(`SELECT draft.id,draft.data,draft.version,author.data AS authorData FROM records draft LEFT JOIN records author ON author.id=json_extract(draft.data,'$.authorId') AND author.kind='local_user' WHERE draft.kind='request_draft'${all?'':" AND json_extract(draft.data,'$.authorId')=?"} ORDER BY json_extract(draft.data,'$.updatedAt') DESC`).bind(...(all?[]:[user.id])).all<{id:string;data:string;version:number;authorData?:string}>();
  const submitted=await env.DB!.prepare(`SELECT id FROM records WHERE kind='request'${all?'':" AND json_extract(data,'$.authorId')=?"}`).bind(...(all?[]:[user.id])).all<{id:string}>();
- return Response.json({submittedIds:submitted.results.map(r=>r.id),drafts:rows.results.map(r=>{const data=JSON.parse(r.data),author=r.authorData?JSON.parse(r.authorData):{};return {id:r.id,version:r.version,values:data.values,updatedAt:data.updatedAt,status:data.status||'draft',sourceRequestId:data.sourceRequestId,sourceCode:data.sourceCode,deferReason:data.deferReason,availableMonth:data.availableMonth,deferredAt:data.deferredAt,archivedAt:data.archivedAt,archivedBy:data.archivedBy,authorName:author.name||data.authorName||'Usuário não identificado',authorDepartment:author.department||data.authorDepartment||'Setor não identificado'}})},{headers:{'Cache-Control':'no-store'}});
+ const hiddenArchivedIds=user.role==='admin'?[]:rows.results.filter(row=>JSON.parse(row.data).archivedAt).map(row=>row.id);
+ rows.results=rows.results.filter(row=>!hiddenArchivedIds.includes(row.id));
+ return Response.json({hiddenArchivedIds,submittedIds:submitted.results.map(r=>r.id),drafts:rows.results.map(r=>{const data=JSON.parse(r.data),author=r.authorData?JSON.parse(r.authorData):{};return {id:r.id,version:r.version,values:data.values,updatedAt:data.updatedAt,status:data.status||'draft',sourceRequestId:data.sourceRequestId,sourceCode:data.sourceCode,deferReason:data.deferReason,availableMonth:data.availableMonth,deferredAt:data.deferredAt,archivedAt:data.archivedAt,archivedBy:data.archivedBy,authorName:author.name||data.authorName||'Usuário não identificado',authorDepartment:author.department||data.authorDepartment||'Setor não identificado'}})},{headers:{'Cache-Control':'no-store'}});
 }
 export async function POST(req:Request){
  const user=await currentLocalUser();if(!user)return Response.json({error:'Entre com seu usuário.'},{status:401});
@@ -21,6 +23,7 @@ export async function POST(req:Request){
   const raw=await req.text();if(raw.length>90000)return Response.json({error:'Rascunho muito grande.'},{status:400});const input=JSON.parse(raw);
   if(input.action==='archive'||input.action==='restore'){
    const b=z.object({action:z.enum(['archive','restore']),id:z.string().uuid(),version:z.number().int().positive()}).parse(input);
+   if(b.action==='restore'&&user.role!=='admin')return Response.json({error:'Somente o Master pode restaurar rascunhos arquivados.'},{status:403});
    const row=await env.DB!.prepare("SELECT data,version FROM records WHERE id=? AND kind='request_draft'").bind(b.id).first<{data:string;version:number}>();
    if(!row)return Response.json({error:'Rascunho não encontrado.'},{status:404});const current=JSON.parse(row.data);
    if(user.role!=='admin'&&current.authorId!==user.id)return Response.json({error:'Rascunho não encontrado.'},{status:404});

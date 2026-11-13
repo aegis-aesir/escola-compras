@@ -14,7 +14,10 @@ assert.equal((await call('/api/drafts',{id,version:1,values},master)).status,409
 assert.equal((await call('/api/drafts',{id,version:0,values})).status,409);
 assert.equal((await call('/api/drafts',{action:'archive',id,version:1},general)).status,403);
 const archived=await call('/api/drafts',{action:'archive',id,version:1});assert.equal(archived.status,200);assert.ok(archived.data.archivedAt);
-const archivedDraft=(await call('/api/drafts')).data.drafts.find(d=>d.id===id);assert.ok(archivedDraft.archivedAt);assert.equal(archivedDraft.values.title,values.title);
+const sectorList=(await call('/api/drafts')).data;assert.equal(sectorList.drafts.some(d=>d.id===id),false,'setor não recebe rascunho arquivado');assert.ok(sectorList.hiddenArchivedIds.includes(id),'cópia local antiga deve ser descartada');
+assert.equal((await call('/api/drafts?scope=all')).data.drafts.some(d=>d.id===id),false,'scope=all não amplia acesso do setor');
+const archivedDraft=(await call('/api/drafts?scope=all',null,master)).data.drafts.find(d=>d.id===id);assert.ok(archivedDraft.archivedAt);assert.equal(archivedDraft.values.title,values.title);
+assert.equal((await call('/api/drafts',{action:'restore',id,version:2})).status,403,'setor não restaura rascunho arquivado');
 assert.equal((await call('/api/drafts',{id,version:2,values})).status,409,'rascunho arquivado não recebe autosave');
 assert.equal((await call('/api/data',{action:'request',draftId:id,draftVersion:2,data:{...budgetFixture('monthly'),department:'Administrativo',neededBy:''}})).status,409,'rascunho arquivado não pode ser enviado');
 assert.equal((await call('/api/drafts',{action:'restore',id,version:2},master)).status,200,'Master pode restaurar rascunho de qualquer setor');
