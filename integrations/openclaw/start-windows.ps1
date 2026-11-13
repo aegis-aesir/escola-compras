@@ -1,5 +1,6 @@
 param([switch]$Once)
 $ErrorActionPreference = 'Stop'
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '../../.ceea-worktree.json')) { throw 'A ponte de produção deve ser executada somente pelo coordenador, na pasta principal.' }
 $bridgeHome = Join-Path $env:USERPROFILE '.openclaw/estrelas-compras'
 $vaultPath = Join-Path $bridgeHome 'secrets.dpapi'
 $mutex = [System.Threading.Mutex]::new($false, 'Local\ColegioEstrelasOpenClawBridge')

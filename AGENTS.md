@@ -2,6 +2,10 @@
 
 Responda em português do Brasil, com linguagem simples. Leia `IMPLEMENTACAO.md` e `CONTINUAR-NO-VSCODE.md` antes de alterar o sistema. Trabalhe neste projeto existente; não gere outro aplicativo nem recrie a hospedagem.
 
+## Coordenação e desenvolvimento paralelo (13/11/2026)
+
+Ler **COORDENACAO.md** antes de editar. O chat `01a1b74c-f58c-7bd1-a47b-ea6c53153b36` (**CEEA Manager — Coordenação e publicação**) mantém a main e é o único coordenador de integração/publicação. Módulos estoque, conhecimento-pops, tarefas e integracao-escolar-manager usam worktrees e branches próprias. Se existir `.ceea-worktree.json`, trabalhar somente na branch/porta do módulo; não fazer merge/push na main nem publicar Sites. Esta regra centraliza no coordenador a autorização anterior de mesclar/publicar imediatamente durante trabalhos paralelos. Preparar entrega em `docs/modulos/<modulo>/ENTREGA.md`, com branch/SHA, testes, migrações e arquivos compartilhados. Não copiar credenciais/dados reais nem iniciar a ponte de produção nos módulos.
+
 ## Regras definidas pelo usuário
 
 - Escola privada: Centro Educacional Estrelas do Amanhã LTDA / Colégio Estrelas, Manaus/AM.

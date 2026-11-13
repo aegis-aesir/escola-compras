@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
-import {localTestSession} from './local-test-session.mjs';
+import {localBase as base,localTestSession} from './local-test-session.mjs';
 import {budgetFixture} from './budget-fixture.mjs';
 import {build} from 'esbuild';
 await build({entryPoints:['app/budget-fields.ts'],outfile:'outputs/smoke-budget-fields.mjs',bundle:true,platform:'node',format:'esm'});
 const {managementSections}=await import('../outputs/smoke-budget-fields.mjs');
-const base='http://127.0.0.1:5173';
 assert.equal((await fetch(base+'/api/data')).status,401,'Anonymous requests must be denied');
 const cookie=await localTestSession();
 assert.ok(cookie,'Local development session cookie');

@@ -44,3 +44,8 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+
+# Private identity and instructions of each module worktree
+/.ceea-worktree.json
+/AGENTS.override.md
+/.ceea-workspace/

@@ -1,5 +1,6 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import {readModuleWorkspace} from './scripts/module-workspace.mjs';
 import hostingConfig from "./.openai/hosting.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { configureToolEnvironment } from "./scripts/tool-environment.mjs";
@@ -45,6 +46,7 @@ export default defineConfig(async ({ command }) => {
 
   return {
     server: {
+      ...(readModuleWorkspace()?{strictPort:true}:{}),
       ...(managedLinux
         ? { host: "0.0.0.0", allowedHosts: ["terminal.local"] }
         : {}),

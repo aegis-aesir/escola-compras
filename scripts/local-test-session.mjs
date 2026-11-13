@@ -1,7 +1,8 @@
-// Test fixtures are accepted only by this fixed loopback development server.
+// Test fixtures target only this checkout's isolated loopback development server.
+import {localDevelopmentBase} from './module-workspace.mjs';
 import {readFile} from 'node:fs/promises';
 import {createHmac} from 'node:crypto';
-export const localBase='http://127.0.0.1:5173';
+export const localBase=localDevelopmentBase();
 export const testUsers=[
  {username:'dev.master.test',name:'TESTE LOCAL Master',role:'admin',department:'Administrativo',password:'FAKE-LOCAL-master-initial-2026!'},
  {username:'dev.setor.test',name:'TESTE LOCAL Setor',role:'solicitante',department:'Administrativo',password:'FAKE-LOCAL-sector-initial-2026!'},
