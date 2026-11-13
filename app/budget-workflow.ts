@@ -1,8 +1,8 @@
+import {beginDeferredRevision} from './deferred-request';
 import {z} from 'zod';
 import type {Purchase,Member,Settings} from './model';
 import {quoteTotal} from './model';
 import {parseManagement} from './budget';
-import {deferredDraftRecord} from './deferred-draft';
 import {managementSections,canCompareCommercial,commercialFieldKeys} from './budget-fields';
 import {FlowError,todayManaus} from './workflow';
 
@@ -86,21 +86,11 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     data.returnForCorrection={reason,due,at:now,actor:me.name};data.status='correction';
     return {data,action:'Devolvido ao setor para complementação até '+due+': '+reason};
   }
-  if(b.action==='resume_request'){
-    permit('administrativo');if(old.status!=='deferred')throw new FlowError('Somente pedidos adiados podem ser retomados.');
-    if(old.deferred?.draftId)throw new FlowError('O setor já recebeu uma cópia editável em rascunho; o pedido original permanece adiado.');
-    const month=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).parse(b.referenceMonth);
-    data.correctionHistory=[...(old.correctionHistory||[]),{at:now,actor:me.name,reason,previous:{form:old.form,management:old.management,needDecision:old.needDecision,estimate:old.estimate,referenceMonth:old.form?.fields.referenceMonth}}];
-    data.management={...old.management,referenceMonth:month};data.status='pending';
-    delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.needDecision;delete data.deferred;
-    data.estimateRevision=now;
-    return {data,action:'Pedido adiado retomado para '+month+'; aguarda a Diretoria Administrativa iniciar nova estimativa: '+reason};
-  }
+  if(b.action==='resume_request'){permit('administrativo');throw new FlowError('Use Revisar e reapresentar solicitação adiada para manter todas as rodadas no mesmo protocolo.',409);}
   if(b.action==='defer_request'){
     if(me.role==='geral'){if(old.status!=='general_review')throw new FlowError('Aguarde o encaminhamento administrativo.');}else permit('administrativo');preApproval();
-    const draftId=z.string().uuid().parse(b.deferredDraftId);
-    data.status='deferred';data.deferred={reason,at:now,actor:me.name,draftId};
-    data.deferred.availableMonth=deferredDraftRecord(data,draftId,now).availableMonth;
+    data.status='deferred';data.deferred={reason,at:now,actor:me.name};
+    Object.assign(data,beginDeferredRevision(data,me.name,now));
     return {data,action:'Pedido adiado sem transferência automática de mês: '+reason};
   }
   permit('geral');if(old.status!=='general_review'||!old.adminReview||!old.estimate)throw new FlowError('A decisão exige estimativa e parecer administrativo.');
@@ -114,9 +104,8 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
   data.needDecision={choice,itemIndexes:indexes,reason,conditions,due,actor:me.name,at:now};
   if(choice==='reject'){data.status='rejected';data.decision=reason;return {data,action:'Necessidade recusada pela diretoria geral: '+reason}}
   if(choice==='defer'){
-    const draftId=z.string().uuid().parse(b.deferredDraftId);
-    data.status='deferred';data.deferred={reason,at:now,actor:me.name,due,draftId};
-    data.deferred.availableMonth=deferredDraftRecord(data,draftId,now).availableMonth;
+    data.status='deferred';data.deferred={reason,at:now,actor:me.name,due};
+    Object.assign(data,beginDeferredRevision(data,me.name,now));
     return {data,action:'Necessidade adiada pela diretoria geral: '+reason};
   }
   if(choice==='partial'||choice==='provisional'){

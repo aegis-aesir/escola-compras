@@ -10,7 +10,7 @@ export function masterReanalysis(old:Purchase,reason:unknown,me:{role:Member['ro
  const previous={...old};delete previous.reanalysisHistory;
  const reanalysisHistory=old.reanalysisHistory;
  const data:Purchase={...old,status:old.estimate?'admin_review':'pending',updatedAt:now,reanalysisHistory:[...(reanalysisHistory||[]),{actor:me.name,at:now,reason:justification,previous}],management:{...(old.management?.referenceMonth?{referenceMonth:old.management.referenceMonth}:{}),validatedPriority:old.priority}};
- for(const key of ['generalApproval','adminReview','needDecision','decision','selectedQuoteId','returnForCorrection','generalReturn','deferred','archived','localStartedAt','localDeadline','localAttempts','executionNotes','nationalReason'] as const)delete data[key];
+ for(const key of ['generalApproval','adminReview','needDecision','decision','selectedQuoteId','returnForCorrection','generalReturn','deferred','deferredEdit','archived','localStartedAt','localDeadline','localAttempts','executionNotes','nationalReason'] as const)delete data[key];
  data.quoteHistory=[...(old.quoteHistory||[]),...old.quotes];data.quotes=[];
  if(old.archived)data.archiveHistory=[...(old.archiveHistory||[]),{action:'restore',actor:me.name,at:now,reason:justification}];
  if(!old.estimate)data.estimateRevision=now;

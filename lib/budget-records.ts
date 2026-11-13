@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { FlowError, todayManaus } from '../app/workflow';
 import type { Purchase, Settings } from '../app/model';
-import { closingBlockers, fiscalMatrix, invoiceBlockers, monthSummary, referenceMonth, validNeed, type BudgetRecord, type BudgetClosing } from '../app/budget-month';
+import { closingBlockers, fiscalMatrix, invoiceBlockers, monthSummary, requestsForMonth, referenceMonth, validNeed, type BudgetRecord, type BudgetClosing } from '../app/budget-month';
 const text=z.string().trim().max(4000),required=z.string().trim().min(5,'Informe pelo menos 5 caracteres.').max(4000);
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,'Data inválida.');
 const optionalDate=z.union([z.literal(''),date]);const month=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);const amount=z.number().finite().nonnegative().max(1000000000).refine(v=>Math.abs(v*100-Math.round(v*100))<0.00001,'Use no máximo duas casas decimais.');
@@ -67,10 +67,10 @@ export async function budgetRecordsAction(db:D1Database,payload:unknown,me:{id:s
   for(const m of new Set(months)){guards.push("NOT EXISTS (SELECT 1 FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month')=? AND json_extract(data,'$.status')='Concluído')");guardValues.push(m);}
  }else if(b.action==='budget_closing'){
   // Snapshot and source versions are verified by the same D1 statement as the write.
-  const m=(data as BudgetClosing).month,rs=requests.filter(r=>referenceMonth(r)===m),ns=records.filter(n=>n.kind==='budget_invoice'&&n.data.month===m);
+  const m=(data as BudgetClosing).month,rs=requestsForMonth(requests,m),ns=records.filter(n=>n.kind==='budget_invoice'&&n.data.month===m);
   const versions=[...rs,...ns].map(r=>({id:r.id,version:r.version}));
   guards.push("NOT EXISTS (SELECT 1 FROM json_each(?) v LEFT JOIN records r ON r.id=json_extract(v.value,'$.id') AND r.version=json_extract(v.value,'$.version') WHERE r.id IS NULL)");guardValues.push(JSON.stringify(versions));
-  guards.push("(SELECT COUNT(*) FROM records WHERE kind='request' AND coalesce(json_extract(data,'$.management.referenceMonth'),json_extract(data,'$.form.fields.referenceMonth'))=?)=?");guardValues.push(m,rs.length);
+  guards.push("(SELECT COUNT(*) FROM records WHERE kind='request' AND (coalesce(json_extract(data,'$.management.referenceMonth'),json_extract(data,'$.form.fields.referenceMonth'))=? OR EXISTS(SELECT 1 FROM json_each(json_extract(records.data,'$.roundHistory')) h WHERE json_extract(h.value,'$.month')=?)))=?");guardValues.push(m,m,rs.length);
   guards.push("(SELECT COUNT(*) FROM records WHERE kind='budget_invoice' AND json_extract(data,'$.month')=?)=?");guardValues.push(m,ns.length);
  }
  const where=guards.length?' AND '+guards.join(' AND '):'';

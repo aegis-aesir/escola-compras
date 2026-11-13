@@ -1,3 +1,4 @@
+import {consolidateDeferredDrafts} from './deferred-requests';
 import {readSession, type LocalUser} from './local-auth';
 import {canFinanceReadRequest} from '../app/access';
 
@@ -46,6 +47,7 @@ export async function filesEndpoint(req:Request,env:FileEnv){
     const db=env.DB,url=new URL(req.url),local=url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname);
     const user=await readSession(db,req.headers.get('cookie')||'',local);
     if(!user)throw new FileError('Entre com seu usuário e senha.',401);
+    await consolidateDeferredDrafts(db,new Date().toISOString());
     if(req.method==='GET'){
       const id=url.pathname.slice('/api/files/'.length);
       if(url.pathname==='/api/files'||url.pathname==='/api/files/'){
@@ -70,7 +72,7 @@ export async function filesEndpoint(req:Request,env:FileEnv){
     const r=await accessible(db,requestId,user);
     if(r.status==='draft'&&visibility!=='request')throw new FileError('Anexos do rascunho são documentos da solicitação.',403);
     if(r.archived||r.archivedAt)throw new FileError('Solicitação arquivada. Restaure antes de enviar anexos.',409);
-    if(!management(user)&&(visibility!=='request'||!['draft','estimating','pending','correction'].includes(r.status)))throw new FileError('Seu perfil não pode alterar documentos nesta etapa.',403);
+    if(!management(user)&&(visibility!=='request'||!['draft','estimating','pending','correction','deferred'].includes(r.status)))throw new FileError('Seu perfil não pode alterar documentos nesta etapa.',403);
     const month=String(r.management?.referenceMonth||r.form?.fields.referenceMonth||'');
     if(await db.prepare("SELECT id FROM records WHERE kind='budget_closing' AND json_extract(data,'$.month')=? AND json_extract(data,'$.status')='Concluído'").bind(month).first())throw new FileError('Reabra o fechamento mensal antes de anexar documentos.');
     const file=form.get('file');if(!file||typeof file==='string')throw new FileError('Selecione um arquivo.');

@@ -30,7 +30,7 @@ for(const auxiliary of ['Fornecedores','Agente WhatsApp','Arquivadas','Configura
 assert.match(adminMarkup,/aria-label="Abrir opções do usuário"/,'Configurações deve ficar na área do usuário');
 assert.match(adminMarkup,/>Configurações</,'Master mantém o acesso às configurações');
 for(const label of ['Abrir configurações','Alterar senha','Sair'])assert.match(adminMarkup,new RegExp(`aria-label="${label}"`),`opção ${label} precisa de nome acessível`);
-assert.match(adminMarkup,/Versão 2026\.11\.13\.4/,'a versão do sistema precisa permanecer visível na área autenticada');
+assert.match(adminMarkup,/Versão 2026\.11\.13\.5/,'a versão do sistema precisa permanecer visível na área autenticada');
 
 const sectorMarkup=renderShell('solicitante','requests',['requests']);
 assert.match(sectorMarkup,/aria-label="Minhas solicitações"/,'Setor recebe uma única área contínua de acompanhamento');

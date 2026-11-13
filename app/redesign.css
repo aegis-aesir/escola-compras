@@ -373,3 +373,12 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
   html {scroll-behavior:auto}
   *,*::before,*::after {scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
+
+.master-records table {table-layout:fixed;width:100%}
+.master-records th,.master-records td {padding:16px;overflow-wrap:anywhere}
+.master-records th:first-child {width:23%}
+.master-records th:last-child {width:22%}
+.master-records .record-actions {min-width:0;width:100%;max-width:220px}
+.master-records .record-actions .button {width:100%;min-width:0;white-space:normal;text-align:center;line-height:1.4}
+
+.master-records small {white-space:normal;overflow-wrap:anywhere}

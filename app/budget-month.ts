@@ -48,6 +48,9 @@ export function invoiceBlockers(n:BudgetInvoice):string[]{
 }
 export function referenceMonth(r:Purchase):string|null {const m=r.management?.referenceMonth||r.form?.fields.referenceMonth;return typeof m==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(m)?m:null;}
 export const managementNumber=(r:Purchase,key:string):number|null=>{const v=r.management?.[key];return typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;};
+export function requestsForMonth(requests:Purchase[],month:string):Purchase[]{
+ return requests.flatMap(request=>{if(referenceMonth(request)===month)return [request];const entry=request.roundHistory?.findLast(round=>round.month===month);return entry?[{...entry.previous,id:request.id,version:request.version} as Purchase]:[]});
+}
 export function validNeed(r:Purchase){return !!r.generalApproval&&!['rejected','deferred','correction','general_review','admin_review','estimating','pending'].includes(r.status);}
 export type AmountSummary={total:number|null;known:number;missing:number};
 export type MonthTotals=Record<'requested'|'recommended'|'approvedReference'|'contracted'|'realized',AmountSummary>;
@@ -55,10 +58,10 @@ export type BudgetTransfer={requestId:string;code:string;title:string;department
 export type MonthSummary={month:string;at:string;count:number;totals:MonthTotals;transfers:{incoming:BudgetTransfer[];outgoing:BudgetTransfer[]};differences:Record<'requestedToRecommended'|'referenceToContracted'|'contractedToRealized',AmountSummary>;emergencyRequested:AmountSummary;groups:Record<string,Record<string,{count:number;realized:AmountSummary}>>;indicators:Record<string,number>;rates:Record<'onTime'|'returned'|'quoteCovered',{count:number;total:number;percent:number|null}>;requestIds:string[];unclassified:number};
 function sum(values:(number|null)[]):AmountSummary {const known=values.filter((v):v is number=>v!==null);return {total:known.length?Math.round(known.reduce((a,v)=>a+Math.round(v*100),0))/100:null,known:known.length,missing:values.length-known.length};}
 export function monthSummary(requests:Purchase[],records:BudgetRecord[],month:string,settings:Settings,at:string):MonthSummary{
- const rs=requests.filter(r=>referenceMonth(r)===month),ns=records.filter((n):n is BudgetRecord&{kind:'budget_invoice'}=>n.kind==='budget_invoice'&&n.data.month===month);
+ const rs=requestsForMonth(requests,month),ns=records.filter((n):n is BudgetRecord&{kind:'budget_invoice'}=>n.kind==='budget_invoice'&&n.data.month===month);
  const movements:BudgetTransfer[]=[];
  for(const r of requests){
-  const original=r.form?.fields.referenceMonth,current=referenceMonth(r);
+  const original=r.roundHistory?.[0]?.month||r.form?.fields.referenceMonth,current=referenceMonth(r);
   if(typeof original!=='string'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(original)||!current||original===current)continue;
   const revision=r.correctionHistory?.[r.correctionHistory.length-1];
   movements.push({requestId:r.id,code:r.code,title:r.title,department:r.department,originalMonth:original,currentMonth:current,requested:requestedTotal(r).total,...(revision?{latestRevision:{at:revision.at,actor:revision.actor,reason:revision.reason}}:{})});
@@ -67,7 +70,7 @@ export function monthSummary(requests:Purchase[],records:BudgetRecord[],month:st
  const total=(key:string)=>sum(rs.map(r=>managementNumber(r,key)));
  const difference=(before:(r:Purchase)=>number|null,after:(r:Purchase)=>number|null)=>sum(rs.map(r=>{const a=before(r),b=after(r);return a===null||b===null?null:Math.round((b-a)*100)/100;}));
  const cutoff=budgetCalendar(month,settings).find(x=>x.key==='submission')!.date;
- const onTime=rs.filter(r=>{const d=new Date(r.createdAt);return !Number.isNaN(d.getTime())&&new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(d)<=cutoff;}).length;
+ const onTime=rs.filter(r=>{const d=new Date(r.roundSubmittedAt||r.createdAt);return !Number.isNaN(d.getTime())&&new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(d)<=cutoff;}).length;
  const returned=rs.filter(r=>r.status==='correction'||!!r.returnForCorrection).length;
  const quoteCovered=rs.filter(r=>(r.reportingQuotes??r.quotes).filter(q=>quoteComparable(q,r)&&q.validUntil>=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at))).length>=settings.minQuotes||!!r.management?.quotationException&&!!r.management?.quotationExceptionReason&&!!r.management?.quotationExceptionEvidence).length;
  const rate=(count:number)=>({count,total:rs.length,percent:rs.length?Math.round(count/rs.length*10000)/100:null});
@@ -85,7 +88,7 @@ export function budgetCalendar(month:string,settings:Settings){
  result.push({key:'execution',label:'Execução a partir de',date:iso(dateOf(y,m-1,1))});const report=dateOf(y,m,0);let days=0;while(days<5){report.setUTCDate(report.getUTCDate()+1);if(business(report,holidays))days++;}result.push({key:'report',label:'Relatório até',date:iso(report)});return result;
 }
 export function closingBlockers(requests:Purchase[],records:BudgetRecord[],c:BudgetClosing,at:string):string[]{
- const errors:string[]=[];const rs=requests.filter(r=>referenceMonth(r)===c.month);const ns=records.filter((n):n is BudgetRecord&{kind:'budget_invoice'}=>n.kind==='budget_invoice'&&n.data.month===c.month);
+ const errors:string[]=[];const rs=requestsForMonth(requests,c.month);const ns=records.filter((n):n is BudgetRecord&{kind:'budget_invoice'}=>n.kind==='budget_invoice'&&n.data.month===c.month);
  for(const r of rs){const m=r.management||{},contracted=managementNumber(r,'contractedAmount'),realized=managementNumber(r,'realizedAmount');
   if((contracted!==null||realized!==null)&&!validNeed(r))errors.push(`${r.code}: execução/contratação sem aprovação válida da necessidade.`);
   if(((contracted!==null&&r.estimate&&contracted!==r.estimate.total)||(realized!==null&&((contracted!==null&&realized!==contracted)||(r.estimate&&realized!==r.estimate.total))))&&!present(m.differenceReason))errors.push(`${r.code}: explique a diferença financeira.`);

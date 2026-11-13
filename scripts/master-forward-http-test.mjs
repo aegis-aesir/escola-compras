@@ -23,7 +23,7 @@ assert.equal((await call('/api/data',repeat)).status,200);assert.equal((await ca
 request=(await call('/api/data')).data.requests.find(r=>r.id===id);assert.equal(request.reanalysisHistory.length,1);assert.equal(request.authorName,testUsers[1].name);
 const created=await call('/api/data',{action:'request',data:fixture},sector);assert.equal(created.status,200);const original=(await call('/api/data')).data.requests.find(r=>r.id===created.data.id);
 assert.equal((await call('/api/data',{action:'defer_request',id:original.id,version:original.version,reason:'Adiar para testar intervenção do Master'})).status,200);
-const deferred=(await call('/api/drafts?scope=all')).data.drafts.find(d=>d.sourceRequestId===original.id);assert.ok(deferred.availableMonth);
-assert.equal((await call('/api/data',{action:'master_submit_draft',draftId:deferred.id,draftVersion:deferred.version,data:fixture,reason:'Master antecipa a cópia após avaliação'})).status,200);
-const forwarded=(await call('/api/data')).data.requests.find(r=>r.id===deferred.id);assert.equal(forwarded.reusedFrom.requestId,original.id);assert.equal(forwarded.authorName,testUsers[1].name);
-console.log('PASS HTTP: Master encaminha rascunho alheio/arquivado com aceite próprio, autoria preservada, idempotência e concorrência.');
+const deferred=(await call('/api/data')).data.requests.find(r=>r.id===original.id);assert.ok(deferred.deferred.availableMonth);assert.equal(deferred.deferred.draftId,undefined);
+assert.equal((await call('/api/data',{action:'reapply_deferred',id:deferred.id,version:deferred.version,roundAt:deferred.deferred.at,data:fixture,reason:'Master antecipa a reapresentação no mesmo protocolo'})).status,200);
+const forwarded=(await call('/api/data')).data.requests.find(r=>r.id===original.id);assert.equal(forwarded.roundHistory.length,1);assert.equal(forwarded.authorName,testUsers[1].name);assert.equal(forwarded.code,original.code);
+console.log('PASS HTTP: Master encaminha rascunho com aceite próprio e reapresenta adiado no mesmo protocolo; autoria, idempotência e concorrência preservadas.');

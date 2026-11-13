@@ -28,14 +28,14 @@ assert.match(panel,/send\('return_to_admin'/,'a ação visual deve chamar a tran
 assert.match(panel,/Resposta à pendência da Diretoria Geral/,'Diretoria Administrativa precisa responder à pendência');
 assert.match(panel,/Salvar alterações na análise administrativa/,'a Diretoria Administrativa precisa de uma ação explícita para revisar o parecer já encaminhado');
 assert.match(panel,/generalReturnHistory/,'o histórico das devoluções precisa permanecer consultável');
-assert.match(panel,/r\.status==='deferred'&&!r\.deferred\?\.draftId/,'retomada legada só pode aparecer sem a nova cópia');
-assert.match(panel,/Cópia editável enviada ao setor/,'o original adiado deve indicar a criação da cópia');
+assert.match(panel,/mesmo protocolo/,'adiamento mantém o protocolo e o histórico');
+assert.doesNotMatch(panel,/Cópia editável enviada ao setor/);
 
 for(const text of ['Adiado','sourceCode','availableMonth','deferReason']){
   assert.ok(drafts.includes(text),`lista de rascunhos deve identificar ${text}`);
 }
 assert.match(requestForm,/submitBlockedReason/,'formulário precisa aceitar o bloqueio mensal de envio');
 assert.match(requestForm,/disabled=\{busy\|\|!!submitBlockedReason\}/,'somente o envio deve ficar bloqueado');
-assert.match(dataRoute,/deferredDraft\|\|linkedDraft\?' AND changes\(\)=1'/,'adiamento e reanálise dependem da gravação da cópia vinculada na mesma transação');
+assert.match(dataRoute,/reapplyDeferredRequest/,'reapresentação deve atualizar o pedido original');
 
-console.log('PASS: devolução da Diretoria Geral e cópia adiada têm controles e identificação na interface.');
+console.log('PASS: devolução da Diretoria Geral e revisão adiada têm controles e identificação na interface.');
