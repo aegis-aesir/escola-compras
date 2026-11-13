@@ -58,7 +58,7 @@ Entre os 774 sem correspondência identificada, 31 arquivos contêm POP no nome:
 - Um DOCX sobre convivência escolar e disciplina em Coordenacao Orientacao.
 - Quatro arquivos em `P.O.P.s`: relatório pedagógico AEE para demandas externas, boa convivência e aprendizagem, formação (PPTX) e avaliações adaptadas (DOCX).
 
-Esses 31 arquivos não têm igualdade de bytes ou correspondência pelos critérios de nome/código usados. Isso não prova ausência de procedimento equivalente com outro título, nem comprova que estejam aprovados. Devem ser revisados como possíveis complementos da biblioteca, mantendo `Doc's SIE` como referência principal. Nenhuma inclusão automática foi feita.
+Esses 31 arquivos não têm igualdade de bytes ou correspondência pelos critérios de nome/código usados. Isso não prova ausência de procedimento equivalente com outro título, nem comprova aprovação documental. Em decisão posterior, o usuário autorizou sua inclusão na proposta, mantendo `Doc's SIE` como referência principal. A distribuição por setor e a relação dos 31 estão em `ORGANIZACAO-POR-SETOR.md`. Não houve importação nem publicação.
 
 ## Critérios, rastreabilidade e limites
 
@@ -75,4 +75,4 @@ Nenhum original foi alterado, renomeado, movido, excluído ou copiado para o rep
 
 ## Encaminhamento para o desenho do módulo
 
-Fonte principal definida: `Doc's SIE`. Propor uma única entrada documental por conteúdo exato, preservando os caminhos de origem como referência; arquivos divergentes permanecem separados. Antes de incluir os 31 possíveis POPs complementares ou consolidar as variantes BSC/BDG, revisar sua finalidade e aprovação. A seleção de documentos para importação e as regras de acesso/publicação ainda dependem do usuário.
+Fonte principal definida: `Doc's SIE`. Os 31 complementares foram incluídos na proposta por decisão posterior do usuário. Organização resultante em `ORGANIZACAO-POR-SETOR.md`: uma entrada por conteúdo exato, origens preservadas e arquivos divergentes separados. A decisão de inclusão na proposta está resolvida; importação, uso das variantes BSC/BDG, aprovação documental e regras de acesso/publicação continuam pendentes.

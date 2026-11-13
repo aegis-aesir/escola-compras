@@ -3,7 +3,7 @@
 Data: 13/11/2026. Etapa: planejamento, sem implementação de produto.
 Esta proposta não é um desenho aprovado nem autoriza instalar dependências, criar telas, endpoints ou migrações. As decisões abaixo permanecem abertas para o usuário.
 
-Atualização após o usuário informar que já possui os POPs: a conferência do acervo existente está em `CONFERENCIA-NAS.md`, nesta pasta. A prioridade proposta passa a incluir catalogar e disponibilizar os documentos prontos; conversão para o editor não é pressuposta. O usuário definiu `Doc's SIE` como referência principal; resultados da comparação por hash com as demais pastas estão em `COMPARACAO-ACERVO.md`. Seleção de documentos, tratamento de variantes, busca no conteúdo de arquivos e limites de tamanho precisam entrar no desenho antes de qualquer importação.
+Atualização após o usuário informar que já possui os POPs: a conferência do acervo existente está em `CONFERENCIA-NAS.md`, nesta pasta. A prioridade proposta passa a incluir catalogar e disponibilizar os documentos prontos; conversão para o editor não é pressuposta. O usuário definiu `Doc's SIE` como referência principal e autorizou incluir os 31 complementares na proposta. `ORGANIZACAO-POR-SETOR.md` organiza 557 conteúdos únicos (526 da referência + 31 complementares), sem alterar os originais. A comparação está em `COMPARACAO-ACERVO.md`. Tratamento das variantes não selecionadas, busca no conteúdo de arquivos e limites de tamanho ainda precisam entrar no desenho antes de qualquer importação.
 
 ## Ambiente conferido
 
@@ -41,6 +41,7 @@ A escolha não foi feita pelo usuário. Uma biblioteca apenas de arquivos não c
 ## Proposta funcional de primeira versão
 
 - Uma área Conhecimento e POPs no CEEA Manager, com árvore de páginas e subpáginas, caminho de navegação e organização por assunto/setor. Categorias classificam o conteúdo sem exigir cópias da mesma página. Impedir ciclos ao mover páginas.
+- Acervo inicial da proposta: referência principal `Doc's SIE` e 31 complementares incluídos por decisão do usuário; organização por setor em `ORGANIZACAO-POR-SETOR.md`. Cópias idênticas compartilham uma entrada proposta com múltiplas origens; nenhum arquivo do NAS é alterado.
 - Página de conhecimento e POP compartilham editor e anexos. Proposta de formatação: títulos, parágrafos, negrito, itálico, links e listas numeradas ou com marcadores. Tabelas, blocos especiais e edição simultânea ficam fora da proposta inicial.
 - Busca por título e texto das páginas, com filtros por setor, categoria, tipo e situação. Filtrar autorização antes de devolver resultados, trechos, totais e árvore; não revelar títulos de páginas ocultas. OCR e indexação do conteúdo dos anexos ficam para depois.
 - Anexos privados associados à página e às revisões que os utilizam. Cada download verifica acesso ao conteúdo correspondente. Proposta inicial: manter os tipos e limites atuais de compras como referência, sujeitos à confirmação de necessidade documental; sem arquivos públicos.

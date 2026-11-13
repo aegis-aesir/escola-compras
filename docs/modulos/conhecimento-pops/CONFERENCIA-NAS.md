@@ -51,3 +51,5 @@ Foram encontradas 16 pastas diretamente na raiz, 200 pastas no total recursivo e
 6. As regras de leitura, edição, publicação/aprovação e revisão de POPs continuam pendentes; documentos prontos não comprovam autorização para publicação ou acesso geral.
 
 Atualização após a resposta do usuário: `Doc's SIE` foi definida como referência principal. A comparação completa por hash com as demais pastas está documentada em `COMPARACAO-ACERVO.md`, nesta pasta. A decisão substitui a pendência de escolher a fonte principal; seleção para importação e regras de publicação continuam abertas.
+
+Atualização seguinte: o usuário incluiu os 31 complementares na proposta. A organização por setor está em `ORGANIZACAO-POR-SETOR.md`; não houve alteração no NAS, importação ou publicação.
