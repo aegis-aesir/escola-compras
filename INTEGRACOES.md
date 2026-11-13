@@ -23,7 +23,7 @@ Referência: [API de ferramentas do gateway](https://docs.openclaw.ai/gateway/to
 
 ### Seleção múltipla e modelo genérico de cotação — 13/11/2026
 
-**Preparar mensagem** lista, por checkbox, os fornecedores cadastrados compatíveis com as categorias dos itens. Nenhum contato é selecionado automaticamente. `quoting` oferece somente locais; `national` admite locais e nacionais, preservando a elegibilidade da fila anterior. Fontes externas precisam de conferência e cadastro, e categorias de itens legados não são inferidas.
+**Preparar mensagem** lista, por checkbox, os fornecedores cadastrados compatíveis com o material/serviço e segmento do item. Nenhum contato é selecionado automaticamente. `quoting` oferece somente locais; `national` admite locais e nacionais. Fontes externas precisam de conferência e cadastro, e categorias ausentes de itens legados não são inferidas. O detalhamento do direcionamento de manutenção está em Descoberta de fornecedores abaixo.
 
 O painel exibe um único modelo do pedido aprovado, com `{{contato}}`. A confirmação chama `prepare_openclaw` com `supplierIds` (1 a 100 IDs únicos); o servidor valida toda a seleção, compatibilidade, etapa e telefones antes de preparar as tarefas pela função idempotente existente. O contrato singular `supplierId` continua aceito para clientes anteriores. Master/ADM, versão e bloqueios de arquivamento/fechamento continuam verificados pela API. Selecionar contatos e copiar o modelo não chama esse endpoint.
 
@@ -64,10 +64,16 @@ da escola e o fuso America/Manaus.
 
 ## Descoberta de fornecedores
 
+**Materiais versus serviços de manutenção (13/11/2026):** `supplierCategoryForItem` deriva somente o segmento de fornecimento, sem gravar no pedido. Categorias explícitas de materiais/serviços prevalecem; para categorias amplas de manutenção, nomes objetivos de produtos e de instalação/conserto/mão de obra ajudam a distinguir o fornecimento. Sem categoria ou com descrição ambígua, a administração precisa conferir. Compra de registro/torneira procura lojas de materiais de construção, hidráulica, ferragens, homecenter e utilidades, conforme categoria comercial ou evidência de varejo no nome do fornecedor. Prestadores cadastrados apenas como Manutenção não atendem automaticamente a materiais. Empresas com categorias explícitas de materiais e serviços mantêm as duas possibilidades; prestadores hidráulicos com evidência de serviço continuam atendendo instalação hidráulica.
+
+`requestSupplierCategories` fornece os segmentos derivados à descoberta, elegibilidade da fila e cadastro de fontes conferidas. As consultas de materiais incluem a descrição do item e termos de venda/lojas, sem tratar prestador como estoque de materiais. Uma empresa de serviços no cadastro não suprime a busca de lojas. `IntegrationJob.category` de uma descoberta passa a identificar o segmento de fornecimento; o item original mantém sua categoria. A conferência administrativa de uma fonte nova registra o fornecedor no segmento pesquisado, não no rótulo amplo Manutenção.
+
+Pesquisas genéricas antigas e cotações **ainda na fila** que não correspondam ao segmento atual deixam de ser retiradas e são canceladas com auditoria no polling existente; registros e respostas anteriores permanecem no histórico. Mensagens concluídas ou de envio incerto não são apagadas nem reenviadas. A mesma compatibilidade vale na preparação singular, múltipla e antes da retirada da tarefa. Nenhuma chamada real é necessária para validar: `maintenance-suppliers-test.mjs` usa D1 temporário/fontes fictícias; `maintenance-suppliers-http-test.mjs` usa apenas a API local 127.0.0.1:5185, com envio desativado.
+
 Cada item tem uma categoria, com sugestões compartilhadas com o cadastro de
 fornecedores. Novas solicitações pedem a categoria; a administração pode preencher
 as categorias dos pedidos antigos, sem alterar itens, quantidades ou aprovações.
-Comparações ignoram caixa, acentos e espaços repetidos. Categorias diferentes
+Comparações ignoram caixa, acentos e espaços repetidos. Fora dos segmentos relacionados de manutenção descritos abaixo, categorias diferentes
 não são presumidas equivalentes. No cadastro de fornecedor, categorias podem
 ser separadas por vírgula ou ponto e vírgula; cada item tem uma categoria.
 

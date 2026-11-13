@@ -8,9 +8,9 @@ const api=await import('../outputs/quotation-suppliers-test.mjs');
 assert.equal(typeof api.compatibleQuotationSuppliers,'function','a seleção deve listar fornecedores compatíveis com os itens');
 const ids=[1,2,3,4].map(n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`);
 const suppliers=[
- {id:ids[0],version:1,name:'Loja A TESTE',contact:'Contato A',phone:'5592999990001',category:' Manutenção ; Papelaria',scope:'local'},
- {id:ids[1],version:1,name:'Loja B TESTE',contact:'Contato B',phone:'5592999990002',category:'MANUTENCAO',scope:'local'},
- {id:ids[2],version:1,name:'Loja Nacional TESTE',contact:'Contato C',phone:'5511999990003',category:'Manutenção',scope:'national'},
+ {id:ids[0],version:1,name:'Loja A TESTE',contact:'Contato A',phone:'5592999990001',category:' Materiais de construção ; Papelaria',scope:'local'},
+ {id:ids[1],version:1,name:'Loja B TESTE',contact:'Contato B',phone:'5592999990002',category:'Homecenter',scope:'local'},
+ {id:ids[2],version:1,name:'Loja Nacional TESTE',contact:'Contato C',phone:'5511999990003',category:'Materiais de construção',scope:'national'},
  {id:ids[3],version:1,name:'Loja incompatível TESTE',contact:'',phone:'5592999990004',category:'Alimentos',scope:'local'},
 ];
 const now='2026-11-13T12:00:00.000Z';
