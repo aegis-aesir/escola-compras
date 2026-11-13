@@ -34,6 +34,19 @@ O último módulo começa somente pelo planejamento da integração, sem conexã
 
 As worktrees foram preparadas em Git; elas não estão automaticamente vinculadas a novos chats nem são chats já criados. As ferramentas nativas disponíveis criam worktrees apenas no chat chamador; usá-las aqui deslocaria o coordenador para um módulo. Os caminhos explícitos permitem abrir os chats nos ambientes já preparados.
 
+### Chats iniciados em 13/11/2026
+
+O usuário autorizou criar os quatro chats e inserir os prompts. Foram criados no projeto local **Compras**, porque o cadastro de novos projetos/pastas não está exposto pelas ferramentas disponíveis. O cwd inicial do aplicativo continua sendo a pasta pai `C:\Users\aegis\Documents\ChatGPT\Compras`; não houve vinculação nativa do cwd de cada chat à worktree. Cada prompt exige workdir explícito em todas as chamadas de shell e caminhos absolutos da própria worktree para leituras, edições e patches. Os quatro chats confirmaram a raiz Git, branch e porta esperadas na auditoria inicial.
+
+| Chat | ID | Worktree / branch |
+| --- | --- | --- |
+| CEEA Manager — Estoque | `01a1d60f-c131-7320-8e5d-711bf826aba5` | `estoque` / `codex/estoque` |
+| CEEA Manager — Conhecimento e POPs | `01a1d60f-dda9-7481-a014-a78263722dbd` | `conhecimento-pops` / `codex/conhecimento-pops` |
+| CEEA Manager — Tarefas e responsabilidades | `01a1d60f-e094-7fc2-8c4b-6cebe56cf5e2` | `tarefas` / `codex/tarefas` |
+| CEEA Manager — Integração Escolar Manager | `01a1d60f-e3b0-7a81-9cee-4921a543113f` | `integracao-escolar-manager` / `codex/integracao-escolar-manager` |
+
+Os prompts iniciam pela auditoria e pelo planejamento dos requisitos ainda indefinidos. A criação dos chats não autoriza implementação de decisões de negócio pendentes. Compras é o módulo existente; ainda não foi criado um quinto chat/worktree exclusivo para sua evolução.
+
 ## Regras de trabalho paralelo
 
 - Trabalhar somente no diretório/branch do módulo. Não criar outra hospedagem, repositório ou aplicativo.
