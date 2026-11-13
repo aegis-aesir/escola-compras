@@ -1,6 +1,8 @@
-# Integração Escolar Manager — auditoria e plano provisório v0.1
+# Integração Escolar Manager — auditoria e plano provisório v0.2
 
 Data: 13/11/2026, America/Manaus. Etapa: somente planejamento. Este documento não é um escopo aprovado nem um plano executável de conector.
+
+Atualizado com as respostas do usuário nesta sessão: Escolar Manager **Web**, versão **2026.21.1.3**; finalidade de complementar funções com biblioteca de conhecimentos do Estrelas e onboarding de RH, gestão de tarefas/responsabilidades e possível estoque compartilhado. O usuário **ainda vai avaliar** onde ficará o estoque oficial. Essa decisão permanece aberta, sem escolha automática.
 
 ## 1. Ambiente e limites confirmados
 
@@ -20,12 +22,14 @@ Data: 13/11/2026, America/Manaus. Etapa: somente planejamento. Este documento n�
 | Confirmado no código | Produto local CEEA Manager; versão visível `2026.11.13.6` em `app/system-version.ts` | Não identifica versão publicada nem versão do Escolar Manager |
 | Confirmado no projeto | React/Vinext, Workers/D1, login local, cinco perfis e documentos privados | Sem nova aplicação, hospedagem, autenticação ou dependência |
 | Confirmado no projeto | ROADMAP exige planejar direção, frequência, permissões e interfaces reais | Não define dados a trocar nem prioridade de negócio |
-| Confirmado na pesquisa pública | Marca e site do fornecedor: Escolar Manager, `https://www.escolarmanager.com.br/`; catálogo com Web, Cursos e Smart [S1] | Fornecedor contratado, razão social, edição e versão usados pela escola continuam desconhecidos |
+| Confirmado na pesquisa pública | Marca e site do fornecedor: Escolar Manager, `https://www.escolarmanager.com.br/`; catálogo com Web, Cursos e Smart [S1] | Razão social/contratação da escola e suporte a esse build ainda não verificados |
 | Confirmado no catálogo público | Web anuncia contas a pagar, plano de contas e estoque; exportação XML no módulo de notas emitidas [S2] | Não comprova módulos contratados, exportação de compras, importação genérica ou API externa |
-| Hipótese | O produto da escola pode ser o Escolar Manager Web desse fornecedor | Não assumir até identificação pelo usuário |
-| Proposta técnica | Uma finalidade por piloto, uma direção por tipo de dado e conferência humana | Precisa de escolha da escola; não é requisito aprovado |
-| Pendente | Edição/build, hospedagem, módulos licenciados, interfaces permitidas e documentação aplicável | Impede escolher transporte e implementar conector |
-| Pendente | Resultado de negócio, dados mínimos, responsável, periodicidade e sistema responsável por cada campo | Impede fechar a primeira versão |
+| Informado pelo usuário | Escolar Manager Web, versão `2026.21.1.3` | Versão informada, sem acessar instalação, contrato ou autenticação; não validada nas páginas públicas |
+| Informado pelo usuário | Complementar com conhecimento/onboarding RH, tarefas/responsabilidades e possível estoque compartilhado | Não comprova ausência desses recursos em todas as edições do produto; descreve a necessidade desta escola |
+| Informado pelo usuário | Local do estoque oficial ainda será avaliado | Não eleger origem nem habilitar sincronização de saldos |
+| Proposta técnica | Conhecimento e tarefas com registros próprios no CEEA; troca externa somente quando houver finalidade comprovada | Recomendação para avaliar; detalhes pertencem aos chats desses módulos |
+| Pendente | Razão social contratada, hospedagem, módulos licenciados, interfaces permitidas e documentação aplicável a `2026.21.1.3` | Impede escolher transporte e implementar conector |
+| Pendente | Dados mínimos realmente compartilhados, responsáveis, periodicidade e autoridade por campo | Impede fechar qualquer troca externa |
 
 Não foi localizado conector Escolar Manager nem identificação contratual da instalação nos arquivos versionados pesquisados. As ocorrências encontradas tratam do roadmap e da coordenação. Isso não comprova ausência de integrações privadas oferecidas pelo fornecedor.
 
@@ -41,58 +45,59 @@ Consulta em 13/11/2026, sem autenticação de escola:
 
 ## 4. Decisões de negócio necessárias
 
-Ainda sem resposta; preencher antes de fechar escopo:
+Identidade funcional e finalidade já respondidas; decisões restantes antes de fechar escopo:
 
-1. **Identidade:** edição (Web, desktop ou outra), fornecedor contratado, versão/build e módulos usados; aceitar referência pública ou identificação textual sem segredos.
-2. **Resultado inicial:** qual trabalho repetido deve desaparecer, quem o realiza hoje e qual evidência mostrará sucesso.
-3. **Autoridade:** onde cada dado é criado, corrigido e cancelado; quem resolve divergências. Não eleger dois responsáveis pelo mesmo campo.
-4. **Momento:** evento que torna um registro elegível e prazo tolerável para sua atualização. Compra aprovada não equivale a obrigação financeira emitida, recebimento ou pagamento.
+1. **Fornecedor e capacidade contratada:** confirmar razão social/fornecedor, módulos habilitados e documentação do Web `2026.21.1.3`; aceitar referência pública ou identificação textual sem segredos.
+2. **Necessidade de troca:** o que os módulos complementares precisam obter do Escolar ou devolver a ele? Complementar funcionalidade não exige sincronizar dados por si só. Não pedir integração financeira, acadêmica ou de alunos que não foi solicitada.
+3. **Autoridade de estoque:** usuário ainda vai avaliar o sistema do saldo oficial, entradas, saídas e catálogo; responsável pelo domínio e pelo inventário inicial também pendentes. Não eleger dois responsáveis pelo mesmo campo.
+4. **Momento:** se houver troca, evento elegível e atraso tolerável. No onboarding, admissão/mudança/desligamento não devem ser inferidos de login ou inatividade; em tarefas, conclusão não implica recebimento de material.
 5. **Operação:** responsável nominal por conferência, substituto, volume aproximado, atraso tolerável e tratamento de exceções.
 6. **Dados:** campos mínimos, quem pode consultá-los, finalidade, retenção e descarte. Sem inclusão automática de alunos, responsáveis, notas, saúde ou biometria.
 
-As duas perguntas iniciais enviadas ao usuário agrupam identidade e finalidade. As demais decisões serão detalhadas a partir do caso escolhido, evitando definir funcionalidades por suposição.
+As duas perguntas iniciais foram respondidas, assim como a pergunta sobre estoque, cuja decisão foi adiada pelo usuário. Não repetir como bloqueio da auditoria nem interpretar a avaliação futura como escolha de arquitetura. Regras de RH e tarefas serão detalhadas nos chats próprios e alinhadas pelo coordenador.
 
 ## 5. Casos de uso candidatos e matriz de dados/finalidades
 
-Todos os casos abaixo são hipóteses para discussão, não escopo aprovado. Frequências são opções a negociar, não agendamentos. Nenhuma troca está habilitada.
+Os domínios abaixo correspondem à finalidade informada. Campos, trocas e critérios são propostas para discussão. Frequências são opções a negociar, não agendamentos. Nenhuma troca está habilitada. Integração financeira, folha, matrículas, notas e cobrança não integram esta primeira proposta.
 
 | Caso / finalidade | Dados mínimos candidatos | Sistema responsável proposto | Direção candidata | Gatilho / frequência a decidir | Condição e conferência |
 | --- | --- | --- | --- | --- | --- |
-| UC-01: evitar redigitação de obrigação de compra | ID da compra e da rodada, fornecedor vinculado, documento fiscal, competência, valor realizado, vencimento e eventual parcela | CEEA: solicitação/decisões; responsável pela obrigação no Escolar: confirmar | CEEA → Escolar | Após evento fiscal/administrativo escolhido; lote manual inicial ou frequência homologada | Aprovação da necessidade, revisão administrativa e interface oficial; não enviar estimativa como dívida |
-| UC-02: acompanhar situação financeira sem recadastrar pagamento | ID externo da obrigação/parcela, estado, valor/data confirmados e referência de conciliação | Escolar somente se for a fonte financeira escolhida | Escolar → CEEA | Consulta manual ou atualização periódica documentada | Resultado entra para conferência; não marca automaticamente `Pago`, não libera nota, não executa pagamento |
-| UC-03: reduzir divergência cadastral | IDs de fornecedor/plano de contas/centro de custo/unidade e descrições estritamente necessárias | Escolher por domínio; cadastro de fornecedores CEEA já existe | Uma direção por domínio, a escolher | Carga homologada e atualização conforme operação | Mapear conceitos antes; setor não equivale automaticamente a centro de custo; sem copiar usuários ou senhas |
-| UC-04: informar disponibilidade de material | ID de item/local, unidade, saldo, instante e significado do saldo | Alinhar módulo Estoque e escola; Escolar só se escolhido como origem | Escolar → Estoque/CEEA ou sentido inverso, nunca ambos para o mesmo saldo | Consulta ou lote, prazo tolerável a definir | Saldo não implica reserva; não criar movimentação a partir de simples recebimento de compra |
-| UC-05: conciliar totais administrativos | Competência, contagem, totais por categoria permitida e referências das diferenças | Cada sistema conserva seu histórico; divergência tem responsável humano | Comparação local de duas origens homologadas | Sob demanda ou fechamento | Não reabrir mês nem reescrever snapshot fechado; comparar a rodada correta |
+| UC-01: biblioteca e onboarding de RH | ID/versão de POP ou conteúdo, trilha, etapa e referência de pessoa somente quando necessária | CEEA proposto para conteúdos/trilhas; fonte de pessoas a definir, sem presumir cadastro RH no Escolar | Interna ao CEEA; nenhuma troca Escolar necessária no início | Publicação/revisão e início de onboarding definidos pelo módulo | Aprovação de conteúdo, quem acompanha e evidência de conclusão ainda serão definidos; aceite/leitura não equivalem automaticamente a treinamento concluído |
+| UC-02: tarefas e responsabilidades | ID da tarefa, responsável local, prazo, estado e referência autorizada ao processo | CEEA proposto para tarefas e responsabilidades | Interna ao CEEA; externa apenas se surgir caso real | Criação/alteração conforme módulo; sem polling externo por padrão | Permissão por tarefa/processo; tarefa não aprova compra nem concede acesso a documento de RH |
+| UC-03: evitar redigitar vínculo de colaborador, somente se necessário | ID externo estável, nome de exibição e vínculo/setor estritamente necessários | A definir; existência de cadastro de pessoal/interface no Escolar não confirmada | Eventual Escolar → CEEA, somente se for fonte oficial escolhida | Revisão manual ou frequência homologada a definir | Não importar folha, salário, documentos pessoais, senhas ou criar acesso automaticamente; possível manter cadastro local mínimo |
+| UC-04: estoque compartilhado | ID de item/local, unidade, saldo e instante; se necessário, ID e tipo de movimentação | Usuário ainda vai avaliar; alinhar módulo Estoque e fornecedor | Indefinida: depende do dono de cada campo/operação | Consulta/lote/evento somente após definição da autoridade e interface | Saldo não implica reserva; recebimento de compra não pode gerar duas entradas; saldo e movimentações não são somados entre sistemas |
+| UC-05: relacionar onboarding/tarefas/conhecimento | Referências internas de trilha, tarefa, conteúdo/versionamento e responsável autorizado | Contrato entre módulos CEEA, a alinhar pelo coordenador | Entre módulos locais; nenhuma transmissão ao Escolar por padrão | Evento local confirmado, se aprovado | Início repetido da mesma trilha não cria tarefas duplicadas; alteração de POP não reescreve evidência anterior |
 
-Primeira versão proposta: escolher **um** desses resultados, com dados mínimos e confirmação humana. Se nenhum atender à necessidade real, substituir a matriz após a resposta do usuário. Sucesso futuro: repetição do mesmo evento não duplica registros, divergência é explicável, permissões são preservadas e o responsável consegue conferir cada operação. Metas numéricas de volume/tempo permanecem abertas.
+Primeira versão proposta para alinhamento: CEEA concentra as funções complementares, usando os módulos já em discussão e dados próprios mínimos. Não criar conector Escolar para biblioteca/tarefas sem demonstrar necessidade de troca. Manter UC-04 em descoberta até a avaliação do usuário; só então escolher um fluxo externo mínimo, se necessário e oficialmente suportado. Sucesso futuro: responsabilidade de cada sistema clara, vínculo local sem duplicação e histórico/visibilidade preservados. Metas de volume/tempo e aceite de onboarding permanecem abertas.
 
 ## 6. Alternativas e suporte efetivamente comprovado
 
 | Alternativa | Evidência atual | Uso possível / decisão |
 | --- | --- | --- |
-| Planejamento e conferência manual, sem conexão | Suportado pelo escopo atual e pelos registros já existentes no CEEA | Caminho disponível agora; recomendar como ponto de partida para definir regras |
+| Complemento funcional no CEEA, sem conexão externa | Planejamento permitido agora; biblioteca/onboarding e tarefas ainda dependem dos escopos dos chats próprios | Recomendado como base arquitetural; não afirmar que esses módulos já foram implementados |
 | Lote de arquivo homologado pelo fornecedor | Não confirmado para os dados candidatos. XML de notas emitidas em [S2] é específico | Só escolher após layout, importação/exportação, permissões e edição compatível confirmados; prévia, validação e reconciliação locais |
 | API oficial / processamento de eventos | Não foi localizada documentação pública aplicável | Só considerar após contrato, autenticação/escopos, IDs, paginação, limites, idempotência e homologação; webhook apenas se documentado |
 | Rotina assistida pelo fornecedor | Serviço específico não confirmado | Perguntar se há procedimento oficial que atenda à finalidade; não presumir integração sob medida |
 
-Não há, nesta auditoria, alternativa automatizada comprovadamente disponível para a instalação da escola. Banco direto, inspeção de APIs internas, automação de tela e reaproveitamento de sessão de usuário não são bases aprovadas. Não sondar endpoints, instalar cliente, pedir segredos ou montar conector enquanto faltarem identidade e suporte técnico oficial.
+Não há, nesta auditoria, troca automatizada comprovadamente disponível para o Web `2026.21.1.3` da escola. A versão foi informada pelo usuário; compatibilidade técnica não foi verificada. Banco direto, inspeção de APIs internas, automação de tela e reaproveitamento de sessão de usuário não são bases aprovadas. Não sondar endpoints, instalar cliente, pedir segredos ou montar conector enquanto faltarem finalidade específica de troca e suporte técnico oficial.
 
 ## 7. Identidade, mapeamento e deduplicação — propostas
 
 - Preservar `Purchase.id`, protocolo e IDs existentes. `Supplier.id` é local; não o substituir por identificador externo.
 - Relação externa proposta: `(instalação lógica, entidade, externalId) ↔ (tipo local, localId)`, com versão do mapeamento, autor, data e evidência. Não usar credencial como identificador de instalação.
-- CNPJ normalizado, nome, telefone e descrição podem sugerir candidatos; não autorizam união automática. O `taxId` atual é opcional e não comprova identidade. Um mesmo fornecedor pode ter filiais; exigir decisão explícita.
+- Pessoa, conta de acesso e colaborador são conceitos distintos. E-mail/nome/setor não autorizam unir cadastros nem conceder papel. Se UC-03 for necessário, exigir vínculo estável aprovado e tratamento explícito de homônimos, mudança de vínculo e desligamento.
 - Itens atuais não têm ID estável individual: são arrays. Não usar nome ou índice sozinho para movimentações persistentes; alinhar identidade de item com Estoque antes de definir contrato.
-- Pedido reapresentado preserva ID/protocolo e ganha nova rodada/competência. Chave só por pedido duplicaria ou sobrescreveria obrigações; exigir ID estável da rodada/operação, sem confundir `version` mutável com identidade.
+- Pedido reapresentado preserva ID/protocolo e ganha nova rodada/competência. Se uma entrada de estoque decorrer de compra, distinguir ID da rodada, recebimento e movimentação; não usar pedido sozinho para deduplicar nem confundir `version` mutável com identidade.
 - Deduplicar por evento/operação da origem e efeito de negócio. Arquivo: digest do lote mais chave estável de cada linha; hash do arquivo sozinho não impede duplicata em lotes diferentes.
-- Documentos/parcelas demandam identidade própria. Número de nota sozinho é insuficiente. Chave fiscal, emitente, tipo, série e parcela só serão definidos se fizerem parte da interface e da finalidade aprovadas.
+- Trilhas, atribuições, tarefas e versão de conteúdo precisam de identidades próprias nos respectivos módulos. Repetição do início de uma trilha deve referenciar a mesma atribuição; nova edição do POP não apaga conclusão ou evidência da versão anterior. São contratos propostos, não tipos já existentes.
 - Schema, moeda BRL/centavos, unidade, competência `YYYY-MM`, datas civis e timestamps com fuso devem ser explícitos. America/Manaus continua regendo competência; não converter data sem horário em instante UTC.
-- Não fabricar IDs, estados, parcelas ou datas ausentes. Registro incompleto vai para pendência; reconciliação verifica contagens, totais, referências e efeitos individuais.
+- Não fabricar IDs, estados ou datas ausentes. Registro incompleto vai para pendência; reconciliação verifica contagens, saldos, referências e efeitos individuais conforme a finalidade.
 
 ## 8. Permissões e rastreabilidade — propostas com limites existentes
 
 - Reaproveitar sessão local e controle no servidor. Não criar usuários a partir do Escolar, SSO ou correspondência automática de permissões.
 - Master e Administrativo já operam integrações OpenClaw; isso não concede automaticamente permissão para futura escrita no Escolar. Matriz de ações desse módulo ainda depende do caso e da escola.
+- Papéis de compras não conferem acesso automático a RH. Separar leitura de POP geral, acompanhamento de onboarding, execução de tarefa e eventual dado de colaborador; definir isso com os módulos próprios antes de expor qualquer informação. Tarefa compartilhada não pode revelar conteúdo privado por título, anexo ou link.
 - Financeiro permanece somente leitura, apenas no universo autorizado após `generalApproval`, inclusive snapshots. Não recebe configuração, fila, credenciais ou payloads de integração e não dispara reprocessamento. DG mantém decisão da necessidade; Setor mantém seu próprio âmbito.
 - Nunca mandar `Snapshot`, pedido completo ou histórico integral ao sistema externo. Construir lista explícita de campos e filtro por finalidade; excluir rascunhos/revisões privadas e dados internos não necessários.
 - Auditoria futura: ID da operação, usuário local estável e nome de exibição, instantes, finalidade, entidade/rodada, versões origem/destino, mapeamento, digest, resultado, confirmação externa e justificativa de revisão. Não registrar segredos ou payload integral em log.
@@ -138,19 +143,20 @@ Não foi assumida a existência de código novo de Estoque, Tarefas ou Conhecime
 
 São propostas de fronteira, sem interfaces públicas criadas:
 
-- **Compras → integração:** referência da compra/rodada, versão capturada, finalidade, evento elegível e campos autorizados. O módulo consulta regras do domínio; confirmação externa não aprova necessidade, altera competência ou reabre mês.
-- **Integração → Compras:** resultado verificável, ID externo, versão e pendência; alteração fiscal/financeira passa pela regra de negócio e pelo papel permitido. Não grava JSON de pedido diretamente.
+- **Compras → Estoque:** eventual recebimento elegível, referência da compra/rodada, ID próprio do recebimento/item e quantidade/unidade conferidas. Não gerar movimentação antes do contrato e da definição de autoridade. Confirmação externa não aprova necessidade, altera competência ou reabre mês.
+- **Integração → módulos CEEA:** resultado verificável, ID externo, versão e pendência; alterações passam pelo domínio responsável e papel permitido. Não gravar JSON de pedido nem dados de RH diretamente.
 - **Estoque ↔ integração:** dono do catálogo/saldo, IDs estáveis, locais, unidades, reservas, movimentação e reversão. Recebimento de compra não gera duas entradas em sistemas diferentes. Fechar esse contrato antes de UC-04.
+- **Conhecimento/onboarding ↔ Tarefas:** ID da atribuição de trilha, etapa e versão do conteúdo, responsável e estado definido pelo domínio; deduplicar por atribuição/etapa, preservar evidência e aplicar autorização do documento no destino. Leitura/aceite e conclusão de tarefa não serão equiparados sem regra aprovada.
 - **Tarefas ↔ integração:** eventual pendência possui chave, responsável e referência autorizada; nova tentativa não cria outra tarefa. Não depender desse módulo para falha básica; só integrar após contrato confirmado.
-- **Conhecimento/POPs:** eventual referência à instrução/versionamento, sem copiar documentos ou dados pessoais. Nenhuma dependência necessária para a primeira versão.
+- **Pessoas/RH ↔ acesso:** eventual colaborador externo não cria usuário, papel ou sessão. Dados mínimos e autoridade de vínculo serão definidos se houver necessidade de UC-03; não pressupor folha/RH disponível no Escolar.
 - **Infraestrutura compartilhada:** isolar futuros arquivos e tipos em diretórios do módulo, sem ampliar enum OpenClaw. Novos kinds/tabelas, permissões, rotas, menu, dependências e migrações deverão ser listados e alinhados antes da integração pelo coordenador.
 
 ## 12. Fases e critérios de passagem
 
 | Fase | Entrega | Para avançar |
 | --- | --- | --- |
-| 0 — auditoria inicial, esta entrega | Evidências, matriz candidata, perguntas, riscos e fronteiras | Receber identidade e finalidade; não autoriza código |
-| 1 — descoberta funcional e com fornecedor | Um caso escolhido, fluxo atual, campos, dono, direção, frequência, suporte e layout/API da edição | Escola confirma regras; fornecedor comprova interface; coordenador alinha contratos |
+| 0 — auditoria inicial, esta entrega | Evidências, Web/build e finalidade informados, matriz atualizada, riscos e fronteiras | Etapa documental concluída; não autoriza código |
+| 1 — descoberta funcional e com fornecedor | Confirmar necessidade de troca além do complemento local; avaliar estoque, campos, dono, direção e suporte ao build | Escola avalia autoridade do estoque; fornecedor comprova interface se houver troca; coordenador alinha contratos |
 | 2 — desenho fechado, ainda planejamento | Contrato de dados, elegibilidade, permissões, idempotência, falhas, retenção e critérios de aceite | Usuário aprova desenho e autoriza expressamente uma próxima etapa; resposta às perguntas não autoriza implementação sozinha |
 | 3 — eventual simulação local futura | Apenas dados fictícios e interface substituta, se autorizada | Evidência de repetição, ordem, conflito, permissões e reconciliação; nenhuma conexão real |
 | 4 — eventual homologação futura | Plano específico em ambiente de teste oficial e configuração segura | Nova autorização e ambiente realmente isolado; sem acesso real nesta etapa |
@@ -160,21 +166,21 @@ Não estimar esforço de implementação ou prometer sincronização automática
 
 ## 13. Riscos e perguntas ao fornecedor
 
-Riscos prioritários: produto/versão errados; módulo não licenciado; recurso comercial confundido com interface externa; duplicação de obrigação; duas fontes de saldo; mudança de rodada com mesmo protocolo; efeitos incertos; conflito com fechamento; vazamento de campos por payload amplo; indisponibilidade e evolução de contrato.
+Riscos prioritários: compatibilidade do build não comprovada; módulo não licenciado; recurso comercial confundido com interface externa; duplicação de movimento/duas fontes de saldo; cadastro de colaborador confundido com usuário; atribuição duplicada de trilha/tarefa; exposição de dados de RH por permissões de compras; mudança de conteúdo sem preservar evidência; efeitos incertos e evolução de contrato.
 
 Roteiro para a escola encaminhar, sem envio automático:
 
-1. Qual produto, edição, build e módulos estão contratados? Há diferenças entre Web/desktop e entre versões?
+1. Confirmar fornecedor contratado, módulos disponíveis e suporte ao Escolar Manager Web `2026.21.1.3` informado pela escola. A documentação fornecida corresponde a esse build?
 2. Para o caso escolhido, que interface oficial permite ler e/ou gravar? Fornecer documentação versionada, operações e campos, sem credenciais.
-3. Há importação/exportação? Qual layout, encoding, formato de datas/valores, IDs, tamanho, validações e recibo por linha? Exportação XML fiscal cobre apenas notas emitidas ou há outro recurso documentado?
+3. Há importação/exportação oficial de catálogo, locais, unidades, saldos ou movimentos? Qual layout, encoding, datas/quantidades, IDs, tamanho, validações e recibo por linha? Não enviar exemplos com dados reais.
 4. Se houver API, quais autenticação, escopos, paginação consistente, filtros de alteração/exclusão, limites, timeouts, erros e política de versão?
 5. Há IDs imutáveis e referência externa única? Qual a garantia de idempotência e como consultar uma gravação após timeout?
 6. Existem eventos/webhooks oficialmente oferecidos? Se sim, quais assinatura, replay, ordenação, repetição e confirmação? Não pressupor que existam.
-7. Como tratar parcelamento, alteração, cancelamento, estorno, competência fechada e registros criados manualmente? Quem é a autoridade de cada campo?
+7. Como distinguir saldo físico, disponível e reservado, movimento, inventário e reversão? Há unidades/locais, ajuste de saldo e registros manuais concorrentes? Como evitar lançar uma mesma entrada nos dois sistemas?
 8. Existe ambiente de homologação com dados fictícios, isolado de produção e de cobranças/mensagens reais? Como receber exemplos sanitizados de schema?
 9. Quais licenças/custos, termos de acesso, responsáveis pelo suporte, manutenção e aviso de mudanças? Há limites de finalidade, retenção e auditoria?
-10. Se não houver interface para terceiros, qual procedimento oficial manual/assistido atende ao caso sem acesso direto ao banco?
+10. Se precisarmos de vínculo mínimo de colaborador, esse cadastro realmente existe no produto contratado e há leitura oficialmente autorizada? Se não houver interface para terceiros, qual procedimento manual/assistido é suportado sem banco direto? Nenhuma troca de RH é pressuposta.
 
 ## 14. Pendências explícitas desta primeira versão
 
-Identidade instalada, documentação técnica aplicável e finalidade não confirmadas. Sistemas responsáveis, direção, frequência, campos, IDs de rodada/item/parcela, permissões específicas, retenção, volumes e responsáveis permanecem propostas ou perguntas. A matriz será reduzida ao caso escolhido; nenhuma hipótese deste documento pode ser tratada como requisito aceito.
+Produto Web, build `2026.21.1.3` e finalidade complementar foram informados pelo usuário. Fornecedor contratado/documentação aplicável, necessidade concreta de troca externa e autoridade do estoque permanecem pendentes. O usuário ainda vai avaliar o estoque; nenhuma escolha foi inferida. Direção/frequência, campos, IDs de rodada/item/movimento/trilha, permissões de RH/tarefas, retenção, volumes e responsáveis seguem propostas ou perguntas. Detalhes funcionais pertencem aos chats dos módulos; este chat define fronteiras e permanece apenas em planejamento.
