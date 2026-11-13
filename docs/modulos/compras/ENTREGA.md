@@ -1,4 +1,55 @@
-# Entrega atual de Compras — fornecedores por checkbox e modelo genérico — 13/11/2026
+# Entrega atual de Compras — distinguir material de manutenção de serviço — 13/11/2026
+
+## Problema e resultado
+
+O usuário mostrou que a compra de **registro para mictório**, com categoria ampla Manutenção, listava empresas de manutenção predial em vez de lojas de materiais de construção, hidráulica, homecenter e utilidades. A causa era a correspondência literal da categoria tanto no catálogo quanto na descoberta/fila.
+
+A compatibilidade agora deriva um segmento de fornecimento sem regravar o pedido. Categorias explícitas de material ou serviço prevalecem. Somente na família ampla Manutenção, descrições objetivas de produto (como registro/torneira) e de serviço (instalação/conserto/mão de obra) ajudam a distinguir o que será cotado. Material procura varejo de construção, hidráulica, ferragens, homecenter e utilidades; prestador cadastrado apenas como Manutenção não é vendedor de materiais por padrão. Empresa com categorias explícitas de materiais e serviços pode atender aos dois. Prestador hidráulico com indicação de serviço continua disponível para instalação hidráulica.
+
+A mesma regra alimenta checkboxes, preparação singular/múltipla, descoberta interna/web, registro de fontes conferidas e elegibilidade antes da retirada da tarefa. Cadastro de prestador não suprime pesquisa de lojas; buscas incluem descrição do material e termos de venda/varejo. Tarefas `queued` antigas que não correspondam ao segmento atual são canceladas com auditoria no polling; nenhum registro é apagado e não há reenvio de mensagens concluídas/incertas.
+
+- Branch: `codex/compras`; worktree exclusiva `C:\Users\aegis\Documents\ChatGPT\Compras\escola-compras\.worktrees\compras`; porta `5185`.
+- Base: `56860b1db3abda221682321350a23a2efe67ebb3` (seleção múltipla/modelo genérico, entregue anteriormente).
+- SHA final desta correção: informado na resposta e no aviso ao coordenador; conferir com `git log -1 --format=%H`. Este arquivo integra o próprio commit.
+
+## Arquivos compartilhados e contratos
+
+- `app/supplier-discovery.ts`: regras de segmentos relacionados de manutenção; novas funções `supplierCategoryForItem`, `requestSupplierCategories`, `supplierSearchTerms`; sugestões de categorias específicas; compatibilidade por item. `requestCategories` continua disponível com o comportamento original. Correspondência das demais categorias permanece normalizada e exata.
+- `lib/integrations.ts`: descoberta, elegibilidade, consulta contextual e rechecagem interna usam o mesmo segmento; contatos incompatíveis não são preparados/retirados nem pelo contrato singular anterior.
+- `app/supplier-discovery-panel.tsx`: mostra o segmento procurado, busca manual no Maps contextual e confirmação explícita do segmento ao cadastrar fonte; abre conferência de categorias quando a intenção está ambígua.
+- `app/quotation-message-form.tsx`: explica material/serviço, varejo compatível e ambiguidade na seleção.
+- Novos `scripts/maintenance-suppliers-test.mjs` e `scripts/maintenance-suppliers-http-test.mjs`.
+- `scripts/quotation-suppliers-test.mjs`, `scripts/quotation-message-ui-test.mjs`: fixtures agora representam lojas para material, incluindo um prestador que não deve aparecer.
+- `AGENTS.md`, `FORMULARIOS-E-CONTROLES.md`, `INTEGRACOES.md` e este registro: orientação vigente e entrega.
+
+Não há migração, nova dependência, variável ou mudança de autenticação/modelos/credenciais/conta/número/DB/R2/domínio. Não há mudança de rota ou formato de `IntegrationJob`; o significado de `category` em descoberta passa a ser o segmento de fornecimento derivado, usado consistentemente pela API/painel. O cadastro conferido de nova fonte utiliza esse segmento, preservando a categoria original do item. Contrato relevante para o coordenador: a função compartilhada `matchingSuppliers` reconhece os segmentos relacionados de materiais de manutenção e serviços, enquanto outras categorias mantêm a comparação anterior. Conciliar eventuais consumidores dos outros módulos antes de integrar.
+
+## Testes executados e resultados reais
+
+Todos os comandos usaram workdir explícito nesta worktree, sem pesquisa ou envio real.
+
+- `node scripts/maintenance-suppliers-test.mjs`: primeiro **falhou como esperado**, retornando o prestador e omitindo lojas; após a correção, **PASS**. Abrange lojas de construção/homecenter/utilidades/hidráulica, fornecedor misto, categorias explícitas prioritárias, serviço hidráulico especializado, categoria ausente/ambígua, pedido intacto, busca de lojas apesar de prestador no cadastro, tarefas genéricas/incompatíveis antigas e cadastro nacional de fonte fictícia no segmento material.
+- `node scripts/maintenance-suppliers-http-test.mjs`: **PASS em 127.0.0.1:5185**. API autenticada local aceitou três lojas para registro/material, recusou prestador no contrato singular e múltiplo, aceitou prestador para instalação e recusou loja nesse serviço. Categoria original Manutenção preservada; tarefas bloqueadas por envio desativado. Pedidos fictícios arquivados ao final, sem excluir registros.
+- `node scripts/quotation-suppliers-http-test.mjs`: **PASS** na mesma porta local, mantendo aprovação, permissões, versão, arquivo, idempotência e seleção múltipla.
+- **PASS** em `supplier-discovery-test.mjs`, `quotation-suppliers-test.mjs`, `quotation-message-ui-test.mjs`, `integration-test.mjs`, `request-sections-test.mjs`, `finance-profile-test.mjs` e `quote-comparison-test.mjs` (9 testes).
+- `node --test scripts/openclaw-test.mjs scripts/agent-routing-test.mjs`: **PASS, 17 testes**, com transporte simulado.
+- `node node_modules/typescript/bin/tsc --noEmit --incremental false`, `npm.cmd run build` e `git diff --check`: **PASS**.
+- Revisão independente encontrou três casos de precedência/fornecedor misto/hidráulica; foram reproduzidos em regressões com falha, corrigidos e retestados. Rechecagem final: **aprovada, sem regressões diretamente relacionadas**.
+- Navegador em 127.0.0.1:5185, fixture React com dados fictícios: a cotação de Registro para mictório apresentou as duas lojas compatíveis de construção/homecenter, omitindo o prestador presente na fixture e preservando um único modelo genérico. Captura em `outputs/quotation-message-ui/materiais-sem-prestadores.png`, fora do Git.
+
+## Limitações, configuração e próximos passos
+
+As regras são determinísticas e limitadas aos segmentos de manutenção descritos; não constituem classificação universal por IA nem comprovam estoque, equivalência técnica ou atendimento integral. Sem categoria ou com intenção não identificável, é necessária conferência administrativa. Nenhum cadastro ou pedido real foi reclassificado, e nenhuma tarefa de produção foi alterada neste chat. O polling em produção aplicará a elegibilidade atual após a publicação; fontes antigas permanecem consultáveis, mas não podem cadastrar fornecedor se já não corresponderem ao segmento atual.
+
+Sem configuração/migração a aplicar. Não iniciar pesquisas reais, reativar conta default, alterar modelos/chaves de envio ou reiniciar a ponte para testar. O coordinator continua responsável pelas pesquisas; operacional pelo WhatsApp, número exato +55 92 9201-7107. A alteração não habilita envio.
+
+O coordenador deve revisar o diff/contratos, integrar e publicar pelo Sites existente. Verificar localmente com envio desativado: item categoria Manutenção/descrição Registro para mictório → lojas de materiais; Serviço de instalação → prestadores; categoria explícita → prioridade da classificação; conferir ausência de alteração automática dos itens originais. Rodar os dois novos testes e os de fornecedores/seleção. Mensagens reais não são necessárias para essa validação.
+
+---
+
+# Histórico — fornecedores por checkbox e modelo genérico — 13/11/2026
+
+Commit anterior: `56860b1db3abda221682321350a23a2efe67ebb3`. Para a entrega atual, prevalece a seção acima.
 
 ## Pedido e comportamento resultante
 

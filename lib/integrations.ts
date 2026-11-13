@@ -2,7 +2,7 @@ import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
 import { type Purchase, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
 import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
-import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestCategories } from '../app/supplier-discovery';
+import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
 
@@ -43,9 +43,9 @@ function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category
   if(r.archived)return false;
   if(j.type==='estimate_search')return r.status==='estimating'&&('id' in j?isCurrentEstimateJob(r,j as IntegrationJob):(j.estimateRevision||'')===(r.estimateRevision||''));
   if(!r.generalApproval)return false;
-  if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
+  if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestSupplierCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   const s=suppliers.find(s=>s.id===j.supplierId);
-  return !!s&&(r.status==='national'||(r.status==='quoting'&&(s.scope||'local')==='local'));
+  return !!s&&compatibleQuotationSuppliers(r,[s]).length>0;
 }
 export async function estimateSearchId(r:Purchase,index:number){
   const criteria=savedItemCriteria(r,index);
@@ -90,9 +90,9 @@ export async function enqueueSupplierSearch(db:D1Database,r:Purchase,actor:strin
   const scope=type==='local_supplier_search'?'local':'national';
   const suppliers=await rows<Supplier>(db,'supplier');
   let created=0;
-  for(const {category,itemIndex} of requestCategories(r)) {
+  for(const {category,itemIndex} of requestSupplierCategories(r)) {
     if(matchingSuppliers(suppliers,category,scope).length)continue;
-    const query=`${category} fornecedores ${scope==='local'?'Manaus AM loja endereço telefone':'Brasil entrega Manaus AM contato'}`;
+    const query=`${supplierSearchTerms(r,category)} fornecedores ${scope==='local'?'Manaus AM loja endereço telefone':'Brasil entrega Manaus AM contato'}`;
     const id='supplier-search:'+await digest(JSON.stringify([r.id,type,categoryKey(category)]));
     const job:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,category,itemIndex,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
     const existing=await row<IntegrationJob>(db,id,jobKind);
@@ -239,7 +239,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   for(const j of jobs) {
     const r=await row<Purchase>(db,j.requestId,'request');
     if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
-    const internalMatch=j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
+    const internalMatch=r&&eligible(r,j,suppliers)&&j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
     if(!r||!eligible(r,j,suppliers)||internalMatch) {
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
     }

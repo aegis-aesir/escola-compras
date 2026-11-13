@@ -8,15 +8,16 @@ await build({entryPoints:['app/quotation-message-form.tsx'],outfile:'outputs/quo
 const {default:Form}=await import('../outputs/quotation-message-ui/component.mjs');
 const request={id:'request-ui',code:'CE-TESTE',version:1,status:'quoting',items:[{name:'Registro para mictório TESTE',category:'Manutenção',quantity:4,unit:'un.',spec:'Especificação fictícia para teste local'}],quotes:[],generalApproval:{actor:'DG TESTE',at:'2026-11-13T12:00:00Z',reason:'Necessidade aprovada'}};
 const suppliers=[
- {id:'00000000-0000-4000-8000-000000000001',name:'Fornecedor A TESTE',contact:'Ana TESTE',category:'Manutenção',scope:'local',phone:'5592999990001'},
- {id:'00000000-0000-4000-8000-000000000002',name:'Fornecedor B TESTE',contact:'Bruno TESTE',category:'MANUTENCAO',scope:'local',phone:'5592999990002'},
- {id:'00000000-0000-4000-8000-000000000003',name:'Fornecedor Nacional TESTE',contact:'Contato TESTE',category:'Manutenção',scope:'national',phone:'5511999990003'},
+ {id:'00000000-0000-4000-8000-000000000001',name:'Fornecedor A TESTE',contact:'Ana TESTE',category:'Materiais de construção',scope:'local',phone:'5592999990001'},
+ {id:'00000000-0000-4000-8000-000000000002',name:'Fornecedor B TESTE',contact:'Bruno TESTE',category:'Homecenter',scope:'local',phone:'5592999990002'},
+ {id:'00000000-0000-4000-8000-000000000003',name:'Fornecedor Nacional TESTE',contact:'Contato TESTE',category:'Materiais de construção',scope:'national',phone:'5511999990003'},
  {id:'00000000-0000-4000-8000-000000000004',name:'Fornecedor incompatível TESTE',contact:'',category:'Alimentos',scope:'local',phone:'5592999990004'},
+ {id:'00000000-0000-4000-8000-000000000005',name:'Prestador de manutenção TESTE',contact:'',category:'Manutenção',scope:'local',phone:'5592999990005'},
 ];
 const render=r=>renderToStaticMarkup(createElement(Form,{request:r,suppliers,busy:false,error:'',onPrepare:async()=>true}));
 const markup=render(request);
 assert.equal((markup.match(/type="checkbox"/g)||[]).length,2);
-assert.doesNotMatch(markup,/<select\b|checked=""|Fornecedor incompatível TESTE|Fornecedor Nacional TESTE/);
+assert.doesNotMatch(markup,/<select\b|checked=""|Fornecedor incompatível TESTE|Fornecedor Nacional TESTE|Prestador de manutenção TESTE/);
 assert.equal((markup.match(/<textarea\b/g)||[]).length,1,'um único modelo para todos os contatos');
 assert.match(markup,/Olá, \{\{contato\}\}!/);
 assert.doesNotMatch(markup,/Olá, Ana TESTE|Olá, Bruno TESTE/,'o modelo da tela não vem personalizado');
