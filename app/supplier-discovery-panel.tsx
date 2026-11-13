@@ -1,5 +1,6 @@
 'use client';
 import { useId } from 'react';
+import {Search, Store, Tags} from 'lucide-react';
 import type { Purchase, Snapshot } from './model';
 import { categoryKey, categoryOptions, matchingSuppliers, requestCategories } from './supplier-discovery';
 import { jobLabels } from './integration-model';
@@ -18,7 +19,7 @@ export default function SupplierDiscoveryPanel({request:r,data,busy,onSave}:Prop
   return <section className="integration-research">
     <h3>Fornecedores por categoria</h3>
     <p className="muted">Primeiro o cadastro interno. Sem fornecedor da categoria e abrangência necessárias, a ponte pesquisa na internet. Para Manaus, prioriza resultados do Google Maps.</p>
-    {editable&&<details open={missing}><summary>{missing?'Definir categorias dos itens':'Conferir ou ajustar categorias'}</summary>
+    {editable&&<details open={missing}><summary><Tags size={16}/>{missing?'Definir categorias dos itens':'Conferir ou ajustar categorias'}</summary>
       <form key={JSON.stringify(r.items.map(i=>i.category))} onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await onSave({action:'supplier_categories',id:r.id,version:r.version,categories:r.items.map((_,i)=>f.get('category'+i))})}}>
         <datalist id={listId}>{categoryOptions(data.suppliers).map(c=><option key={c} value={c}/>)}</datalist>
         {r.items.map((item,i)=><label className="field" key={i}><span>{item.name} — categoria</span><input name={'category'+i} list={listId} defaultValue={item.category||''} required minLength={2} maxLength={100} placeholder="Ex.: Papelaria"/></label>)}
@@ -35,7 +36,7 @@ export default function SupplierDiscoveryPanel({request:r,data,busy,onSave}:Prop
       {!!categories.length&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Consultar cadastro e buscar categorias sem fornecedor</button>}
       <p className="muted">Um link para abrir a busca no Maps não é um fornecedor encontrado. As fontes retornadas aparecem abaixo; confira localização e atendimento aos itens.</p>
     </>}
-    {jobs.map(job=><details className="source-row" key={job.id} open={job.state==='review'}><summary>{job.category||'Pesquisa anterior'} · {job.type==='local_supplier_search'?'Manaus':'Nacional'} · {jobLabels[job.state]}</summary>
+    {jobs.map(job=><details className="source-row" key={job.id} open={job.state==='review'}><summary><Search size={16}/>{job.category||'Pesquisa anterior'} · {job.type==='local_supplier_search'?'Manaus':'Nacional'} · {jobLabels[job.state]}</summary>
       <small>{job.researchedAt?'Pesquisado em '+date(job.researchedAt):'Solicitado em '+date(job.createdAt)}</small>
       {job.error&&<p className="note">{job.error}</p>}
       {job.state==='failed'&&active&&<button className="text-button" disabled={busy} onClick={()=>onSave({action:'retry_integration',id:job.id,version:job.version})}>Tentar busca novamente</button>}
@@ -44,7 +45,7 @@ export default function SupplierDiscoveryPanel({request:r,data,busy,onSave}:Prop
         <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title} ↗</a>
         <small>{isGoogleMapsUrl(source.url)?'Resultado do Google Maps':'Fonte da web — conferir fornecedor e localização'}</small>
         <p>{source.description}</p>
-        {active&&job.state==='review'&&job.category&&categories.some(c=>categoryKey(c.category)===categoryKey(job.category!))&&<details><summary>Cadastrar fornecedor após conferir esta fonte</summary>
+        {active&&job.state==='review'&&job.category&&categories.some(c=>categoryKey(c.category)===categoryKey(job.category!))&&<details><summary><Store size={16}/> Cadastrar fornecedor após conferir esta fonte</summary>
           <form onSubmit={async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);if(await onSave({action:'register_discovered_supplier',jobId:job.id,sourceIndex:index,data:{name:f.get('name'),phone:f.get('phone'),contact:f.get('contact')}}))form.reset()}}>
             <label className="field"><span>Nome da empresa confirmado na fonte</span><input name="name" required minLength={2} maxLength={150}/></label>
             <label className="field"><span>WhatsApp confirmado, com DDI e DDD</span><input name="phone" required pattern="\+?[1-9][0-9]{9,14}" placeholder="5592999999999"/></label>

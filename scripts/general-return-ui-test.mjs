@@ -13,9 +13,11 @@ const estimates=createElement('details',null,createElement('summary',null,'Estim
 const markup=renderToStaticMarkup(createElement(BudgetRecordPanel,{request,data,busy:false,onSave:async()=>true,estimates}));
 assert.match(markup,/<option value="return_admin">Devolver para apuração administrativa<\/option>/,'a devolução deve ser uma opção da própria decisão');
 assert.doesNotMatch(markup,/<summary>Devolver para apuração administrativa<\/summary>/,'a devolução não deve ocupar um colapsável separado');
-const estimatePosition=markup.indexOf('<summary>Estimativas</summary>'),decisionPosition=markup.indexOf('Decisão da necessidade · Diretoria Geral'),executionPosition=markup.indexOf('<summary>Execução</summary>');
+const estimatePosition=markup.indexOf('Estimativas</summary>'),decisionPosition=markup.indexOf('Decisão da necessidade · Diretoria Geral'),executionPosition=markup.indexOf('Execução</summary>');
 assert.ok(estimatePosition>=0&&decisionPosition>estimatePosition&&executionPosition>decisionPosition,'a decisão da DG deve ficar entre Estimativas e Execução');
 assert.doesNotMatch(markup,/Prazo pertinente ao adiamento/,'o rótulo ambíguo deve sair da interface');
+assert.doesNotMatch(markup,/<input\b[^>]*\bname="due"/,'aprovar a necessidade não deve apresentar campo de prazo');
+assert.doesNotMatch(markup,/Prazo pertinente à decisão/,'o prazo opcional foi removido a pedido do usuário');
 
 const panel=await readFile('app/budget-record-panel.tsx','utf8');
 const drafts=await readFile('app/draft-request-form.tsx','utf8');

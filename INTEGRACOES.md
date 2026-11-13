@@ -156,8 +156,8 @@ node scripts/smoke-test.mjs
 npm.cmd run build
 ```
 
-O teste de integração usa D1 temporário isolado. O smoke test exige servidor na
-porta 5173 e cria dados fictícios somente no banco local. Nenhum teste envia
+O teste de integração usa D1 temporário isolado. Nesta worktree Compras, o smoke test exige servidor em
+http://127.0.0.1:5185, conforme `.ceea-worktree.json`, e cria dados fictícios somente no banco local. A porta 5173 pertence ao coordenador. Nenhum teste envia
 WhatsApp real. Pesquisa real pode consumir a franquia do provedor já configurado.
 
 Referências: documentação instalada do OpenClaw 2026.10.10 e

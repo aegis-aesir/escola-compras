@@ -7,7 +7,7 @@ O sistema usa login e senha próprios. A hospedagem Sites e o D1 existentes fora
 | Perfil | Permissão |
 | --- | --- |
 | Master (`admin`) | Acesso completo; cria usuários, altera perfis/setores, desativa acessos, emite novas senhas e exclui acessos de outros usuários. Não pode remover seu próprio acesso Master. Alterações concorrentes não podem eliminar o último Master. |
-| Financeiro (`financeiro`) | Consulta orçamento, pedidos de todos os setores, execução, notas fiscais, vencimentos, pagamentos, fechamentos e anexos privados. Não altera registros, aprova, escolhe/arquiva cotações, envia mensagens ou gerencia usuários. |
+| Financeiro (`financeiro`) | Consulta pedidos de todos os setores somente após a aprovação da necessidade pela Diretora Geral (`generalApproval`), além de orçamento, execução, notas fiscais, vencimentos, pagamentos, fechamentos e anexos privados vinculados aos pedidos permitidos. Não recebe pedidos sem aprovação, seus registros fiscais/históricos/anexos, rascunhos ou revisões privadas. Não altera registros, aprova, escolhe fornecedores, arquiva solicitações, anexa, envia mensagens ou gerencia usuários. |
 | Setor (`solicitante`) | Preenche solicitações apenas do seu setor e consulta os próprios registros. Não recebe fornecedores, propostas, estimativas internas, histórico administrativo ou dados de usuários. |
 | Diretoria Geral (`geral`) | Vê a fila aguardando aprovação da necessidade, com itens, justificativa, estimativa e parecer administrativo. Pode aprovar ou recusar; não cria pedidos nem executa compras. |
 | Diretoria Administrativa (`administrativo`) | Mantém as funções administrativas do fluxo existente. Não gerencia usuários. |
@@ -44,7 +44,7 @@ O launcher da ponte e a configuração de envio WhatsApp não são alterados por
 
 ## Administração
 
-Em Configurações → Pessoas e acessos, um Master cria os usuários. Selecione **Financeiro** para acesso de acompanhamento; não foi criada conta financeira de produção automaticamente. A sessão financeira recebe dados fiscais, mas não usuários, fornecedores separados ou informações da integração. A API bloqueia todas as gravações de compras/fiscais e anexos para esse perfil. Alteração da própria senha e saída da sessão continuam disponíveis. Cada login é único e usa de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado. Não precisa de e-mail. Defina um usuário por pessoa para manter a identificação no histórico.
+Em Configurações → Pessoas e acessos, um Master cria os usuários. Selecione **Financeiro** para acesso de acompanhamento; não foi criada conta financeira de produção automaticamente. A sessão financeira recebe somente pedidos com `generalApproval` e os dados fiscais, históricos e anexos autorizados vinculados a eles. Rodadas anteriores sem aprovação, rascunhos e revisões privadas são excluídos da projeção; usuários, cadastro separado de fornecedores e informações da integração não são entregues. A API bloqueia todas as gravações de compras/fiscais e anexos para esse perfil. Alteração da própria senha e saída da sessão continuam disponíveis. Cada login é único e usa de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado. Não precisa de e-mail. Defina um usuário por pessoa para manter a identificação no histórico.
 
 Para recuperar acesso de outro usuário, gerar nova senha no painel. Ela permite acesso direto, sem troca obrigatória. Para recuperação administrativa quando nenhum Master consegue entrar, usar manutenção autorizada com acesso ao D1 e registrar a ação; não reabrir o bootstrap nem apagar a tabela de usuários.
 
@@ -60,6 +60,6 @@ A opção **Excluir usuário** exige confirmação no painel do Master. Encerra 
 - `node scripts/smoke-test.mjs`: fluxo de compras com login local.
 - TypeScript, build e revisão no navegador dos três perfis e da tela móvel.
 
-Os scripts de teste usam somente `127.0.0.1:5173`, usuários identificados como TESTE LOCAL e bancos temporários. Nunca usar senhas dos usuários reais em scripts de teste.
+Nesta worktree Compras, os testes HTTP usam somente `http://127.0.0.1:5185`, conforme `.ceea-worktree.json` e `scripts/local-test-session.mjs`; 5173 é a porta do coordenador. Os testes usam usuários identificados como TESTE LOCAL e armazenamento local ou temporário isolado. Nunca usar senhas dos usuários reais em scripts de teste.
 
 Referências consultadas: [Cloudflare node:crypto](https://developers.cloudflare.com/workers/runtime-apis/nodejs/crypto/), [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) e [OWASP Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
