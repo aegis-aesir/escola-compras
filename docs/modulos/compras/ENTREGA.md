@@ -1,4 +1,62 @@
-# Entrega atual de Compras — Cotação colapsável e ícones — 13/11/2026
+# Entrega atual de Compras — fornecedores por checkbox e modelo genérico — 13/11/2026
+
+## Pedido e comportamento resultante
+
+O usuário solicitou que **Fornecedor**, na janela **Preparar mensagem de cotação**, liste todos os fornecedores compatíveis com o material em checkboxes. Esclareceu que a mensagem preparada deve ser um único modelo genérico, personalizado pelo OpenClaw ao despachar para cada contato.
+
+O seletor único foi substituído por `QuotationMessageForm`: todos os fornecedores cadastrados com categoria compatível aparecem, ordenados por nome, inicialmente desmarcados, com telefone, abrangência e itens relacionados. A correspondência reaproveita `matchingSuppliers` (categoria exata após normalizar caixa, acentos e espaços; várias categorias separadas por vírgula/ponto e vírgula). Em `quoting`, somente locais; em `national`, locais e nacionais, preservando a elegibilidade anterior. Itens sem categoria não recebem classificação inferida; fontes externas exigem conferência/cadastro. Compatibilidade por categoria não garante estoque/equivalência ou atendimento integral.
+
+Há um único modelo genérico da solicitação aprovada, com `{{contato}}`. No despacho, a ponte substitui o primeiro marcador pelo contato/nome cadastrado que foi registrado na tarefa. É personalização determinística do cumprimento, sem reescrita livre por IA ou mudança de modelo/credencial. O conteúdo dos itens, quantidades, prazo e condições permanece literal. O pedido e seus históricos não são regravados por essa preparação.
+
+**Mudança de comportamento importante:** o botão **Preparar cotações no OpenClaw** passa a preparar tarefas na fila existente para os contatos explicitamente marcados (até 100 por vez). Selecionar checkboxes ou copiar o modelo não prepara nem envia. Com ambas as chaves já habilitadas, a ponte pode processar a fila; com envio desativado, as tarefas ficam bloqueadas. Não foi habilitada nenhuma chave nesta entrega. A confirmação visual informa preparação, não envio. Repetir a preparação mantém a idempotência existente por pedido/telefone.
+
+- Branch: `codex/compras`; worktree `C:\Users\aegis\Documents\ChatGPT\Compras\escola-compras\.worktrees\compras`; porta `5185`.
+- Base: `1077b8b5390074d6be25852d1ba0375505ecf521` (Cotação colapsável e ícones).
+- SHA final: informado na resposta e no aviso ao coordenador; este arquivo integra o próprio commit. Conferir com `git log -1 --format=%H`.
+
+## Arquivos compartilhados, contratos e implantação
+
+- Novo `app/quotation-message-form.tsx`; `app/dashboard.tsx` passa fornecedores, estado de gravação, erro e callback de preparação ao componente e remove o formulário antigo de destinatário único.
+- `app/supplier-discovery.ts`: função aditiva `compatibleQuotationSuppliers`, usada tanto na apresentação quanto na validação do lote.
+- `app/api/data/route.ts`: `prepare_openclaw` aceita `supplierIds` (1–100 UUIDs únicos); mantém o contrato legado `supplierId`. Master/ADM, aprovação, etapa, versão, arquivamento e fechamento mensal continuam protegidos pelos controles existentes.
+- `lib/integrations.ts`: valida toda a seleção e os telefones antes de iniciar a preparação, reaproveita a fila/idempotência e registra o modelo genérico e o contato em tarefas novas. Falha operacional no meio da gravação pode deixar tarefas já preparadas; a repetição usa a idempotência existente e não reenfileira envios incertos.
+- `app/integration-model.ts`: novo campo opcional `quotationTemplate: {version: 'contact-v1', text: string, contact: string}` em `IntegrationJob`.
+- `app/model.ts`: exportação aditiva `quotationMessageTemplate`; `quotationMessage(request, supplier)` mantém assinatura e texto personalizado anterior.
+- Novo `integrations/openclaw/quotation-template.mjs`; `integrations/openclaw/client.mjs` personaliza no despacho. Mensagens antigas sem template mantêm `message`. Tarefas novas também mantêm `message` já endereçado para compatibilidade com pontes anteriores, sem marcador no cumprimento.
+- `app/redesign.css`: regras específicas da lista de fornecedores e dimensões dos checkboxes; sem mudança dos demais controles.
+- Novos testes: `scripts/quotation-suppliers-test.mjs`, `scripts/quotation-message-ui-test.mjs`, `scripts/quotation-suppliers-http-test.mjs`.
+- `FORMULARIOS-E-CONTROLES.md`, `INTEGRACOES.md` e este arquivo: uso, contratos e entrega.
+
+Sem dependências, migrações, novas rotas, configuração ou segredo a aplicar. Conta `operacional`, número exato +55 92 9201-7107, conta `default` desativada, provedores/modelos, DB/R2/domínio, chaves de envio, lease, journal e idempotencyKey preservados. O coordenador deve conciliar alterações nos arquivos compartilhados e revisar o comportamento do novo botão antes de publicar. Atualizar o código da ponte para personalização no despacho, sem limpar journals ou reenviar tarefas; a ponte anterior continua recebendo `message` completo como fallback. O chat de Compras não reiniciou nem iniciou a ponte de produção.
+
+## Verificações executadas e resultados
+
+Todos os comandos usaram workdir explícito desta worktree.
+
+- Antes da implementação, `node scripts/quotation-suppliers-test.mjs`: **falha esperada**, pela ausência da seleção de todos os fornecedores compatíveis.
+- `node scripts/quotation-suppliers-test.mjs`: **PASS**. Categorias normalizadas, todos os locais compatíveis, etapa nacional, aprovação/arquivo, categorias ausentes, validação do lote antes de preparar, duas tarefas sem duplicação, modelo único, contato individual no despacho, marcador literal na especificação preservado, fallback legado e bloqueio de envio. D1 temporário e transporte completamente simulado.
+- `node scripts/quotation-message-ui-test.mjs`: **PASS**. Checkboxes, ausência de seleção automática, um único textarea genérico e controle de etapas; gera fixture React interativa em `outputs/quotation-message-ui/` (ignorado).
+- `node scripts/quotation-suppliers-http-test.mjs`: **PASS em http://127.0.0.1:5185**. Fluxo autenticado local com usuários fictícios: negativa para Setor/DG e antes da aprovação, incompatibilidade/nacional na etapa local, lista inválida sem preparação parcial, duas tarefas bloqueadas, repetição idempotente, versão, preservação de itens/aprovação e bloqueio de arquivado. O teste confirmou envio local desativado antes de criar dados.
+- `node scripts/integration-test.mjs`: **PASS**, D1 isolado, duas chaves, assinaturas, concorrência, prazo, envios incertos e idempotência.
+- `node --test scripts/openclaw-test.mjs scripts/agent-routing-test.mjs`: **PASS, 17 testes**. Nenhum transporte real.
+- `node scripts/supplier-discovery-test.mjs`, `node scripts/quote-comparison-test.mjs` (9 testes), `node scripts/request-sections-test.mjs` e `node scripts/finance-profile-test.mjs`: **PASS**.
+- `node node_modules/typescript/bin/tsc --noEmit --incremental false`, `npm.cmd run build` e `git diff --check`: **PASS**.
+- Navegador: fixture React dos componentes reais, dados fictícios e callback de preparação simulado, servida somente em 127.0.0.1:5185. Duas seleções mudaram o contador de 0→1→2, mantendo um único modelo; confirmação simulada recebeu os dois IDs. Alinhamento dos checkboxes corrigido e conferido. Captura local `outputs/quotation-message-ui/fornecedores-modelo.png`, fora do Git. Servidores temporários encerrados após os testes.
+- Revisão independente de código, somente leitura: **aprovada, sem achados acionáveis**. Conferiu guards, compatibilidade, idempotência, snapshot/template e fallback legado; teste em memória também confirmou substituição apenas do primeiro marcador e rejeição de versão desconhecida.
+
+Nenhuma pesquisa ou mensagem real foi executada. O teste HTTP criou apenas usuários/fornecedores/solicitação/tarefas fictícios na base local; a solicitação de teste foi arquivada e os registros preservados. Não houve cópia de banco/segredo/anexo da pasta principal nem alteração de dados de produção. O envio real e a atualização da ponte de produção não foram testados.
+
+## Pendências e passos para o coordenador
+
+Sem pendência de implementação neste escopo. Revisar/integrar a branch e publicar no Site existente conforme COORDENACAO.md; operação de produção permanece com o coordenador.
+
+Para verificar localmente, usar servidor em 127.0.0.1:5185, envio desativado e solicitação fictícia aprovada na etapa de cotação. Abrir Cotação → Preparar mensagem; conferir lista por categoria, marcar dois fornecedores e observar um único modelo. Confirmar a preparação e conferir duas tarefas bloqueadas em Agente WhatsApp; repetir sem duplicar. Testar também item sem categoria, fornecedor incompatível, limite da etapa nacional e bloqueios de perfil/arquivo/mês. Não realizar envios reais para validar a interface ou o modelo. A personalização da ponte pode ser conferida por `quotation-suppliers-test.mjs`, que usa transporte falso.
+
+---
+
+# Histórico — Cotação colapsável e ícones — 13/11/2026
+
+Commit anterior: `1077b8b5390074d6be25852d1ba0375505ecf521`. Para a entrega atual, prevalece a seção acima.
 
 ## Escopo e resultado
 

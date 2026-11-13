@@ -2,7 +2,7 @@
 import DeferredRequestForm from './deferred-request-form';
 import {canEditDeferred} from './deferred-request';
 import { useEffect, useRef, useState, type ReactNode, type FormEvent } from 'react';
-import { ClipboardList, Scale, Store, MessageCircle, Plus, Search, ArrowUpRight, ArrowRight, X, Star, PackageCheck, Clock3, Trash2, Check, Copy, RefreshCw, Archive } from 'lucide-react';
+import { ClipboardList, Scale, Store, MessageCircle, Plus, Search, ArrowUpRight, ArrowRight, X, Star, PackageCheck, Clock3, Trash2, Check, RefreshCw, Archive } from 'lucide-react';
 import RequestHistory from './request-history';
 import RequestArchiveDialog from './request-archive-dialog';
 import RequestArchiveDetails from './request-archive-details';
@@ -18,11 +18,12 @@ import {Attachments, BudgetRecordPanel} from './budget-record-panel';
 import BudgetMonthPanel from './budget-month-panel';
 import { OfficialQuoteForm } from './quote-commercial-fields';
 import RequestQuotationPanel from './request-quotation-panel';
+import QuotationMessageForm from './quotation-message-form';
 import { visibleViews, canCreateRequest, roleLabels } from './access';
 import { categoryOptions } from './supplier-discovery';
 import {contextualActionsForView,requestMatchesView} from './process-navigation';
 import {SYSTEM_VERSION} from './system-version';
-import { type Snapshot, type Purchase, type Supplier, type Item, type Stage, stages, money, quotationMessage, requestTimingLabel } from './model';
+import { type Snapshot, type Purchase, type Supplier, type Item, type Stage, stages, money, requestTimingLabel } from './model';
 const day=(s:string)=>s?s.slice(0,10).split('-').reverse().join('/'):'—';
 const recentFirst=(a:Purchase,b:Purchase)=>b.updatedAt.localeCompare(a.updatedAt)||b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id);
 const blankItem=():Item=>({name:'',quantity:1,unit:'un.',spec:'',category:''});
@@ -80,11 +81,8 @@ export default function Dashboard(){
  {!decision&&error&&<div className="alert error">{error}</div>}<RequestHistory request={request} data={data}/></div></Modal>}
  {archiveAction&&request&&data?.me.role==='admin'&&<RequestArchiveDialog request={request} restore={archiveAction==='restore'} busy={busy} error={error} onClose={()=>{if(!busy)setArchiveAction(null)}} onConfirm={async reason=>{if(await save({action:archiveAction==='restore'?'restore_request':'archive_request',id:request.id,version:request.version,reason})){setArchiveAction(null);setDecision(null)}}}/>}
  {quoteRequest&&data&&<Modal title="Registrar proposta recebida" onClose={()=>setQuoteFor(null)}><QuoteForm request={quoteRequest} suppliers={data.suppliers} error={error} busy={busy} onSave={async values=>{if(await save({action:'quote',id:quoteRequest.id,version:quoteRequest.version,data:values}))setQuoteFor(null)}}/></Modal>}
- {messageRequest&&data&&<Modal title="Preparar mensagem de cotação" onClose={()=>setMessageFor(null)}><MessageForm request={messageRequest} suppliers={data.suppliers.filter(s=>messageRequest.status!=='quoting'||(s.scope||'local')==='local')}/></Modal>}
+ {messageRequest&&data&&<Modal protectEscape={busy} title="Preparar mensagem de cotação" onClose={()=>{if(!busy)setMessageFor(null)}}><QuotationMessageForm key={messageRequest.id+'-'+messageRequest.version} request={messageRequest} suppliers={data.suppliers} busy={busy} error={error} onPrepare={supplierIds=>save({action:'prepare_openclaw',id:messageRequest.id,version:messageRequest.version,supplierIds})}/></Modal>}
  </>
 }
 function FormEnd({error,busy,label}:{error:string;busy:boolean;label:string}){return <>{error&&<div role="alert" className="alert error">{error}</div>}<div className="form-end"><button className="button primary" disabled={busy}>{busy?'Salvando…':label}<ArrowRight size={16}/></button></div></>}
 function QuoteForm(props:{request:Purchase;suppliers:Supplier[];error:string;busy:boolean;onSave:(values:unknown)=>void}){return <OfficialQuoteForm {...props}/>}
-function MessageForm({request,suppliers}:{request:Purchase;suppliers:Supplier[]}){const [supplierId,setSupplierId]=useState(suppliers[0]?.id||''),[copied,setCopied]=useState(false);const s=suppliers.find(s=>s.id===supplierId);return <div className="modal-body"><div className="note">Rascunho para revisão e envio manual. O agente automático ainda não está conectado.</div><Field label="Fornecedor"><select value={supplierId} onChange={e=>{setSupplierId(e.target.value);setCopied(false)}}>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>{s?<><Field label="Mensagem preparada"><textarea rows={13} readOnly value={quotationMessage(request,s)}/></Field><button className="button primary" onClick={async()=>{try{await navigator.clipboard.writeText(quotationMessage(request,s));setCopied(true)}catch{setCopied(false)}}}><Copy size={16}/>{copied?'Mensagem copiada':'Copiar mensagem'}</button></>:<p>Cadastre um fornecedor para preparar a mensagem.</p>}</div>}
-
-

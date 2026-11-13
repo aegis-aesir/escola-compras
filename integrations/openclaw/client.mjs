@@ -4,6 +4,7 @@ import {extractReference} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
 import { isGoogleMapsUrl } from './search-utils.mjs';
 import { routeTool } from './agent-routing.mjs';
+import { quotationJobMessage } from './quotation-template.mjs';
 
 export const ACCOUNT = 'operacional';
 export const SCHOOL_PHONE = '+559292017107';
@@ -63,8 +64,9 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
     // Never rely on OpenClaw's HTTP dryRun flag: that flag is ignored by the
     // installed gateway. Two independent switches are required before claim/send.
     if(!config.canSend||job.accountId!==ACCOUNT||job.schoolPhone!==SCHOOL_PHONE||!/^\+[1-9]\d{9,14}$/.test(job.target)||!job.message)throw new Error('Envio bloqueado.');
+    const message=quotationJobMessage(job);
     try {
-      const reply=structured(await invokeJob({tool:'message',args:{action:'send',channel:'whatsapp',accountId:ACCOUNT,target:job.target,message:job.message},idempotencyKey:job.id}));
+      const reply=structured(await invokeJob({tool:'message',args:{action:'send',channel:'whatsapp',accountId:ACCOUNT,target:job.target,message},idempotencyKey:job.id}));
       const messageId=reply?.messageId||reply?.result?.messageId;
       if(typeof messageId!=='string'||!messageId)throw new Error('Sem identificador de envio.');
       return {...result,outcome:'success',providerMessageId:messageId,sentAt:new Date().toISOString()};

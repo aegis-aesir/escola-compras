@@ -1,8 +1,8 @@
 import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
-import { type Purchase, type Supplier, type Settings, quotationMessage, categorySchema, supplierSchema } from '../app/model';
+import { type Purchase, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
 import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
-import { categoryKey, matchingSuppliers, requestCategories } from '../app/supplier-discovery';
+import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestCategories } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
 
@@ -141,8 +141,19 @@ export async function enqueueQuotation(db:D1Database,r:Purchase,s:Supplier,actor
   if(existing)return existing.id;
   const id='whatsapp:'+await digest(JSON.stringify([r.id,target,r.generalApproval?.at]));
   const job:Omit<IntegrationJob,'version'>={id,requestId:r.id,type:'whatsapp_quote',supplierId:s.id,supplierName:s.name,target:phone(s.phone),accountId,schoolPhone,message:quotationMessage(r,s),state:env.WHATSAPP_SEND_ENABLED==='true'?'queued':'blocked',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+  job.quotationTemplate={version:'contact-v1',text:quotationMessageTemplate(r),contact:s.contact||s.name};
   await insert(db,id,jobKind,job,r.id,actor,'Cotação preparada para OpenClaw; envio depende da ativação',now);
   return id;
+}
+export async function enqueueQuotations(db:D1Database,r:Purchase,suppliers:Supplier[],input:unknown,actor:string,now:string,env:IntegrationEnv) {
+  const ids=z.array(z.string().uuid()).min(1,'Selecione ao menos um fornecedor.').max(100,'Prepare até 100 fornecedores por vez.').refine(values=>new Set(values).size===values.length,'Seleção de fornecedores repetida.').parse(input);
+  const compatible=new Map(compatibleQuotationSuppliers(r,suppliers).map(match=>[match.supplier.id,match.supplier]));
+  const selected=ids.map(id=>{const supplier=compatible.get(id);if(!supplier)throw new FlowError('Fornecedor não compatível ou indisponível nesta etapa. Reabra a seleção.',409);return supplier});
+  // Validar o lote inteiro antes de gravar. Repetições usam a idempotência por pedido/telefone.
+  for(const supplier of selected)if(!/^\+[1-9]\d{9,14}$/.test(phone(supplier.phone)))throw new FlowError('Confira os telefones dos fornecedores selecionados.');
+  const jobs:string[]=[];
+  for(const supplier of selected)jobs.push(await enqueueQuotation(db,r,supplier,actor,now,env));
+  return jobs;
 }
 // Called by both the authenticated panel and the independent bridge, using the
 // same version check. No migration or change to existing purchase records needed.

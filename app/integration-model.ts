@@ -7,6 +7,7 @@ export type IntegrationJob = {
   createdAt:string;updatedAt:string;attempts:number;nextAttemptAt:string;
   estimateRevision?:string;item?:Item;researchItem?:Item;researchCriteria?:SavedEstimateCriteria;browserResearch?:{state:'ready'|'login_required'|'unverified'|'unavailable';detail:string;profile:'compras';checkedAt:string};analysisReason?:string;priceEvidence?:{url:string;title:string;text:string;origin?:'public'|'authenticated_browser';analysis?:unknown};itemIndex?:number;query?:string;category?:string;supplierId?:string;supplierName?:string;target?:string;
   accountId?:string;schoolPhone?:string;message?:string;sources?:SearchSource[];
+  quotationTemplate?:{version:'contact-v1';text:string;contact:string};
   researchedAt?:string;providerMessageId?:string;sentAt?:string;error?:string;
   leaseToken?:string;leaseUntil?:string;
 };

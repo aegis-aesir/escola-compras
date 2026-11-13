@@ -207,6 +207,10 @@ td,td small,.title-link,.member-row,.supplier p,.integration-banner p {overflow-
 .budget-file-list a {color:var(--accent);font-weight:700}
 .budget-check {padding:12px 14px;border:1px solid var(--line);border-radius:var(--ui-radius-sm);background:var(--surface-soft)}
 .budget-check input {min-height:auto}
+.quotation-supplier-option {justify-content:flex-start}
+.quotation-supplier-option input[type="checkbox"] {width:16px;height:16px;min-width:16px;flex:0 0 16px}
+.quotation-supplier-option span {flex:1;min-width:0;overflow-wrap:anywhere}
+.quotation-supplier-option small {display:block;color:var(--muted)}
 .budget-total {padding-top:15px;border-color:var(--line)}
 .budget-totals>div,.budget-indicators>div {border-radius:var(--ui-radius);background:var(--surface);box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 4%,transparent)}
 .budget-totals strong,.budget-indicators dd {font-variant-numeric:tabular-nums}
