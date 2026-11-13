@@ -8,6 +8,7 @@ export const moduleDefinitions=Object.freeze({
  'conhecimento-pops':{branch:'codex/conhecimento-pops',port:5182},
  tarefas:{branch:'codex/tarefas',port:5183},
  'integracao-escolar-manager':{branch:'codex/integracao-escolar-manager',port:5184},
+ compras:{branch:'codex/compras',port:5185},
 });
 export function readModuleWorkspace(root=repositoryRoot){
  const file=path.join(root,'.ceea-worktree.json');if(!existsSync(file))return null;

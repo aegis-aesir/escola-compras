@@ -19,4 +19,4 @@ for(const [module,definition] of Object.entries(moduleDefinitions)){
 }
 writeFileSync(path.join(root,'.ceea-worktree.json'),JSON.stringify({module:'estoque',port:5173,branch:'main'}));assert.throws(()=>readModuleWorkspace(root),/inválida/);
 writeFileSync(path.join(root,'.ceea-worktree.json'),'{broken');assert.throws(()=>readModuleWorkspace(root),/inválida/);
-console.log('PASS: quatro portas/branches isoladas, padrão do coordenador e bloqueios de configuração, host e push para main/outros módulos.');
+console.log(`PASS: ${ports.size} portas/branches isoladas, padrão do coordenador e bloqueios de configuração, host e push para main/outros módulos.`);

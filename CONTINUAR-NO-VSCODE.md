@@ -153,4 +153,6 @@ Em 13/11 o usuário autorizou testar a exclusão de qualquer rascunho real. Foi 
 
 ## Desenvolvimento paralelo — 13/11/2026
 
+Compras também tem ambiente próprio: `.worktrees/compras`, branch `codex/compras`, porta 5185; abrir `workspaces/compras.code-workspace` da pasta principal. Somente o coordenador integra e publica. Entregar alterações do módulo existente em `docs/modulos/compras/ENTREGA.md` com branch/SHA, testes, migrações e pontos compartilhados, conforme COORDENACAO.md.
+
 O usuário autorizou worktrees separadas para os quatro módulos e definiu este chat como coordenador de integração e publicação. Ler **COORDENACAO.md** para caminhos, branches, portas, regras e entrega. Módulos enviam apenas suas branches; somente o coordenador mescla main e publica. Dados locais e chaves fictícias são independentes por worktree; não compartilhar credenciais/estado de produção. Os chats devem ser abertos nas pastas preparadas e não foram criados automaticamente.

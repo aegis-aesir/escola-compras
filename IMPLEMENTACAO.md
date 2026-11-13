@@ -164,4 +164,6 @@ Em 13/11 o usuário autorizou testar a exclusão de qualquer rascunho real. Foi 
 
 ## Desenvolvimento paralelo — 13/11/2026
 
+Ampliação autorizada: o módulo existente de Compras passa a ter `.worktrees/compras`, branch `codex/compras` e porta 5185. Este coordenador continua na main, responsável por integração/publicação. Aplicar as mesmas regras de entrega e isolamento de COORDENACAO.md; nenhuma reconstrução, cópia de dados reais ou execução de ponte/envio em produção durante os testes.
+
 O usuário autorizou worktrees separadas para os quatro módulos e definiu este chat como coordenador de integração e publicação. Ler **COORDENACAO.md** para caminhos, branches, portas, regras e entrega. Módulos enviam apenas suas branches; somente o coordenador mescla main e publica. Dados locais e chaves fictícias são independentes por worktree; não compartilhar credenciais/estado de produção. Os chats devem ser abertos nas pastas preparadas e não foram criados automaticamente.

@@ -21,6 +21,7 @@ Raiz comum das worktrees: `C:\Users\aegis\Documents\ChatGPT\Compras\escola-compr
 | `conhecimento-pops` | `codex/conhecimento-pops` | `5182` |
 | `tarefas` | `codex/tarefas` | `5183` |
 | `integracao-escolar-manager` | `codex/integracao-escolar-manager` | `5184` |
+| `compras` | `codex/compras` | `5185` |
 
 O último módulo começa somente pelo planejamento da integração, sem conexão ou alteração de dados reais do Escolar Manager.
 
@@ -45,7 +46,11 @@ O usuário autorizou criar os quatro chats e inserir os prompts. Foram criados n
 | CEEA Manager — Tarefas e responsabilidades | `01a1d60f-e094-7fc2-8c4b-6cebe56cf5e2` | `tarefas` / `codex/tarefas` |
 | CEEA Manager — Integração Escolar Manager | `01a1d60f-e3b0-7a81-9cee-4921a543113f` | `integracao-escolar-manager` / `codex/integracao-escolar-manager` |
 
-Os prompts iniciam pela auditoria e pelo planejamento dos requisitos ainda indefinidos. A criação dos chats não autoriza implementação de decisões de negócio pendentes. Compras é o módulo existente; ainda não foi criado um quinto chat/worktree exclusivo para sua evolução.
+Os prompts iniciam pela auditoria e pelo planejamento dos requisitos ainda indefinidos. A criação dos chats não autoriza implementação de decisões de negócio pendentes.
+
+### Quinto módulo: Compras
+
+O usuário autorizou a worktree e o chat **CEEA Manager — Compras** para continuar a evolução e as correções do módulo existente, sem reconstruí-lo. Pasta `.worktrees/compras`, branch `codex/compras`, porta 5185. O coordenador mantém a main e a publicação. Aplicam-se todas as regras de entrega em `docs/modulos/compras/ENTREGA.md`, ambiente fictício e bloqueio de envios reais. Não aplicar autorizações antigas para exclusões/testes em produção ou publicação individual. O prompt deve exigir caminhos absolutos/workdir explícito, pois o cadastro de projeto continua sendo Compras na pasta pai.
 
 ## Regras de trabalho paralelo
 

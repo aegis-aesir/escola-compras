@@ -12,4 +12,6 @@ O usuário pediu separar os trabalhos em chats; não iniciar esses módulos junt
 
 ## Desenvolvimento paralelo — 13/11/2026
 
+Compras permanece o módulo existente, agora com quinta worktree exclusiva (`compras`, `codex/compras`, 5185) para continuidade e correções. Não é um módulo a recriar; este coordenador mantém integração/publicação. Ler COORDENACAO.md.
+
 O usuário autorizou worktrees separadas para os quatro módulos e definiu este chat como coordenador de integração e publicação. Ler **COORDENACAO.md** para caminhos, branches, portas, regras e entrega. Módulos enviam apenas suas branches; somente o coordenador mescla main e publica. Dados locais e chaves fictícias são independentes por worktree; não compartilhar credenciais/estado de produção. Os chats devem ser abertos nas pastas preparadas e não foram criados automaticamente.
