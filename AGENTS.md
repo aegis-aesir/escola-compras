@@ -21,6 +21,8 @@ Responda em português do Brasil, com linguagem simples. Leia `IMPLEMENTACAO.md`
 
 ## Estado real e próximos passos
 
+Filas e reenvio (13/11/2026): Análise ADM reúne `pending` e `admin_review` (rótulo Análise administrativa). Estimativa reúne somente `estimating`; ao concluir a pesquisa, o pedido retorna à conferência administrativa. Reenvios/devoluções com estimativa preservam seus valores e aparecem em Análise ADM. Ocultar o botão de reenvio e recusar novo `master_reanalysis` com 409 se o pedido ativo já estiver em `pending`/`admin_review`. Pedidos arquivados continuam podendo ser restaurados/reenviados pelo Master.
+
 Há um piloto funcional com banco D1, autenticação e permissões, formulários, estimativas automáticas com extração pelo agente coordinator e correção administrativa, duas etapas de direção, registro de propostas, contatos e execução. A ponte OpenClaw está implementada: fila assinada, pesquisa de fontes, recebimento de texto para revisão, cotações com proteção contra duplicidade e monitoramento de prazo. Verificar o contato recente da ponte e as duas chaves de envio antes de afirmar que está operacional. Envio real permanece desativado na configuração inicial; pedido e acompanhamento pelo agente ainda não estão automatizados. Não simular resultados como se fossem reais.
 
 Leia `INTEGRACOES.md` para operar e validar a integração. Credenciais ficam no servidor e em cofre Windows DPAPI fora do projeto. Preserve idempotência, histórico e revisão de informações ambíguas. Não enviar mensagens reais a fornecedores durante testes sem autorização específica. Não solicitar credenciais no chat; orientar configuração segura quando necessária.

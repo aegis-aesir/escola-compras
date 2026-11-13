@@ -102,7 +102,7 @@ Para Complementação necessária, usar Pendências e esclarecimentos como únic
 ## Menu por etapas aprovado em 12/11/2026
 
 - Administração e Master: Dashboard, Solicitação, Análise ADM, Estimativa, Aprovação Diretoria, Cotação, Execução e Resumo Mensal.
-- Cada solicitação administrativa ativa aparece em uma única fila: `pending` em Análise ADM; `estimating`/`admin_review` em Estimativa; `general_review` em Aprovação Diretoria; `quoting`/`national` em Cotação; `execution`/`approved`/`ordered`/`received` em Execução.
+- Cada solicitação administrativa ativa aparece em uma única fila: `pending`/`admin_review` em Análise ADM; `estimating` em Estimativa; `general_review` em Aprovação Diretoria; `quoting`/`national` em Cotação; `execution`/`approved`/`ordered`/`received` em Execução. Pesquisa concluída, devolução da DG e reenvio do Master com estimativa voltam a Análise ADM. O botão de reenvio fica oculto e a ação retorna 409 se o pedido ativo já está em `pending` ou `admin_review`; arquivados continuam restauráveis/reenviáveis.
 - O Setor não perde o acompanhamento quando o pedido avança: **Minhas solicitações** continua exibindo todos os registros próprios, com o status atualizado e sem controles internos.
 - Fornecedores e Agente WhatsApp ficam dentro de Cotação; Arquivadas dentro de Solicitação; Configurações na área do usuário Master.
 - Implementação central: `app/process-navigation.ts`. Teste: `node scripts/process-navigation-test.mjs`.

@@ -71,8 +71,8 @@ export function requestMatchesView(request:Pick<Purchase,'status'|'archived'|'ge
     if(role==='financeiro')return !['execution','approved','ordered','received'].includes(request.status);
     return ['correction','deferred','rejected'].includes(request.status);
   }
-  if(view==='analysis')return request.status==='pending';
-  if(view==='estimates')return ['estimating','admin_review'].includes(request.status);
+  if(view==='analysis')return ['pending','admin_review'].includes(request.status);
+  if(view==='estimates')return request.status==='estimating';
   if(view==='general_approval')return request.status==='general_review';
   if(view==='quotes')return ['quoting','national'].includes(request.status);
   if(view==='execution')return ['execution','approved','ordered','received'].includes(request.status);

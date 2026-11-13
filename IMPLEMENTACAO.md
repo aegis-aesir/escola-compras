@@ -115,7 +115,7 @@ O cabeçalho mostra saudação, data de Manaus, área ativa e mantém Aparência
 
 ### Menu por etapas do processo orçamentário
 
-O menu administrativo segue a sequência **Dashboard → Solicitação → Análise ADM → Estimativa → Aprovação Diretoria → Cotação → Execução → Resumo Mensal**. As filas são exclusivas: `pending` fica em Análise ADM; `estimating` e `admin_review`, em Estimativa; `general_review`, em Aprovação Diretoria; `quoting` e `national`, em Cotação; `execution`, `approved`, `ordered` e `received`, em Execução. Ao avançar, o pedido sai da fila anterior sem perder histórico.
+O menu administrativo segue a sequência **Dashboard → Solicitação → Análise ADM → Estimativa → Aprovação Diretoria → Cotação → Execução → Resumo Mensal**. As filas são exclusivas: `pending` e `admin_review` ficam em Análise ADM; `estimating`, em Estimativa; `general_review`, em Aprovação Diretoria; `quoting` e `national`, em Cotação; `execution`, `approved`, `ordered` e `received`, em Execução. Após concluir a pesquisa, o pedido retorna para a conferência em Análise ADM antes da Diretoria Geral. Ao avançar, o pedido sai da fila anterior sem perder histórico.
 
 O perfil Setor continua com uma única área **Minhas solicitações**, que mostra todos os pedidos próprios e atualiza somente o status visível. A Diretoria Geral recebe Dashboard, Aprovação Diretoria e Resumo Mensal em modo de consulta. O Financeiro mantém Solicitação, Execução e Resumo Mensal em modo de acompanhamento. Fornecedores e Agente WhatsApp são acessos contextuais de Cotação; Arquivadas fica dentro de Solicitação; Configurações fica na área do usuário Master. A matriz está em `app/process-navigation.ts` e é validada por `node scripts/process-navigation-test.mjs`.
 

@@ -1,9 +1,11 @@
 import {z} from 'zod';
 import type {Purchase,Member} from './model';
 import {FlowError} from './workflow';
+import {isAwaitingAdministrativeAnalysis} from './request-views';
 
 export function masterReanalysis(old:Purchase,reason:unknown,me:{role:Member['role'];name:string},now:string){
  if(me.role!=='admin')throw new FlowError('Somente o Master pode reenviar para análise administrativa.',403);
+ if(isAwaitingAdministrativeAnalysis(old))throw new FlowError('Esta solicitação já está em Análise ADM.',409);
  const justification=z.string().trim().min(5).max(2000).parse(reason);
  const previous={...old};delete previous.reanalysisHistory;
  const reanalysisHistory=old.reanalysisHistory;

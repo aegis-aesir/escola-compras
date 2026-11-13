@@ -16,7 +16,10 @@ assert.equal((await call('/api/data',forward)).data.id,id,'repetição não dupl
 let snapshot=(await call('/api/data')).data,request=snapshot.requests.find(r=>r.id===id);
 assert.equal(request.authorName,testUsers[1].name);assert.notEqual(request.authorId,snapshot.me.id);assert.equal(request.formDeclared.actor,testUsers[0].name);assert.equal(request.status,'pending');assert.ok(request.correctionHistory[0].previous.draft.archivedAt);
 const repeat={action:'master_reanalysis',id,version:request.version,reason:'Reenviar após revisão pelo Master'};
-assert.equal((await call('/api/data',repeat,sector)).status,403);assert.equal((await call('/api/data',repeat)).status,200);assert.equal((await call('/api/data',repeat)).status,409);
+assert.equal((await call('/api/data',repeat,sector)).status,403);assert.equal((await call('/api/data',repeat)).status,409,'já está em Análise ADM');
+assert.equal((await call('/api/data',{action:'archive_request',id,version:request.version,reason:'Arquivar para validar reenvio pelo Master'})).status,200);
+request=(await call('/api/data')).data.requests.find(r=>r.id===id);repeat.version=request.version;
+assert.equal((await call('/api/data',repeat)).status,200);assert.equal((await call('/api/data',repeat)).status,409);
 request=(await call('/api/data')).data.requests.find(r=>r.id===id);assert.equal(request.reanalysisHistory.length,1);assert.equal(request.authorName,testUsers[1].name);
 const created=await call('/api/data',{action:'request',data:fixture},sector);assert.equal(created.status,200);const original=(await call('/api/data')).data.requests.find(r=>r.id===created.data.id);
 assert.equal((await call('/api/data',{action:'defer_request',id:original.id,version:original.version,reason:'Adiar para testar intervenção do Master'})).status,200);
