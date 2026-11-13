@@ -81,7 +81,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
     }
     let browserPages=[],browserSources=[],browserResearch;
     if(job.type==='estimate_search'&&job.item&&config.browserResearch) {
-      const browsing=await researchMercadoLivre(job.item,async args=>structured(await invokeJob({tool:'browser',args})));
+      const browsing=await researchMercadoLivre(job.researchItem||job.item,async args=>structured(await invokeJob({tool:'browser',args})));
       browserPages=browsing.pages;browserSources=browsing.sources;
       browserResearch={state:browsing.state,detail:browsing.detail,profile:'compras',checkedAt:new Date().toISOString()};
     }

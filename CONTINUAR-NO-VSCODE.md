@@ -50,6 +50,8 @@ Credenciais não ficam neste projeto. O Site usa variáveis de servidor; o launc
 
 ## Hospedagem atual
 
+Critérios por item (13/11/2026): `app/estimate-criteria.ts` define valores iniciais, validação e associação à revisão/item; `app/estimate-criteria-panel.tsx` apresenta campos ao Master/ADM antes de iniciar. `research` recebe array; `research_item` recebe `itemIndex`/critério. O servidor mantém `estimateCriteriaHistory`, pedido original e resultados atuais dos outros itens. Busca/navegador/coordinator usam critérios autorizados. Tarefas com critérios só são retiradas por ponte `criteria-v1`; atualizar/reiniciar a tarefa Windows após publicar, sem mudar credenciais/modelos/canais ou habilitar envios. Testes: `estimate-criteria-test`, `estimate-criteria-http-test`, `estimate-criteria-ui-test`, `agent-routing-test`, `automatic-estimate-test`.
+
 Entrada pública com login local; dados protegidos: https://ceea.colegioestrelas.com
 
 O projeto está vinculado a Sites pelo arquivo `.openai/hosting.json` e pelo Git remoto existente. Não recriar a hospedagem. A integração OpenClaw foi publicada em 08/11/2026 pelo fluxo oficial. Consultar o Git e as versões Sites para identificar o último commit publicado, em vez de assumir o estado antigo do piloto.

@@ -1,6 +1,7 @@
 import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
 import { type Purchase, type Supplier, type Settings, quotationMessage, categorySchema, supplierSchema } from '../app/model';
+import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
 import { categoryKey, matchingSuppliers, requestCategories } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
@@ -38,13 +39,26 @@ async function update(db:D1Database,old:{id:string;version:number},data:object,e
 export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>,suppliers:Supplier[]) {
+function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>&Partial<IntegrationJob>,suppliers:Supplier[]) {
   if(r.archived)return false;
-  if(j.type==='estimate_search')return r.status==='estimating'&&(j.estimateRevision||'')===(r.estimateRevision||'');
+  if(j.type==='estimate_search')return r.status==='estimating'&&('id' in j?isCurrentEstimateJob(r,j as IntegrationJob):(j.estimateRevision||'')===(r.estimateRevision||''));
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   const s=suppliers.find(s=>s.id===j.supplierId);
   return !!s&&(r.status==='national'||(r.status==='quoting'&&(s.scope||'local')==='local'));
+}
+export async function estimateSearchId(r:Purchase,index:number){
+  const criteria=savedItemCriteria(r,index);
+  return 'search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',index,r.items[index],...(r.estimateRevision?[r.estimateRevision]:[]),...(criteria?['criteria-v1',criteria.revision]:[])]));
+}
+export async function configureEstimateResearch(db:D1Database,r:Purchase,input:unknown,itemIndex:number|undefined,actor:string,now:string){
+  if(r.archived||r.generalApproval||!['pending','estimating','admin_review'].includes(r.status))throw new FlowError('Os critérios só podem ser alterados antes do encaminhamento à Diretoria Geral.',409);
+  const entries=itemIndex===undefined?z.array(estimateCriteriaSchema).length(r.items.length).parse(input).map((criteria,index)=>({index,criteria})):[{index:z.number().int().min(0).max(r.items.length-1).parse(itemIndex),criteria:estimateCriteriaSchema.parse(input)}];
+  const next:Purchase={...r,status:'estimating',updatedAt:now,estimateCriteria:{...r.estimateCriteria},estimateCriteriaHistory:[...(r.estimateCriteriaHistory||[])]};
+  for(const {index,criteria} of entries){const saved={...criteria,revision:crypto.randomUUID(),actor,at:now,sourceItem:r.items[index]};next.estimateCriteria![index]=saved;next.estimateCriteriaHistory!.push({itemIndex:index,actor,at:now,criteria:saved,previous:savedItemCriteria(r,index),...(r.estimate?{previousEstimate:r.estimate}:{})});}
+  delete next.estimate;delete next.adminReview;
+  if(!await update(db,r,next,r.id,actor,'Critérios de estimativa autorizados; pesquisa iniciada para '+entries.map(e=>r.items[e.index].name).join(', ').slice(0,500),now))throw new FlowError('Solicitação atualizada ou mês fechado. Recarregue.',409);
+  await enqueueSearch(db,{...next,version:r.version+1},actor,now);
 }
 export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   if(['quoting','national'].includes(r.status))return enqueueSupplierSearch(db,r,actor,now);
@@ -52,9 +66,10 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
   if(!eligible(r,{type,estimateRevision:r.estimateRevision},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
   let created=0;
   for(const [itemIndex,item] of r.items.entries()) {
-    const query=`${item.name} ${item.spec} ${item.unit} ${type==='estimate_search'?'preço comprar Brasil':'fornecedor entrega Manaus AM Brasil'}`.slice(0,380);
-    const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,type,itemIndex,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
-    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+    const criteria=savedItemCriteria(r,itemIndex),researchItem=itemResearchTarget(item,criteria);
+    const query=`${criteria?.searchName||item.name} ${researchItem.spec} ${item.unit} preço comprar Brasil`.slice(0,3000);
+    const id=await estimateSearchId(r,itemIndex);
+    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,...(criteria?{researchCriteria:criteria,researchItem}:{}),query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
     const existing=await row<IntegrationJob>(db,id,jobKind);
     if(existing?.state==='review'&&existing.item&&!existing.analysisReason&&!existing.priceEvidence) {
       if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise estruturada reenfileirada',now))created++;
@@ -176,14 +191,14 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     if(r.archived||r.status!=='estimating'||r.estimate||r.form?.kind==='digital')continue;
     const selected:IntegrationJob[]=[];
     for(const [i,item] of r.items.entries()) {
-      const id='search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',i,item,...(r.estimateRevision?[r.estimateRevision]:[])]));
+      const id=await estimateSearchId(r,i);
       const j=jobs.find(j=>j.id===id&&j.state==='review'&&j.priceEvidence&&j.researchedAt);
       if(!j||!extractReference(item,j.priceEvidence!))break;
       selected.push(j);
     }
     if(!selected.length||selected.length!==r.items.length)continue;
     const references=selected.map((j,i)=>({unitPrice:extractReference(r.items[i],j.priceEvidence!)!.unitPrice,sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!))}));
-    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
+    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
     result.data.estimate!.method='automatic';
     result.data.estimate!.freightKnown=false;
     await update(db,r,result.data,r.id,'Sistema','Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
@@ -207,7 +222,7 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   }
   await db.prepare('INSERT INTO records (id,kind,data,version) VALUES (?,?,?,1) ON CONFLICT(id) DO UPDATE SET data=excluded.data,version=records.version+1').bind('integration:heartbeat','integration_state',JSON.stringify({lastSeenAt:now})).run();
 }
-export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSend:boolean) {
+export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSend:boolean,researchProtocol?:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.state==='queued'&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
@@ -217,6 +232,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
     if(!r||!eligible(r,j,suppliers)||internalMatch) {
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
     }
+    if(j.researchCriteria&&researchProtocol!=='criteria-v1')continue;
     if(j.type==='whatsapp_quote') {
       if(!canSend||env.WHATSAPP_SEND_ENABLED!=='true')continue;
       // A changed phone number requires a fresh human decision, never silent rerouting.

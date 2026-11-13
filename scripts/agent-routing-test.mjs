@@ -47,6 +47,13 @@ test('análise estruturada usa coordinator sem mudar modelo ou permitir entrega 
   assert.equal(params.deliver,false);assert.equal(params.disableMessageTool,true);
   assert.equal(params.model,undefined);assert.equal(params.modelRun,undefined);
 });
+test('critérios autorizados alteram a busca no navegador e chegam ao analisador sem alterar o item original',async()=>{
+ const original={...item,name:'Monitor Rhadium RHA-LCD-001',spec:'Rhadium 19 polegadas'},researchItem={...item,name:'Monitor 19 polegadas',spec:'LCD 75Hz'};
+ const job={...searchJob('estimate_search'),item:original,researchItem,researchCriteria:{allowSimilar:true,brandPolicy:'reference'},query:'Monitor 19 polegadas LCD 75Hz preço comprar Brasil'};
+ const calls=[],url='https://produto.mercadolivre.com.br/MLB-123456789-monitor';let analyzed;
+ const result=await executeJob({...config,browserResearch:true},job,async(_url,options)=>{const body=requestBody(options);calls.push(body);let details={results:[]};if(body.tool==='browser')details=body.args.action==='open'?{targetId:'fake-tab'}:body.args.action==='act'?{result:{state:'ready',url,title:'Monitor Monocron',text:'Monitor Monocron LCD 19 polegadas 75Hz. R$ 150,00.',links:[url]}}:{};return Response.json({ok:true,result:{details}})},async job=>{analyzed=job;return needsReview});
+ assert.equal(result.outcome,'success');const searchUrl=calls.find(c=>c.tool==='browser'&&c.args.action==='open').args.url;assert.ok(!searchUrl.includes('Rhadium'));assert.ok(searchUrl.includes('Monitor-19-polegadas'));assert.equal(calls.find(c=>c.tool==='web_search').args.query,job.query);assert.equal(analyzed.item,original);assert.equal(analyzed.researchCriteria.allowSimilar,true);assert.ok(calls.every(c=>c.tool!=='message'));
+});
 test('somente envio autorizado usa operacional e preserva conta, número e idempotência',async()=>{
   const job={id:'quote-test',requestId:'request-test',leaseToken:'lease-test',type:'whatsapp_quote',accountId:'operacional',schoolPhone:'+559292017107',target:'+5592999990000',message:'TESTE FICTÍCIO — nunca enviado'};
   const calls=[];

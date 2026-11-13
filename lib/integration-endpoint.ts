@@ -28,7 +28,7 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
     let b:any;try{b=JSON.parse(raw)}catch{return response({error:'JSON inválido.'},400)}
     if(b.op==='poll') {
       await tick(env.DB,env,now);
-      return response({job:await claimJob(env.DB,env,now,b.canSend===true)});
+      return response({job:await claimJob(env.DB,env,now,b.canSend===true,b.researchProtocol)});
     }
     if(b.op==='result')return response(await completeJob(env.DB,b.result,now));
     if(b.op==='inbox')return response(await receiveMessage(env.DB,b.message,now));

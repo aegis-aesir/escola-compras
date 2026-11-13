@@ -186,6 +186,16 @@ O servidor valida todo o lote antes de gravar, preserva registros existentes, de
 
 ## Estimativas pelo agente coordinator
 
+### Critérios administrativos por item (13/11/2026)
+
+Master e Diretoria Administrativa revisam os critérios pré-preenchidos antes de iniciar: descrição/termos de busca, requisitos mínimos, autorização de similares e marca/modelo obrigatório ou apenas referência. O padrão não autoriza similares. O objeto `estimateCriteria` é separado de `items` e `form`; preserva o item original, autoria, data e revisão por item, com histórico em `estimateCriteriaHistory`. Alterações só antes do encaminhamento à DG, com versão e mês aberto.
+
+`research` com o array de critérios salva e inicia a pesquisa; `research_item` salva/refaz somente a revisão de um item, preservando resultados atuais dos demais. Ambos colocam o pedido em `estimating`; preços completos retornam a `admin_review`. O histórico preserva estimativa anterior, se houver. Resultados de outra revisão, especificação ou critérios não preenchem a estimativa atual. Os critérios não autorizam compra nem substituem o pedido do setor.
+
+A fila mantém `item` original e transporta `researchItem` e `researchCriteria` autorizados. Navegador compras e busca web usam o alvo ajustado; coordinator recebe original e critérios, mantém unidade/quantidade e exige evidências literais de preço e requisitos. Sem autorização de similares, a identidade original continua obrigatória. Assinaturas mantêm a conferência de vigência existente. O cliente anuncia `researchProtocol: criteria-v1` no polling; pontes antigas não retiram tarefas com novos critérios. Reiniciar a tarefa Windows da ponte após atualizar o código, preservando journals, cofre, conta operacional e bloqueios de envio.
+
+Validação sem mensagens externas: `estimate-criteria-test.mjs`, `estimate-criteria-http-test.mjs`, `estimate-criteria-ui-test.mjs`, `agent-routing-test.mjs`, `automatic-estimate-test.mjs` e `price-evidence-test.mjs`.
+
 Resultados parciais (12/11/2026): o painel exibe preço unitário, subtotal, fonte e data dos itens já validados, mesmo enquanto outro item está pendente. Usa a mesma validação de evidências do servidor e somente resultados da revisão e especificação atuais. O subtotal parcial exclui frete e não libera a aprovação. Pesquisa já encerrada com pendências não aparece como ainda em processamento. Assinaturas continuam exigindo conferência de vigência antes de usar preços como referência. Teste: `node scripts/partial-estimate-ui-test.mjs`.
 
 A ponte pesquisa fontes, lê até três páginas via `web_fetch` e passa trechos limitados ao agente existente `coordinator` por `openclaw gateway call agent`. Usa o modelo/configuração já definidos para esse agente, com custo normal desse provedor. Não cria outro agente nem altera o atendimento WhatsApp. O CLI é localizado no caminho Windows padrão; `OPENCLAW_CLI_PATH` permite indicar outra instalação.

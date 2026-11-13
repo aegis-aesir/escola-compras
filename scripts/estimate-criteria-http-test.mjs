@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {localBase,localTestSession,testUsers} from './local-test-session.mjs';
+import {simplifiedBudgetFixture} from './budget-fixture.mjs';
+const master=await localTestSession(),sector=await localTestSession(testUsers[1]),general=await localTestSession(testUsers[2]);
+async function call(body,cookie=master){const r=await fetch(localBase+'/api/data',{method:body?'POST':'GET',headers:{Cookie:cookie,Origin:localBase,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()}}
+const fixture={...simplifiedBudgetFixture(),department:'Administrativo'};
+const created=await call({action:'request',data:fixture},sector);assert.equal(created.status,200);const id=created.data.id;
+const current=async()=>{const snapshot=(await call()).data;return {request:snapshot.requests.find(r=>r.id===id),jobs:snapshot.integrations.jobs.filter(j=>j.requestId===id)}};
+const before=(await current()).request,criteria=before.items.map(i=>({searchName:i.name,minimumRequirements:i.spec||i.name,allowSimilar:false,brandPolicy:'required',brandModel:i.brand||''}));
+const start={action:'research',id,version:before.version,criteria};assert.equal((await call(start,sector)).status,403);assert.equal((await call(start,general)).status,403);assert.equal((await call({...start,criteria:[]})).status,400);assert.equal((await call(start)).status,200);
+let state=await current();assert.equal(state.request.status,'estimating');assert.deepEqual(state.request.items,before.items);assert.deepEqual(state.request.form,before.form);assert.equal(state.jobs.length,before.items.length);assert.equal(state.request.estimateCriteria[0].actor,testUsers[0].name);assert.equal((await call(start)).status,409);
+const changed={...criteria[0],searchName:'Material similar para teste',allowSimilar:true,brandPolicy:'reference'};
+assert.equal((await call({action:'research_item',id,version:state.request.version,itemIndex:0,criteria:changed})).status,200);
+state=await current();assert.equal(state.request.estimateCriteria[0].allowSimilar,true);assert.equal(state.request.estimateCriteriaHistory.length,before.items.length+1);assert.deepEqual(state.request.items,before.items);
+assert.equal((await call({action:'archive_request',id,version:state.request.version,reason:'Arquivamento de teste local dos critérios'})).status,200);
+state=await current();assert.equal((await call({action:'research_item',id,version:state.request.version,itemIndex:0,criteria:changed})).status,409);
+const username='teste.adm.criteria.'+Date.now();const userResponse=await fetch(localBase+'/api/auth/users',{method:'POST',headers:{Cookie:master,Origin:localBase,'Content-Type':'application/json'},body:JSON.stringify({username,name:'TESTE LOCAL ADM critérios',role:'administrativo',department:'Administrativo'})});assert.equal(userResponse.status,200);const user=await userResponse.json();
+const login=await fetch(localBase+'/api/auth/login',{method:'POST',headers:{Origin:localBase,'Content-Type':'application/json'},body:JSON.stringify({username,password:user.temporaryPassword})});assert.equal(login.status,200);const adm=login.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
+const admCreate=await call({action:'request',data:fixture},adm);assert.equal(admCreate.status,200);const admRequest=(await call(null,adm)).data.requests.find(r=>r.id===admCreate.data.id);
+assert.equal((await call({action:'research',id:admRequest.id,version:admRequest.version,criteria},adm)).status,200);
+console.log('PASS HTTP: critérios iniciam a etapa Estimativa; permissões Master/ADM, pedido intacto, versão, histórico e bloqueio de arquivados.');

@@ -28,7 +28,7 @@ export async function runOnce(config,options={}) {
       catch(e){if([400,409].includes(e.status))await rename(file,file+'.review');else throw e}
     }
   }
-  const {job}=await site({op:'poll',canSend:config.canSend});
+  const {job}=await site({op:'poll',canSend:config.canSend,researchProtocol:'criteria-v1'});
   if(!job)return {processed:0};
   const result=await execute(job);
   const file=path.join(stateDir,createHash('sha256').update(job.id+job.leaseToken).digest('hex')+'.result.json');

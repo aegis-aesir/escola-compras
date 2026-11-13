@@ -1,10 +1,11 @@
 import type {Purchase} from './model';
 import type {IntegrationJob} from './integration-model';
+import {isCurrentEstimateJob} from './estimate-criteria';
 import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
 
 export function estimateProgress(request:Purchase,jobs:IntegrationJob[]=[]){
  const items=request.items.map((item,itemIndex)=>{
-  const job=jobs.filter(j=>j.requestId===request.id&&j.type==='estimate_search'&&j.itemIndex===itemIndex&&j.state!=='cancelled'&&(j.estimateRevision||'')===(request.estimateRevision||'')&&JSON.stringify(j.item)===JSON.stringify(item)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
+  const job=jobs.filter(j=>j.itemIndex===itemIndex&&j.state!=='cancelled'&&isCurrentEstimateJob(request,j)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
   const reference=request.form?.kind!=='digital'&&job?.state==='review'&&job.priceEvidence&&job.researchedAt?extractReference(item,job.priceEvidence):null;
   return {item,job,reference,subtotal:reference?Math.round(reference.unitPrice*item.quantity*100)/100:undefined};
  });

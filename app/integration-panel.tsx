@@ -1,5 +1,7 @@
 'use client';
 import {money,type Snapshot,type Purchase} from './model';
+import EstimateCriteriaPanel from './estimate-criteria-panel';
+import {isCurrentEstimateJob} from './estimate-criteria';
 import {estimateProgress} from './estimate-progress';
 import { jobLabels } from './integration-model';
 type Props={data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>};
@@ -7,21 +9,20 @@ const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Man
 
 export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purchase}) {
   if(!data.integrations)return null;
-  const jobs=data.integrations.jobs.filter(j=>j.requestId===r.id&&j.type==='estimate_search');
+  const jobs=data.integrations.jobs.filter(j=>isCurrentEstimateJob(r,j)&&j.state!=='cancelled');
   const progress=estimateProgress(r,jobs);
-  if(!jobs.length&&!['estimating','pending'].includes(r.status))return null;
+  if(!jobs.length&&!['estimating','pending','admin_review'].includes(r.status))return null;
   return <section className="integration-research"><h3>Pesquisa automática · OpenClaw</h3>
     <p className="muted">O agente coordinator do OpenClaw analisa as páginas, identifica produto, unidade e preço e devolve as referências para o sistema preencher a estimativa. Quando todos os itens têm referência, calcula o total e encaminha para análise administrativa. Valores ambíguos ficam pendentes; estimativas não são propostas comerciais.</p>
     {!r.estimate&&r.status==='estimating'&&<section className="note" aria-label="Resultado da estimativa por item"><h3>{progress.working?'Pesquisa em andamento':'Pesquisa concluída com pendências'}</h3><p>{progress.verified} de {r.items.length} itens com preço validado.</p>{progress.items.map(({item,job,reference,subtotal},index)=><div className="source-row" key={index}><strong>{item.name}</strong>{reference?<><p><b>{money(reference.unitPrice)} / {item.unit}</b> · {item.quantity} {item.unit} · Subtotal: <b>{money(subtotal!)}</b></p><a href={job!.priceEvidence!.url} target="_blank" rel="noopener noreferrer">{job!.priceEvidence!.title} ↗</a><small>Consultado em {date(job!.researchedAt!)}</small></>:<p>{job&&['review','failed'].includes(job.state)?`Preço pendente de validação. ${job.analysisReason||job.error||'Confira as fontes ou refaça a pesquisa.'}`:job?.state==='running'?'Pesquisando este item…':'Aguardando pesquisa deste item.'}</p>}</div>)}{progress.verified>0&&<p><b>Subtotal dos itens validados: {money(progress.partialTotal)}</b><br/>Frete não incluído. O total da solicitação será calculado após validar todos os itens.</p>}</section>}
-    {r.status==='pending'&&<button className="button primary" disabled={busy} onClick={()=>onSave({action:'research',id:r.id,version:r.version})}>Iniciar estimativa automática</button>}
-    {r.status==='pending'&&<p className="note">A pesquisa ainda não começou. A Diretoria Administrativa deve iniciar a estimativa automática.</p>}
+    {['admin','administrativo'].includes(data.me.role)&&!r.archived&&['pending','estimating','admin_review'].includes(r.status)&&<EstimateCriteriaPanel key={`${r.id}:${r.version}`} request={r} busy={busy} onSave={onSave}/>}
+    {r.status==='pending'&&<p className="note">Revise os critérios acima e use Salvar critérios e iniciar pesquisa automática. A pesquisa só começa após essa confirmação.</p>}
     {!data.integrations.bridgeConfigured&&<p className="note">A ponte ainda precisa ser configurada. As pesquisas ficam guardadas na fila.</p>}
     {jobs.map(j=><div className="source-row" key={j.id}><strong>{r.items[j.itemIndex??0]?.name} · {jobLabels[j.state]}</strong><small>{j.type==='national_search'?'Fornecedores nacionais':'Referências de preço'} · {j.researchedAt?date(j.researchedAt):date(j.createdAt)}</small>
       {j.error&&<p className="muted">{j.error}</p>}
       {j.browserResearch&&<p className="note"><b>Mercado Livre · navegador compras:</b> {j.browserResearch.detail}<br/><small>Verificado em {date(j.browserResearch.checkedAt)}. {j.priceEvidence?.origin==='authenticated_browser'?'Referência extraída da sessão autenticada.':'As demais fontes podem ser páginas públicas.'}</small></p>}
       {j.type==='estimate_search'&&j.state==='review'&&!j.priceEvidence&&<p className="note">Não foi possível confirmar automaticamente produto, unidade e preço nas páginas consultadas. Nenhum valor foi inventado. Confira as fontes ou refaça a pesquisa. {j.analysisReason}</p>}
       {j.priceEvidence&&<p className="note">Preço extraído e validado contra a página. {j.analysisReason}</p>}
-      {['estimating','pending'].includes(r.status)&&['failed','review'].includes(j.state)&&<button className="text-button" disabled={busy} onClick={()=>onSave({action:'retry_integration',id:j.id,version:j.version})}>Refazer pesquisa de preços</button>}
       {j.sources?.length===0&&<p>Nenhuma fonte encontrada. Ajuste a pesquisa manualmente e registre as referências conferidas.</p>}
       {j.sources?.map((s,i)=><div className="research-source" key={i}><a href={s.url} target="_blank" rel="noopener noreferrer">{s.title} ↗</a><p>{s.description}</p></div>)}
     </div>)}
