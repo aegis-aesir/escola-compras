@@ -1,11 +1,11 @@
 # Conhecimento e POPs — auditoria e proposta inicial
 
 Data: 13/11/2026. Etapa: planejamento, sem implementação de produto.
-Esta proposta não é um desenho aprovado nem autoriza instalar dependências, criar telas, endpoints ou migrações. As decisões abaixo permanecem abertas para o usuário.
+Este documento registra a auditoria inicial. A governança foi aprovada posteriormente; o desenho e o plano estão consolidados nos documentos indicados abaixo. Esta entrega permanece documental, sem instalar dependências, criar telas, endpoints ou migrações.
 
 Atualização após o usuário informar que já possui os POPs: a conferência do acervo existente está em `CONFERENCIA-NAS.md`, nesta pasta. A prioridade proposta passa a incluir catalogar e disponibilizar os documentos prontos; conversão para o editor não é pressuposta. O usuário definiu `Doc's SIE` como referência principal e autorizou incluir os 31 complementares na proposta. `ORGANIZACAO-POR-SETOR.md` organiza 557 conteúdos únicos (526 da referência + 31 complementares), sem alterar os originais. A comparação está em `COMPARACAO-ACERVO.md`. Tratamento das variantes não selecionadas, busca no conteúdo de arquivos e limites de tamanho ainda precisam entrar no desenho antes de qualquer importação.
 
-Proposta de governança detalhada, solicitada em seguida pelo usuário: `REGRAS-DE-ACESSO-E-PUBLICACAO.md`. Esse documento consolida as recomendações atuais de leitura, edição, rascunhos, compartilhamento, aprovação, publicação e revisão, todas aguardando aprovação. Não confundir decisões já tomadas sobre o acervo com aprovação dessa política.
+Governança detalhada em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`, integralmente aprovada pelo usuário em 13/11/2026. A etapa seguinte, também autorizada, consolidou `DESENHO-CONSOLIDADO.md` e `PLANO-DE-IMPLEMENTACAO.md`. A aprovação da política está resolvida; os documentos técnicos estão prontos para revisão antes da implementação. Esta auditoria permanece como registro inicial, com sugestões antigas subordinadas à política aprovada e ao desenho consolidado.
 
 ## Ambiente conferido
 
@@ -53,7 +53,7 @@ A escolha não foi feita pelo usuário. Uma biblioteca apenas de arquivos não c
 - Permissões de leitura, edição, publicação e gestão de acesso distintas. Herança na árvore é uma possibilidade, ainda não definida. Acesso ao histórico e a anexos antigos acompanha a política que for aprovada; não herdar automaticamente direitos do perfil Master/ADM das compras.
 - Arquivamento preserva conteúdo, versões e anexos. Quem arquiva, quem consulta arquivados e como restaurar continuam pendentes. Exclusão definitiva não integra a proposta inicial.
 
-## Decisões de negócio necessárias antes do desenho aprovado
+## Decisões de negócio resolvidas pela política aprovada
 
 | Decisão | Por que muda a implementação | Proposta para o usuário avaliar, ainda não aprovada |
 | --- | --- | --- |

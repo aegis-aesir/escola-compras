@@ -4,7 +4,7 @@ Data: 13/11/2026. Decisões do usuário: manter `Doc's SIE` como referência pri
 
 As três decisões estão incorporadas. Esta entrega organiza o catálogo proposto; não executa importação, publicação ou mudança no sistema. Inclusão na proposta não preenche responsável, aprovação documental, vigência ou permissão de acesso ainda indefinidos.
 
-As regras de acesso por perfil/setor e publicação foram propostas em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`, aguardando aprovação do usuário. As áreas abaixo continuam sendo organização documental, sem concessão automática de acesso.
+As regras de acesso por perfil/setor e publicação em `REGRAS-DE-ACESSO-E-PUBLICACAO.md` foram aprovadas integralmente pelo usuário em 13/11/2026. O desenho e o plano estão em `DESENHO-CONSOLIDADO.md` e `PLANO-DE-IMPLEMENTACAO.md`. As áreas abaixo continuam sendo organização documental, sem concessão automática de acesso antes da implementação.
 
 ## Escopo e contagem
 
@@ -103,4 +103,4 @@ Catálogo completo de metadados somente local, ignorado pelo Git: `.ceea-workspa
 
 O script local `.ceea-workspace/organize_nas_catalog.py` reutilizou os hashes da comparação anterior. Conferiu tamanho/data dos 559 arquivos selecionados e reenumerou a referência, sem detectar mudanças. Validações: 557 hashes únicos, 526 entradas da referência, os mesmos 31 caminhos complementares, série DOC de 01 a 26 completa e distribuição complementar 26 + 3 + 1 + 1. Uma conferência independente do JSON confirmou 557 entradas e hashes únicos, 31 complementares, o documento AEE na área correta e nenhum responsável ou publicação inventado.
 
-Não houve alteração de originais, importação no aplicativo, banco, dependências, migrações, permissões, servidor, mensagens ou publicação. Antes da implementação, permanecem as decisões de acesso, edição, publicação/aprovação, revisão/validade e tratamento de anexos maiores.
+Não houve alteração de originais, importação no aplicativo, banco, dependências, migrações, permissões, servidor, mensagens ou publicação. A política de acesso/edição/publicação/revisão foi aprovada posteriormente. Arquivos grandes têm tratamento planejado no desenho consolidado, sujeito às verificações locais do plano.

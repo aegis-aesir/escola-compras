@@ -1,7 +1,7 @@
 # Entrega — Conhecimento e POPs
 
 Data: 13/11/2026. Branch: `codex/conhecimento-pops`.
-Etapa entregue: proposta de acesso, edição e publicação por perfil/setor, aguardando aprovação; mantém auditoria e organização do acervo com os 31 complementares, exclusivamente documental.
+Etapa entregue: regras aprovadas registradas, desenho consolidado e plano de implementação em oito tarefas; mantém auditoria e organização do acervo com os 31 complementares. Somente documentação.
 Base auditada: `fa211930be936b79aa5deee58ad3c3a307f9a927`.
 O SHA completo desta entrega documental será informado na resposta final do chat após o commit e a conferência do push; não se trata de implementação pronta para publicar.
 
@@ -14,14 +14,16 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 - Conferência somente de leitura do NAS autorizada pelo usuário: estrutura, formatos, tamanhos e duplicidade amostral. Resultados agregados em `CONFERENCIA-NAS.md`; sem cópia/importação dos documentos.
 - Decisão do usuário registrada: `Doc's SIE` é a referência principal. Comparados todos os 1.719 arquivos por SHA-256; resultado organizacional em `COMPARACAO-ACERVO.md`. Inventário detalhado e scripts apenas locais/ignorados, sem documentos originais no Git.
 - Nova decisão incorporada: incluir os 31 complementares na proposta e organizar o acervo por setor. `ORGANIZACAO-POR-SETOR.md` relaciona os 31 e consolida 557 conteúdos únicos em sete áreas documentais; preservados 962 caminhos de origem em catálogo somente local.
-- Proposta solicitada de regras por perfil/setor em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`: matriz dos cinco perfis, vínculo dos oito setores atuais, três públicos de leitura, editores indicados, rascunhos privados, aprovação por outra pessoa, responsáveis/revisões, anexos/histórico e arquivo/restauração. Todos esses direitos propostos continuam aguardando aprovação; nenhuma concessão foi aplicada.
+- Na etapa anterior, proposta de regras por perfil/setor em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`: matriz dos cinco perfis, oito setores, três públicos, editores, rascunhos, aprovação, revisões e arquivo. Naquela entrega aguardava aprovação e nenhuma concessão foi aplicada; a atualização seguinte registra a aprovação recebida.
+- Atualização posterior: usuário aprovou integralmente as regras e autorizou consolidar desenho/plano. Aprovação registrada na política. `DESENHO-CONSOLIDADO.md` define escopo, experiência, estados, autorização, persistência, API, anexos/ingestão e contratos; `PLANO-DE-IMPLEMENTACAO.md` organiza oito tarefas com arquivos, interfaces, critérios e comandos futuros. Nenhuma tarefa foi executada.
+- Revisão independente do desenho, conforme skill brainstorming: revisor não identificou lacuna importante que impeça um plano seguro; verificações técnicas restantes já estão previstas como marcos. Revisão do plano feita pelo autor para cobertura, interfaces e cinco riscos principais.
 
 ## Pendências que impedem iniciar implementação
 
-- Usuário aprovar ou ajustar a proposta concreta de leitura, edição, rascunhos, concessões, publicação/aprovação, validade e arquivamento em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`. Não tratar a solicitação dessa proposta como aprovação das regras.
-- Após aprovação das regras, indicar editores, vínculos de RH/subáreas e responsáveis documentais, sem inventar usuários ou nomes nesta etapa.
-- Escolha de abordagem, desenho aprovado e plano técnico subsequente; contratos compartilhados precisam de alinhamento com o coordenador antes de integração.
-- Fonte principal e inclusão dos 31 na proposta estão definidas. Ainda pendem importação no aplicativo, uso das variantes BSC/BDG, necessidade de busca no texto dos arquivos existentes e limites para arquivos acima de 5 MiB. Não pedir novamente autorização para incluir os 31 na proposta.
+- Política aprovada: não reabrir a aprovação das regras. Desenho e plano prontos para revisão antes de iniciar execução; execução direta nesta sessão é a recomendação, sem implementação nesta etapa.
+- Indicar editores, vínculos de RH/subáreas e responsáveis documentais na preparação operacional, sem inventar usuários ou nomes.
+- Avaliar editor/hash incremental, streaming multipart e dependências na tarefa 1. Alinhar contratos compartilhados e ordem da migração com coordenador antes de integração.
+- Fonte principal e inclusão dos 31 estão definidas. Busca V1 cobre páginas/metadados, sem OCR/texto de anexos; arquivos têm limite planejado de 256 MiB com partes de 8 MiB, a validar localmente. Uso das variantes BSC/BDG não selecionadas e ingestão real ficam para etapa operacional autorizada separadamente. Não tocar nos originais do NAS.
 
 ## Verificações e resultados reais
 
@@ -40,10 +42,11 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 - Conferência independente do JSON em PowerShell: 557 entradas/hashes únicos, 31 complementares, relatório AEE classificado em AEE, nenhum responsável inventado e nenhuma publicação definida. Agrupamentos complementares: 26 docentes, três convivência, um relatórios AEE e um avaliações adaptadas. O primeiro ensaio classificava AEE incorretamente devido ao prefixo numérico da pasta; o caso foi reproduzido, a regra corrigida e o catálogo final validado em `.ceea-workspace/nas-catalogo/20261113T182604Z/`.
 - Organização: validação Python do documento e catálogo PASS, com 31 linhas numeradas na proposta, 557 hashes únicos, 962 origens distintas, totais por setor reconciliados e formatos complementares 30 DOCX + um PPTX. `git diff --cached --check` PASS; staging contém somente os cinco Markdown deste módulo, sem arquivos originais ou catálogo detalhado local.
 - Proposta de governança: verificação documental Python PASS, cinco perfis existentes e oito setores atuais cobertos, situação explícita de aprovação pendente, acervo 557/31 preservado e seis documentos presentes. Revisados os exemplos de rascunho, restrição nominal, segregação de aprovação e revisão vencida; não são testes de regras implementadas. `git diff --cached --check` PASS, com somente quatro Markdown alterados/adicionados nesta etapa. Sem consulta ao NAS, servidor ou banco nesta etapa de regras.
+- Consolidação posterior: verificação documental Python PASS para aprovação registrada, oito tarefas numeradas, oito documentos, contratos/limites e acervo 557/31 presentes; nenhum checkbox de execução marcado como realizado. `git diff --cached --check` PASS para exatamente seis Markdown desta atualização. Revisão independente do desenho sem lacunas impeditivas. Consulta somente a metadados locais do inventário identificou maior arquivo de 124,31 MiB e XLSB; documentação oficial Cloudflare consultada para planejar multipart. Sem acesso ao NAS, instalação, migração, servidor ou testes de aplicação nesta consolidação.
 
 ## Arquivos e contratos
 
-- Somente os seis Markdown desta pasta compõem a entrega acumulada; nesta atualização foram alterados `AUDITORIA-E-PROPOSTA.md`, `ORGANIZACAO-POR-SETOR.md` e esta entrega, e adicionado `REGRAS-DE-ACESSO-E-PUBLICACAO.md`. Nenhum arquivo compartilhado de produto alterado. Resultados locais detalhados não entram no Git.
+- Somente os oito Markdown desta pasta compõem a entrega acumulada. Nesta atualização foram alterados auditoria, organização, política e entrega; adicionados desenho e plano. Nenhum arquivo compartilhado de produto alterado. Resultados locais detalhados não entram no Git.
 - Contratos/dependências propostos: navegação entre módulos, identidade e setores, capacidades documentais, tabelas prefixadas e anexos privados. Ainda não aprovados; detalhes na proposta.
 - Nenhuma dependência instalada, migração criada/aplicada ou configuração alterada. Nenhum segredo incluído.
 - Nenhum dado fictício de aplicação criado, banco consultado, servidor/ponte iniciado, mensagem enviada ou documento real copiado. O NAS foi acessado somente para a conferência autorizada, sem conectar o aplicativo a ele ou enviar conteúdo a serviços externos. Porta reservada conferida em código, sem teste de disponibilidade.
@@ -54,10 +57,10 @@ O SHA completo desta entrega documental será informado na resposta final do cha
 2. Ler `AUDITORIA-E-PROPOSTA.md`, especialmente decisões pendentes e pontos compartilhados.
    Ler também `CONFERENCIA-NAS.md` e `COMPARACAO-ACERVO.md` para o acervo existente, a fonte principal aprovada e os grupos que precisam de revisão.
    A seleção proposta atual e os 31 complementares incluídos estão em `ORGANIZACAO-POR-SETOR.md`.
-   A governança proposta está em `REGRAS-DE-ACESSO-E-PUBLICACAO.md`; precisa de aprovação do usuário antes de implementação.
+   A governança em `REGRAS-DE-ACESSO-E-PUBLICACAO.md` foi aprovada pelo usuário. Ler `DESENHO-CONSOLIDADO.md` e `PLANO-DE-IMPLEMENTACAO.md` antes de qualquer execução.
 3. Tratar a entrega como planejamento; não há migração nem funcionalidade a publicar.
-4. Aguardar as regras do usuário e o desenho aprovado antes de integrar código de produto. Não presumir histórico automaticamente compartilhado entre chats.
+4. Respeitar as regras já aprovadas e aguardar a revisão do desenho/plano antes da execução. Não presumir histórico automaticamente compartilhado entre chats.
 
 ## Resumo copiável
 
-Conhecimento e POPs: proposta de acesso, edição e publicação pronta para aprovação em docs/modulos/conhecimento-pops/REGRAS-DE-ACESSO-E-PUBLICACAO.md. Mantidos Doc's SIE como referência e os 31 complementares no catálogo de 557 conteúdos únicos. Propostas: leitura por setor/comum, restritos nominais com exceção Master, editores indicados, aprovação por outra pessoa (ADM nas áreas administrativas; DG em Pedagógico/Institucional), revisão anual e histórico protegido. Nenhuma regra aprovada ou implementada, sem alteração do NAS, importação, código ou migrações. Branch codex/conhecimento-pops; acrescentar o SHA completo informado na resposta final.
+Conhecimento e POPs: regras integralmente aprovadas pelo usuário e registradas; desenho consolidado e plano de oito tarefas prontos em docs/modulos/conhecimento-pops/. Revisão independente sem lacunas impeditivas. Mantidos Doc's SIE e os 31 complementares (557 conteúdos únicos). Planejados isolamento D1/R2, aprovação por outra pessoa e uploads privados em partes para arquivos grandes. Sem implementação, acesso/alteração do NAS nesta etapa, importação, migrações ou publicação. Contratos e verificações futuros documentados; somente coordenador integra/publica. Branch codex/conhecimento-pops; acrescentar o SHA completo informado na resposta final.

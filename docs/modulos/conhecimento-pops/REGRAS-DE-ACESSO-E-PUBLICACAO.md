@@ -1,6 +1,6 @@
-# Proposta de regras de acesso edição e publicação
+# Regras aprovadas de acesso edição e publicação
 
-Data: 13/11/2026. **Situação: proposta aguardando aprovação do usuário.** Nenhuma regra deste documento foi implementada ou tratada como aprovada.
+Data: 13/11/2026. **Situação: regras integralmente aprovadas pelo usuário nesta data.** A aprovação foi seguida de autorização para consolidar o desenho e preparar o plano; nenhuma regra foi implementada nesta etapa.
 
 A biblioteca mantém o login e os cinco perfis existentes. Esta proposta define capacidades próprias do módulo; não modifica poderes de compras, aprovações orçamentárias ou o perfil Financeiro no restante do sistema. O acervo continua com `Doc's SIE` como referência principal e os 31 complementares incluídos na proposta, totalizando 557 conteúdos únicos organizados por setor.
 
@@ -8,7 +8,7 @@ A biblioteca mantém o login e os cinco perfis existentes. Esta proposta define 
 
 Leitura dos documentos publicados do setor e dos institucionais comuns; edição por colaboradores indicados; publicação aprovada por outra pessoa. Usar a Diretoria Administrativa para os conteúdos administrativos e a Diretoria Geral para os pedagógicos e institucionais. O Master administra acessos e atua como aprovador alternativo, respeitando a separação entre edição e aprovação.
 
-Uma alternativa mais leve seria permitir que o responsável setorial publicasse diretamente seus documentos. A recomendação é usar aprovação por outra pessoa, porque a biblioteca disponibilizará procedimentos oficiais e históricos de revisão. A alternativa de publicação direta não está incluída nas regras propostas abaixo. A escolha final é do usuário.
+Foi considerada a alternativa de permitir publicação direta pelo responsável setorial. O usuário aprovou o conjunto com aprovação por outra pessoa, porque a biblioteca disponibilizará procedimentos oficiais e históricos de revisão. Publicação direta pelo próprio editor não faz parte da política aprovada.
 
 ## Matriz por perfil
 
@@ -116,8 +116,8 @@ Na futura importação, propor rascunhos de catalogação acessíveis ao Master 
 | POP vence a próxima revisão | Mantém leitura e exibe revisão pendente, sem publicação/arquivamento automático |
 | Master editou a revisão e tenta aprová-la | Publicação impedida; deve passar pelo outro aprovador competente |
 
-## Pontos expressos para aprovação do usuário
+## Registro de aprovação
 
-A aprovação deve confirmar este conjunto de propostas: leitura gerencial das diretorias apenas para comuns/setoriais; exceção do Master para todo o conteúdo, inclusive restrito; editores indicados sem mudança de perfil; vínculo setorial da tabela; aprovação por outra pessoa mesmo para Master; divisão ADM versus DG; rascunhos privados com acesso administrativo do Master; revisão anual com sinalização sem retirada automática.
+O usuário aprovou integralmente: leitura gerencial das diretorias apenas para comuns/setoriais; exceção do Master para todo o conteúdo, inclusive restrito; editores indicados sem mudança de perfil; vínculo setorial da tabela; aprovação por outra pessoa mesmo para Master; divisão ADM versus DG; rascunhos privados com acesso administrativo do Master; revisão anual com sinalização sem retirada automática. Não pedir novamente aprovação dessas regras ao consolidar ou executar o plano.
 
-Ainda precisarão ser preenchidos os nomes dos editores, vínculos de RH/subáreas, responsáveis documentais e concessões nominais. Esses cadastros não precisam ser inventados para aprovar as regras. A escolha final do editor, limites de arquivo e desenho técnico seguem para o plano de implementação após o alinhamento do escopo. Nesta etapa não há código, migração, alteração de permissões, importação ou publicação.
+Ainda precisarão ser preenchidos os nomes dos editores, vínculos de RH/subáreas, responsáveis documentais e concessões nominais na preparação operacional. Não inventar cadastros. O desenho consolidado está em `DESENHO-CONSOLIDADO.md` e o plano em `PLANO-DE-IMPLEMENTACAO.md`. Nesta etapa não há código de produto, migração, alteração de permissões, importação ou publicação.
