@@ -27,6 +27,7 @@ O último módulo começa somente pelo planejamento da integração, sem conexã
 ## Como começar outro chat
 
 1. Abrir a pasta exata da worktree do módulo como diretório de trabalho do chat/VS Code. Não continuar editando a pasta principal em outro chat.
+   No VS Code, também é possível abrir o arquivo correspondente em `workspaces/<modulo>.code-workspace` da pasta principal.
 2. Ler `AGENTS.override.md`, `AGENTS.md`, este documento, IMPLEMENTACAO.md, CONTINUAR-NO-VSCODE.md e ROADMAP.md.
 3. Conferir `git rev-parse --show-toplevel`, `git branch --show-current` e `git status --short`.
 4. Ler `.ceea-workspace/INICIAR-MODULO.md`, preparado localmente para aquele módulo. O manifesto `.ceea-worktree.json` reserva branch e porta.
