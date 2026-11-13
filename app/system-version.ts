@@ -1,1 +1,1 @@
-export const SYSTEM_VERSION='2026.11.13.6';
+export const SYSTEM_VERSION='2026.11.13.7';
