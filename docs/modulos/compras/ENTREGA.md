@@ -1,4 +1,26 @@
-# Entrega atual de Compras — teste de conferência e registro da cotação — 14/11/2026
+# Entrega atual de Compras — teste no pedido CE-F18F1D55 — 14/11/2026
+
+## Autorização e resultado
+
+O usuário escolheu a solicitação existente **CE-F18F1D55 — Material hidráulico para reposição** e esclareceu: registrar normalmente nesse pedido, usando apenas seu próprio número como lojista. Essa orientação posterior autoriza o registro no pedido escolhido e substitui, para esta nova etapa, o uso exclusivo do protocolo fictício anterior. As sete cotações destinadas a lojas reais devem continuar bloqueadas.
+
+- Conferido o pedido: 4 registros para mictório, em Cotação local, aprovação da necessidade preservada e nenhuma proposta antes do teste.
+- Realizado um único envio isolado pelo CLI oficial OpenClaw, conta `operacional`, para o contato confirmado do coordenador. Identificador do envio: `3EB0E4B6674700FC518642`. Nenhuma chave de envio foi alterada, nenhuma das sete tarefas foi liberada e nenhum serviço foi iniciado/reiniciado. O envio isolado não usou o despacho da fila bloqueada.
+- Resposta `CE-F18F1D55 — TESTE LOJISTA` recebida em 14/11/2026 às **11:37:54 de Manaus**, identificador nativo `3EB09AA5FC65E6E5277189`; arquivo privado processado como `.json.done` pela ponte existente.
+- Vínculo automático confirmado no painel: **Pedido CE-F18F1D55** e **Fornecedor TESTE — Loja do Coordenador — NÃO COMPRAR**, pelo protocolo no texto e telefone cadastrado. Não foi necessário cadastrar outro contato ou alterar a categoria do fornecedor.
+- Proposta registrada no próprio **CE-F18F1D55**: 4 × R$ 50,00 = R$ 200,00; frete R$ 20,00; total **R$ 220,00**; outras despesas zero, conferidas pela composição do total; Pix à vista; entrega literal de **5 dias úteis**, preservada nas condições; validade de sete dias desde o recebimento, até 21/11/2026.
+- A resposta informa marca/modelo e estoque fictícios e diz expressamente **compatibilidade não confirmada**. Aplicada a regra normal do cadastro: equivalência técnica não confirmada e proposta pendente para comparação/seleção. Garantia, nota fiscal e regularidade não foram presumidas. Não foi selecionada proposta para execução nem registrado pedido de compra ou pagamento.
+- Nova mensagem marcada como **Conferida**, com autoria Master, valores, referência à proposta no pedido, identificadores nativos e pendência técnica registrada na nota. As outras mensagens recebidas não foram conferidas por esta operação.
+- Inspeção visual final: as sete tarefas de lojas reais permanecem com **Envio desativado** e o servidor continua indicando envio desativado. Aprovação, itens, solicitação, competência e históricos anteriores foram preservados; não houve arquivamento/reanálise do pedido.
+- Após o usuário avisar que respondeu, uma leitura final da inbox localizou a mesma mensagem de 11:37:54, sem resposta posterior desse contato com o protocolo naquele momento.
+
+Evidências privadas fora do Git: `outputs/whatsapp-import/ce-f18f1d55-cotacao-registrada.jpg` e `outputs/whatsapp-import/ce-f18f1d55-conferencia-concluida.jpg`. Telefone pessoal, conteúdo privado da inbox e credenciais não foram copiados para o repositório. As restrições do sandbox exigiram execução autorizada do CLI e leitura da mensagem de teste fora do sandbox; nenhum bloqueio de aprovação foi contornado.
+
+Entrega somente documental: `docs/modulos/compras/ENTREGA.md`, branch `codex/compras`, base `ade6c163bca72638486680f6fdc1e5ff3874d705`. SHA final informado ao coordenador. Sem mudanças de código, migrações, dependências ou publicação necessária; validação operacional pela UI e recibos nativos. Preservar a proposta de teste registrada no pedido a pedido do usuário; não repetir envio, liberar as sete tarefas ou confirmar equivalência sem informação técnica.
+
+---
+
+# Histórico — teste de conferência e registro da cotação em pedido fictício — 14/11/2026
 
 ## Escopo autorizado e resultado
 
