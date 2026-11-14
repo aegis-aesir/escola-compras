@@ -1,4 +1,32 @@
-# Entrega atual de Compras — importação de respostas WhatsApp — 14/11/2026
+# Entrega atual de Compras — teste de conferência e registro da cotação — 14/11/2026
+
+## Escopo autorizado e resultado
+
+Após validar a importação, o usuário autorizou testar a conferência da resposta e o registro da cotação, usando somente seu contato e mantendo as sete cotações reais bloqueadas. Executado pelo painel autenticado como Master, sem mudança de funcionalidades, permissões, configuração de envio, serviços ou publicação.
+
+- Criada a solicitação **exclusivamente fictícia CE-A53B0E94**, título `TESTE WA — conferência e cotação — 14/11/2026`, com 4 registros para mictório fictícios, marca Teste T1, e categoria exclusiva `TESTE COTAÇÃO COORDENADOR`.
+- Criado somente o fornecedor `TESTE — Loja do Coordenador — NÃO COMPRAR`, nessa categoria exclusiva e com o telefone previamente confirmado pelo próprio usuário. O telefone pessoal não é versionado nesta entrega.
+- Preparação administrativa pelo fluxo disponível: formulário, referência manual explicitamente fictícia, conferência administrativa e decisão de necessidade de teste pelo Master. A abertura da pesquisa necessária para disponibilizar o registro manual gerou uma pesquisa do item fictício; houve retorno para revisão, sem substituir a estimativa manual já salva. Não foi preparada mensagem de cotação nem acionado envio pelo WhatsApp nesta etapa.
+- Conferidos os dados da resposta `TESTE-WA-20261114-IMPORTACAO`: 4 × R$ 50,00 = R$ 200,00; frete R$ 20,00; total **R$ 220,00**; 4 unidades disponíveis; Pix à vista; prazo literal **5 dias úteis**; validade de 7 dias desde 14/11, registrada até 21/11/2026.
+- Proposta salva no pedido fictício, exclusivamente para o fornecedor de teste. O comparativo exibiu BRL 220,00, cobertura de 4 unidades a BRL 50,00, subtotal BRL 200,00 e frete BRL 20,00. Nenhuma proposta registrada no pedido real CE-F18F1D55.
+- A resposta importada foi marcada como **Conferida** com autoria Master e nota de conferência referenciando o protocolo fictício, o fornecedor e os valores. Como chegou antes dos cadastros, os IDs de vínculo automático permanecem não identificados; a referência manual ficou documentada na nota e no campo Documento / anexo / referência da proposta. Não foi alterada essa lógica do sistema.
+- Conferência visual final: as mesmas sete tarefas de CE-F18F1D55 permanecem com **Envio desativado**, e o painel informa envio do servidor desativado. Nenhuma liberação, cancelamento, reenvio ou nova tarefa de WhatsApp foi acionada.
+
+## Limites e estado preservado
+
+O campo numérico de entrega aceita somente um número de dias, sem unidade útil/corrida. Foi registrado 5, preservando expressamente **5 DIAS ÚTEIS, sem conversão para dias corridos** nas condições e ressalvas. Não foram inventadas garantia, nota fiscal, regularidade ou disponibilidade imediata; campos sem informação permaneceram não informados. Outras despesas de zero foram conferidas pela igualdade do total informado com itens mais frete.
+
+Não foi acionado **Selecionar para execução**, nem registrado pedido de compra, execução, nota, pagamento ou recebimento. A quantidade mínima configurada de três propostas não foi alterada. A solicitação e o fornecedor fictícios permanecem identificados para consulta do teste; não foram arquivados/excluídos. A categoria exclusiva evita compatibilidade desse contato com materiais dos pedidos reais.
+
+Evidências privadas, fora do Git: `outputs/whatsapp-import/cotacao-teste-registrada.png` (proposta e cobertura) e `outputs/whatsapp-import/conferencia-teste-concluida.png` (nota de conferência e sete bloqueios). A verificação desta etapa foi operacional pela UI; não houve alteração de código que exigisse repetir build ou testes automatizados.
+
+- Branch: `codex/compras`; base desta etapa: `1a6ca82a09c75e5edeeb2552e84f17f876f6ab40`.
+- Arquivo versionado nesta etapa: somente este registro. SHA final informado na resposta/aviso ao coordenador.
+- Sem migrações, dependências, contratos compartilhados novos ou publicação necessária. Coordenador deve integrar apenas a documentação e preservar os dados fictícios para conferência, sem repetir teste ou habilitar envio.
+
+---
+
+# Histórico — importação de respostas WhatsApp — 14/11/2026
 
 ## Falha, causa e correção aplicada
 
