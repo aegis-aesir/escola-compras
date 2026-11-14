@@ -20,9 +20,9 @@
 
 - [x] Confirmar falha: resposta presente no WhatsApp/log de entrada, ausente na pasta da ponte; opção do plugin ausente.
 - [x] Aplicar somente a opção da conta operacional pelo CLI oficial; o CLI informa aplicação sem reiniciar o gateway.
-- [x] Validar um novo retorno de teste: arquivo privado com identificador nativo e processamento pela ponte existente (`.json.done`); a conferência visual no painel aguarda login do usuário.
-- [ ] Conferir que as sete tarefas continuam com envio desativado, além das duas chaves de envio.
+- [x] Validar um novo retorno de teste: arquivo privado com identificador nativo e processamento pela ponte existente (`.json.done`); coordenador confirmou o registro `review` no banco de produção, sem pedido/fornecedor. Leitura direta substituiu a dependência de login; sem inspeção visual do painel.
+- [x] Conferir que as sete tarefas continuam com envio desativado, além das duas chaves de envio: coordenador confirmou sete bloqueadas, zero tentativas, nenhum envio confirmado e chave do servidor `false`; launcher da ponte preserva `false`.
 - [x] Executar suítes existentes do hook/runner e de integração D1 local; documentar evidências e limitações.
-- [ ] Atualizar INTEGRACOES.md e entrega; commitar/enviar somente codex/compras e avisar o coordenador com SHA.
+- [x] Atualizar INTEGRACOES.md e entrega; commitar/enviar somente codex/compras e avisar o coordenador com SHA.
 
 **Cobertura de riscos:** eventos de outra conta, grupos/LIDs não resolvidos e datas inválidas continuam rejeitados; duplicatas não criam propostas; envio desativado não chama o gateway; falhas de importação preservam registros privados para revisão.
