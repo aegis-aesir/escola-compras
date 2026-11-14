@@ -4,11 +4,14 @@ import {currentLocalUser} from '../../local-session';
 import {FlowError} from '../../workflow';
 import {agendaSnapshot,importAgendaContacts,importSyncedContacts,saveAgendaContact} from '../../../lib/contact-agenda';
 import {requestContactSync} from '../../../lib/contact-sync';
+import {quotationContactsSnapshot} from '../../../lib/quotation-contacts';
+import {row} from '../../../lib/integrations';
+import type {Purchase} from '../../model';
 export const dynamic='force-dynamic';
 const response=(data:object,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 async function context(){const user=await currentLocalUser();if(!user)throw new FlowError('Entre com seu usuário e senha.',401);if(!['admin','administrativo'].includes(user.role))throw new FlowError('Seu perfil não permite acessar a agenda de contatos.',403);if(!env.DB)throw new FlowError('Agenda indisponível.',503);return {db:env.DB,user};}
 function fail(e:unknown){if(e instanceof FlowError)return response({error:e.message},e.status);if(e instanceof z.ZodError)return response({error:e.issues[0]?.message||'Confira os dados do contato.'},400);return response({error:'Não foi possível concluir a operação da agenda. Recarregue e tente novamente.'},500);}
-export async function GET(){try{const {db}=await context();return response(await agendaSnapshot(db,new Date().toISOString()));}catch(e){return fail(e);}}
+export async function GET(req:Request){try{const {db}=await context(),now=new Date().toISOString(),id=new URL(req.url).searchParams.get('quotationRequestId');if(id){const request=await row<Purchase>(db,z.string().uuid().parse(id),'request');if(!request)throw new FlowError('Solicitação não encontrada.',404);return response(await quotationContactsSnapshot(db,request,now));}return response(await agendaSnapshot(db,now));}catch(e){return fail(e);}}
 export async function POST(req:Request){try{
  const {db,user}=await context();
  if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new FlowError('Origem inválida.',403);

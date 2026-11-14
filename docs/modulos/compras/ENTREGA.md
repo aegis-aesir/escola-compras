@@ -1,4 +1,22 @@
-# Entrega atual de Compras — agenda de contatos — 14/11/2026
+# Entrega atual — todos os contatos e seleção manual — 14/11/2026
+
+Pedido direto do usuário: na janela Preparar mensagem de cotação, acessar todos os contatos e escolher manualmente; sistema deixa relevantes pré-selecionados. Esta orientação posterior substitui a restrição anterior da janela a fornecedores classificados compatíveis. Implementação na branch **codex/compras**, base b6c730b54f0e61ea825067e8031f99f6396e2e30 (main publicada c4584d5 incorporada). SHA final comunicado ao coordenador após commit/push.
+
+- Lista inclui fornecedores, contatos gerais/sem classificação e última prévia WhatsApp concluída; dedupe por telefone, busca, filtros Todos/Sugeridos/Selecionados e páginas de 25. Fornecedores compatíveis são pré-selecionados até 100; demais disponíveis para escolha manual. Limpar/buscar/paginar não reverte escolhas. Telefones inválidos/própria escola/fora do transporte ficam indisponíveis com motivo.
+- Nova API de seleção usa referências verificadas e versões/telefone; contatos da prévia só são salvos se escolhidos ao preparar, mantendo sem classificação. Nenhuma promoção automática ou alteração de categorias/abrangências. Modelo genérico permanece preservado.
+- Nova fila manual é explícita e auditada, mantém bloqueios de aprovação/etapa/arquivamento/competência/telefone/duas chaves, dedupe e idempotência; tarefas antigas permanecem intactas. Caminhos legados continuam estritos. Resposta de contato geral tem vínculo próprio, sem fornecedor/proposta inventados.
+
+**Verificação:** 39/39 testes da rodada de regressão passaram, incluindo seleção/agenda/parser/sync/fornecedores/integração/ponte/perfis/workflow; HTTP local 5185 passou com referências forjadas, permissões, prévia, preparação manual e repetição, importação somente dos escolhidos e tarefas anteriores inalteradas. Tipos, lint dirigido e build aprovados. Revisão independente encerrou P2 de normalização legada; testes RED/GREEN cobrem esse caso, repetição da seleção da prévia e fechamento da competência entre preparação e claim/retry.
+
+**UI local:** dados exclusivamente fictícios, 56 contatos em três páginas, oito sugeridos inicialmente selecionados, escolha manual de contato sem classificação e fornecedor fora do segmento/abrangência, limpeza e preservação entre buscas/páginas/filtros. Preparação local de dois contatos devolveu sucesso com envio bloqueado. Celular com 390 × 844, diálogo de 373 px e área rolável de 373 px, sem excesso horizontal. Evidências privadas ignoradas: outputs/cotacao-todos-contatos-desktop.jpg e outputs/cotacao-todos-contatos-mobile.jpg. Nada foi preparado/importado/sincronizado/enviado em produção nesta etapa.
+
+**Compartilhados:** app/dashboard.tsx, quotation-message-form.tsx, integration-model.ts, integration-panel.tsx, api/contacts/route.ts e api/data/route.ts; lib/integrations.ts e contact-agenda.ts. Novos app/quotation-contact-model.ts, quotation-contact-selection.ts, quotation-contacts.css; lib/quotation-contacts.ts; scripts quotation-contacts-test/quotation-contacts-http-test/quotation-contact-selection-test; entrada quotation-message-ui-test.mjs delega ao teste atual, pois a expectativa anterior de ausência de pré-seleção foi substituída pelo pedido do usuário. AGENTS/INTEGRACOES/spec/plano atualizados. Sem dependências ou migração.
+
+**Integração:** coordenador deve revisar/integrar/publicar no Site existente. Cliente da ponte não muda: tarefas continuam whatsapp_quote/contact-v1. Não exige restart/pareamento/liberação de envio. Confirmar ambas as chaves desativadas e as mesmas sete tarefas reais blocked/attempts0 após publicação. Não usar o pedido real para preparar mensagens na validação. Esta worktree não alterou main, hospedagem, instalação ou dados reais.
+
+---
+
+# Histórico — agenda de contatos — 14/11/2026
 
 Usuário aprovou implementar sincronização dos contatos conhecidos do WhatsApp e importação CSV/VCF para completar a agenda. Implementado na branch **codex/compras**, worktree Compras/porta **5185**. Base do trabalho: 0a6055979283d4973e9775eb0a037ffdbdb92e12; SHA final da entrega comunicado diretamente ao coordenador após commit. **Não publicado/instalado em produção por este chat.**
 

@@ -41,12 +41,12 @@ export async function saveAgendaContact(db:D1Database,input:unknown,actor:string
  const data=kind==='supplier'?{...previous,...supplierSchema.parse({...b.data,contact:b.data.contact||''}),company:b.data.company,city:b.data.city,state:b.data.state,agendaSource:source,updatedAt:now,updatedBy:actor}:{...b.data,classification:b.classification,source,updatedAt:now,updatedBy:actor};
  const id=old?.id||crypto.randomUUID();
  const duplicateGuard=` AND NOT EXISTS(SELECT 1 FROM records AS other WHERE other.kind IN ('supplier','agenda_contact') AND REPLACE(json_extract(other.data,'$.phone'),'+','')=? AND other.id!=?)`;
- const processingGuard=" AND NOT EXISTS(SELECT 1 FROM records AS task WHERE task.kind='integration_job' AND json_extract(task.data,'$.supplierId')=? AND json_extract(task.data,'$.type')='whatsapp_quote' AND json_extract(task.data,'$.state') IN ('running','uncertain'))";
+ const processingGuard=" AND NOT EXISTS(SELECT 1 FROM records AS task WHERE task.kind='integration_job' AND COALESCE(json_extract(task.data,'$.manualSelection.recipientId'),json_extract(task.data,'$.supplierId'))=? AND json_extract(task.data,'$.type')='whatsapp_quote' AND json_extract(task.data,'$.state') IN ('running','uncertain'))";
  const changedPhone=old&&previous.phone?.replace(/\D/g,'')!==b.data.phone.slice(1);
  const write=old?db.prepare('UPDATE records SET kind=?,data=?,version=version+1 WHERE id=? AND version=?'+duplicateGuard+(changedPhone?processingGuard:'')).bind(kind,JSON.stringify(data),id,old.version,b.data.phone.slice(1),id,...(changedPhone?[id]:[])):db.prepare('INSERT INTO records(id,kind,data,version) SELECT ?,?,?,1 WHERE 1=1'+duplicateGuard).bind(id,kind,JSON.stringify(data),b.data.phone.slice(1),id);
  const result=await db.batch([write,log(db,id,actor,kind==='supplier'?'Classificação e cadastro do fornecedor conferidos na agenda':'Contato salvo na agenda; sem envio de mensagens',now)]);
  if(result[0].meta.changes!==1){
-  if(changedPhone&&await db.prepare("SELECT id FROM records WHERE kind='integration_job' AND json_extract(data,'$.supplierId')=? AND json_extract(data,'$.state') IN ('running','uncertain') LIMIT 1").bind(id).first())throw new FlowError('Há envio em processamento ou incerto. Confira antes de alterar o telefone.',409);
+  if(changedPhone&&await db.prepare("SELECT id FROM records WHERE kind='integration_job' AND COALESCE(json_extract(data,'$.manualSelection.recipientId'),json_extract(data,'$.supplierId'))=? AND json_extract(data,'$.state') IN ('running','uncertain') LIMIT 1").bind(id).first())throw new FlowError('Há envio em processamento ou incerto. Confira antes de alterar o telefone.',409);
   throw new FlowError('Contato atualizado ou telefone já cadastrado. Recarregue a agenda.',409);
  }
  return {id,version:(old?.version||0)+1};
