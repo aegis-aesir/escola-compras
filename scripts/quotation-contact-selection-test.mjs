@@ -68,7 +68,7 @@ assert.match(markup,/>Todos</);
 assert.match(markup,/>Sugeridos</);
 assert.match(markup,/>Selecionados</);
 assert.equal((markup.match(/<textarea\b/g)||[]).length,1);
-assert.match(markup,/Olá, \{\{contato\}\}!/);
+assert.match(markup,/Olá, \{\{contato\}\}\. Tudo bem\?/);
 assert.match(markup,/<button[^>]*type="submit"[^>]*disabled/);
 console.log('PASS: carregamento explícito, filtros acessíveis, modelo genérico e nenhum preparo ao renderizar.');
 

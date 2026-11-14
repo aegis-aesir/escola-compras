@@ -24,7 +24,7 @@ assert.deepEqual(api.compatibleQuotationSuppliers({...request,archived:{reason:'
 assert.deepEqual(api.compatibleQuotationSuppliers({...request,items:[{...request.items[0],category:undefined}]},suppliers),[],'não adivinhar categorias legadas');
 const template=api.quotationMessageTemplate(request);
 assert.ok(template.includes('{{contato}}'));
-assert.ok(template.includes('Registro TESTE — 4 un.'));
+assert.ok(template.includes('4 un de Registro TESTE.'));
 assert.ok(!template.includes('Contato A'));
 assert.equal(api.quotationMessage(request,suppliers[0]),template.replace('{{contato}}','Contato A'),'modelo preserva o conteúdo original da cotação');
 assert.ok(api.quotationMessage({...request,items:[{...request.items[0],spec:'Texto literal {{contato}} do item'}]},suppliers[0]).includes('Texto literal {{contato}} do item'),'personalização não substitui marcadores que façam parte da especificação original');
@@ -51,8 +51,8 @@ try{
   assert.equal(result.outcome,'success');
  }
  assert.equal(sent.length,2);
- assert.ok(sent[0].args.message.includes('Olá, Contato A!'));
- assert.ok(sent[1].args.message.includes('Olá, Contato B!'));
+ assert.ok(sent[0].args.message.includes('Olá, Contato A. Tudo bem?'));
+ assert.ok(sent[1].args.message.includes('Olá, Contato B. Tudo bem?'));
  assert.ok(sent.every(call=>call.agentId==='operacional'&&!call.args.message.includes('{{contato}}')));
  assert.equal(sent[0].args.target,jobs[0].target);
  assert.equal(sent[0].idempotencyKey,jobs[0].id);

@@ -1,4 +1,22 @@
-# Entrega atual — todos os contatos e seleção manual — 14/11/2026
+# Entrega atual — mensagem curta de cotação — 14/11/2026
+
+O usuário pediu simplificar o texto para saudação, confirmação e quantidade/item, e confirmou que pode incluir o código do pedido. Modelo gerado:
+
+> Olá, {{contato}}. Tudo bem?
+> Pode confirmar pra mim:
+> 4 un de Registro para mictório.
+>
+> Ref.: CE-F18F1D55
+
+Texto gerado dinamicamente por pedido, mantendo a personalização contact-v1. Cada item tem linha própria, unidade sem ponto final antes de “de” e ponto após o nome. Especificações e dados de assinatura permanecem quando informados. Retirados apresentação institucional extensa e parágrafos gerais de condições comerciais do primeiro contato; os dados originais e regras de cotação não mudam.
+
+Arquivos: app/model.ts; expectativas atualizadas em scripts/quotation-suppliers-test.mjs e quotation-contact-selection-test.mjs. Validação: três suítes dirigidas, tipos, build e revisão independente aprovados. Somente dados fictícios e transporte simulado; sem mensagens reais, migração, dependências ou mudança de cliente/ponte. Branch codex/compras, base84f2ec5; SHA final informado ao coordenador após commit/push.
+
+Coordenador revisa/integra/publica. O novo texto vale para modelos gerados e novas tarefas; tarefas já preparadas preservam a mensagem armazenada/idempotência. Não reescrever ou liberar as sete tarefas reais nesta entrega. Ambas as chaves de envio continuam desativadas, sem restart necessário. Conferir somente o modelo na UI, sem clicar Preparar no pedido real.
+
+---
+
+# Histórico — todos os contatos e seleção manual — 14/11/2026
 
 Pedido direto do usuário: na janela Preparar mensagem de cotação, acessar todos os contatos e escolher manualmente; sistema deixa relevantes pré-selecionados. Esta orientação posterior substitui a restrição anterior da janela a fornecedores classificados compatíveis. Implementação na branch **codex/compras**, base b6c730b54f0e61ea825067e8031f99f6396e2e30 (main publicada c4584d5 incorporada). SHA final comunicado ao coordenador após commit/push.
 
