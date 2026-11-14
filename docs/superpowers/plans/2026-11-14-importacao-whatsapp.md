@@ -26,3 +26,5 @@
 - [x] Atualizar INTEGRACOES.md e entrega; commitar/enviar somente codex/compras e avisar o coordenador com SHA.
 
 **Cobertura de riscos:** eventos de outra conta, grupos/LIDs não resolvidos e datas inválidas continuam rejeitados; duplicatas não criam propostas; envio desativado não chama o gateway; falhas de importação preservam registros privados para revisão.
+
+**Complemento visual:** após o login do usuário, conferidos no painel os sete bloqueios, envio do servidor desativado e conteúdo integral da resposta em Conferência pendente, sem vínculos. Nenhuma conferência/proposta gravada; captura privada fora do Git.
