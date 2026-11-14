@@ -149,6 +149,28 @@ código revisado. Verifique `openclaw hooks info estrelas-compras`. A ativação
 pode recarregar os hooks; alterações posteriores nos arquivos podem exigir
 reinício do gateway. Isso não envia mensagens de teste.
 
+O plugin WhatsApp instalado em 14/11/2026 também exige habilitar a emissão dos
+eventos de recebimento **somente na conta operacional**:
+
+```powershell
+openclaw config set channels.whatsapp.accounts.operacional.pluginHooks.messageReceived true
+```
+
+Instalar/habilitar `estrelas-compras` não basta: sem essa opção o plugin não emite
+`message:received`, mesmo quando a mensagem chega ao WhatsApp e o agente responde.
+O CLI informa quando a opção foi aplicada sem reiniciar o gateway. Não ativar a
+opção global `channels.whatsapp.pluginHooks.messageReceived`, nem a da conta
+pessoal; preservar modelos, credenciais e políticas do canal. Esta opção permite
+a captura de recebidos e **não habilita envio de cotações**: as duas chaves de envio
+continuam independentes e podem permanecer em `false` durante a validação.
+
+Validar com uma nova resposta do contato de teste autorizado: identificador
+nativo no arquivo privado da inbox, confirmação `.json.done` pela ponte e mensagem
+em **Cotação → Agente WhatsApp → Mensagens recebidas para conferência**. Sem
+fornecedor/protocolo identificáveis, o registro permanece sem vínculo automático;
+não criar uma proposta ou associar um teste a uma solicitação real. A ativação não
+importa mensagens anteriores e não exige publicação de uma nova versão do Site.
+
 ## Falhas e conferência
 
 Envio sem confirmação, timeout ou processamento interrompido vira **Envio incerto**.
