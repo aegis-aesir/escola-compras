@@ -1,4 +1,50 @@
-# Entrega atual de Compras — distinguir material de manutenção de serviço — 13/11/2026
+# Entrega atual de Compras — importação de respostas WhatsApp — 14/11/2026
+
+## Falha, causa e correção aplicada
+
+O teste autorizado chegou ao WhatsApp operacional e recebeu resposta, mas não gerou arquivo na inbox nem registro no CEEA Manager. O hook `estrelas-compras` estava instalado e habilitado. O plugin WhatsApp instalado exige também `channels.whatsapp.accounts.operacional.pluginHooks.messageReceived=true`; a opção estava ausente e seu padrão é `false`.
+
+Diagnóstico confirmado no código instalado (`shouldEmitWhatsAppMessageReceivedHooks`/`emitWhatsAppMessageReceivedHooksIfEnabled`) e na configuração privada. O dispatch do canal suprime a emissão genérica duplicada, portanto a habilitação do hook por si só não produz os eventos.
+
+Aplicada pelo CLI oficial **somente** a opção da conta operacional. O gateway registrou `config hot reload applied (channels.whatsapp.accounts.operacional.pluginHooks)` às 10:19:51 de 14/11/2026 em Manaus. Não houve reinício do gateway, início/reinício da ponte, publicação, alteração das chaves de envio, políticas do canal, modelos, credenciais ou contas. O número escolar permanece +55 92 9201-7107. A opção global e a da conta pessoal permanecem ausentes; a conta pessoal não foi usada como origem de envio.
+
+**Não foi necessário alterar código da aplicação/hook/runner.** Esta entrega versiona a configuração obrigatória e o procedimento de validação, sem guardar configuração privada, telefone pessoal, credenciais ou conteúdo da resposta no Git.
+
+- Branch: `codex/compras`; base: `c6331f8e80aadc687c39d4e7fcfbde504e812b62`.
+- SHA desta entrega: informado na resposta e ao coordenador; este arquivo integra o próprio commit.
+- Arquivos: `INTEGRACOES.md`, este registro e `docs/superpowers/plans/2026-11-14-importacao-whatsapp.md`.
+- Sem migração, dependência, API/contrato, mudança de permissões ou build/publicação do Site.
+
+## Evidências e validação
+
+- Antes: evento de entrada confirmado nos logs do canal e resposta visível no WhatsApp; pasta de entrada da ponte vazia; `messageReceived` ausente.
+- Depois: novo teste isolado, autorizado pelo usuário, com marcador `TESTE-WA-20261114-IMPORTACAO`; envio pela conta operacional e retorno fictício do contato confirmado.
+- A resposta entrou no hook com identificador nativo, conta operacional e destino escolar correto. O arquivo privado passou a `.json.done`: a ponte existente recebeu confirmação de sucesso do endpoint do CEEA Manager. Recebimento em 14/11/2026 às 10:21:06 (Manaus).
+- `node --test scripts/openclaw-test.mjs scripts/agent-routing-test.mjs`: **PASS, 17 testes**, incluindo conta/número, rejeição de grupos/datas inválidas, journal idempotente e ausência de chamada de envio quando desativado.
+- `node scripts/integration-test.mjs`: **PASS**, D1 temporário isolado; recebimento idempotente, nenhuma proposta automática, ambas as chaves de envio e resultados incertos preservados.
+- Inspeção após o teste: captura operacional `true`; opções global/pessoal ausentes; launcher da ponte continua com `ESTRELAS_ENABLE_SEND=false`; tarefa já existente continua em execução.
+- Conferência visual no painel e dos sete registros reais: aguardando login do usuário na aba aberta para essa validação. Não afirmar essa etapa como concluída com base apenas no `.done`.
+
+O teste não contém protocolo de solicitação real nem cria cadastro de loja fictícia. A mensagem deve ficar em **Mensagens recebidas para conferência**, sem vínculo automático ou proposta. Não associar os valores fictícios ao pedido real. Não foi acionado preparo, liberação, cancelamento, seleção ou reenvio das sete cotações reais.
+
+## Orientação ao coordenador
+
+### Conferência concluída pelo coordenador — 14/11/2026
+
+Consulta exclusivamente de leitura ao D1 e às variáveis de execução pelo conector Sites, sem operar a interface autenticada ou a ponte:
+
+- O registro com marcador `TESTE-WA-20261114-IMPORTACAO` existe em `integration_inbox`, estado `review` (para conferência), conta `operacional`, destinado ao número escolar exato. Recebido às **10:21:06** e registrado às **10:21:11**, em Manaus. `requestId` e `supplierId` ausentes: sem vínculo com solicitação ou fornecedor.
+- As sete tarefas de cotação verificadas estão em `blocked` (Envio desativado), todas com `attempts=0`, sem `providerMessageId` e sem `sentAt`.
+- A variável de produção `WHATSAPP_SEND_ENABLED` permanece `false`, revisão de ambiente 1. O launcher versionado mantém `ESTRELAS_ENABLE_SEND=false`.
+- Nenhum novo envio/teste, liberação, cancelamento, reprocessamento, vínculo ou alteração de produção foi feito nesta conferência. Gateway e ponte não foram iniciados/reiniciados. Não houve publicação, migração ou incremento da versão da aplicação.
+
+A pendência de confirmação de existência e estado está encerrada por leitura do banco. Não foi realizada conferência visual do painel autenticado. A mensagem fictícia permanece para análise humana e não deve virar proposta ou vínculo real. Revisão documental independente aprovada; escopo integrado somente no Git.
+
+Revisar/integrar a documentação desta branch. A configuração local já foi corrigida e validada pela importação; **não repetir o envio**, não reinstalar/reiniciar a ponte e não publicar apenas para aplicar esta opção. Confirmar o registro no painel e preservar as sete tarefas com envio desativado. Em outra instalação, aplicar a opção somente na conta operacional, conforme `INTEGRACOES.md`, mantendo as duas chaves de envio em `false`. Eventos anteriores não são retroimportados automaticamente.
+
+---
+
+# Histórico — distinguir material de manutenção de serviço — 13/11/2026
 
 ## Problema e resultado
 
