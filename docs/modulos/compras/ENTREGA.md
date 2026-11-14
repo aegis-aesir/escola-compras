@@ -23,13 +23,13 @@ Aplicada pelo CLI oficial **somente** a opção da conta operacional. O gateway 
 - `node --test scripts/openclaw-test.mjs scripts/agent-routing-test.mjs`: **PASS, 17 testes**, incluindo conta/número, rejeição de grupos/datas inválidas, journal idempotente e ausência de chamada de envio quando desativado.
 - `node scripts/integration-test.mjs`: **PASS**, D1 temporário isolado; recebimento idempotente, nenhuma proposta automática, ambas as chaves de envio e resultados incertos preservados.
 - Inspeção após o teste: captura operacional `true`; opções global/pessoal ausentes; launcher da ponte continua com `ESTRELAS_ENABLE_SEND=false`; tarefa já existente continua em execução.
-- Conferência visual no painel e dos sete registros reais: aguardando login do usuário na aba aberta para essa validação. Não afirmar essa etapa como concluída com base apenas no `.done`.
+- Conferência independente pelo coordenador no banco de produção: mensagem de teste em `review` (**Conferir**), conta operacional, sem `requestId`/`supplierId`; sete cotações bloqueadas, zero tentativas e nenhuma confirmação de envio. `WHATSAPP_SEND_ENABLED=false` confirmado em produção. Essa leitura complementa o `.done`; não houve login nem inspeção visual do painel nesta etapa.
 
 O teste não contém protocolo de solicitação real nem cria cadastro de loja fictícia. A mensagem deve ficar em **Mensagens recebidas para conferência**, sem vínculo automático ou proposta. Não associar os valores fictícios ao pedido real. Não foi acionado preparo, liberação, cancelamento, seleção ou reenvio das sete cotações reais.
 
 ## Orientação ao coordenador
 
-Revisar/integrar a documentação desta branch. A configuração local já foi corrigida e validada pela importação; **não repetir o envio**, não reinstalar/reiniciar a ponte e não publicar apenas para aplicar esta opção. Confirmar o registro no painel e preservar as sete tarefas com envio desativado. Em outra instalação, aplicar a opção somente na conta operacional, conforme `INTEGRACOES.md`, mantendo as duas chaves de envio em `false`. Eventos anteriores não são retroimportados automaticamente.
+Revisar/integrar a documentação desta branch. A configuração local já foi corrigida e validada pela importação e leitura independente de produção; **não repetir o envio**, não reinstalar/reiniciar a ponte e não publicar apenas para aplicar esta opção. Preservar as sete tarefas com envio desativado. Em outra instalação, aplicar a opção somente na conta operacional, conforme `INTEGRACOES.md`, mantendo as duas chaves de envio em `false`. Eventos anteriores não são retroimportados automaticamente.
 
 ---
 
