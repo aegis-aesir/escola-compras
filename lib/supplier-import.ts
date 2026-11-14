@@ -19,7 +19,7 @@ export async function importSuppliers(db:D1Database,input:unknown,now:string) {
     const id=`${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`;
     const data={...contact,phone:normalized,importSource:{source:batch.source,importedAt:now,importedBy:'Ponte autenticada — importação administrativa'}};
     const written=await db.batch([
-      db.prepare("INSERT OR IGNORE INTO records (id,kind,data,version) SELECT ?,'supplier',?,1 WHERE NOT EXISTS (SELECT 1 FROM records WHERE kind='supplier' AND REPLACE(json_extract(data,'$.phone'),'+','')=?)").bind(id,JSON.stringify(data),normalized.slice(1)),
+      db.prepare("INSERT OR IGNORE INTO records (id,kind,data,version) SELECT ?,'supplier',?,1 WHERE NOT EXISTS (SELECT 1 FROM records WHERE kind IN ('supplier','agenda_contact') AND REPLACE(json_extract(data,'$.phone'),'+','')=?)").bind(id,JSON.stringify(data),normalized.slice(1)),
       db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),id,'Importação administrativa via ponte',`Fornecedor importado de ${batch.source}: ${contact.name}`,now)
     ]);
     if(written[0].meta.changes===1) {results.push({index,id,status:'created'});continue;}

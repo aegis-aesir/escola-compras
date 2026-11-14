@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { bridgeConfig, callSite, executeJob } from './client.mjs';
+import {runContactSync} from './contact-sync.mjs';
 
 export async function runOnce(config,options={}) {
   const site=options.site||((body)=>callSite(config,body));
@@ -28,8 +29,14 @@ export async function runOnce(config,options={}) {
       catch(e){if([400,409].includes(e.status))await rename(file,file+'.review');else throw e}
     }
   }
+  // A missing/old contacts source must never stop inbox processing or research.
+  let contacts;
+  if(config.contactsSync===true) {
+    try{contacts=await (options.syncContacts||runContactSync)(config,{site});}
+    catch{contacts={error:'A sincronização de contatos não foi concluída; confira a agenda.'};}
+  }
   const {job}=await site({op:'poll',canSend:config.canSend,researchProtocol:'criteria-v1'});
-  if(!job)return {processed:0};
+  if(!job)return {processed:0,...(contacts?{contacts}:{})};
   const result=await execute(job);
   const file=path.join(stateDir,createHash('sha256').update(job.id+job.leaseToken).digest('hex')+'.result.json');
   const temporary=file+'.'+randomUUID()+'.tmp';
@@ -37,7 +44,7 @@ export async function runOnce(config,options={}) {
   await rename(temporary,file);
   await site({op:'result',result});
   await rename(file,file+'.done');
-  return {processed:1};
+  return {processed:1,...(contacts?{contacts}:{})};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
   const loop=process.argv.includes('--loop');

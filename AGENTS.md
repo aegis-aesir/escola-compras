@@ -123,3 +123,10 @@ Correção de exclusão: a confirmação inline acima da tabela ficava fora do v
 Em 13/11 o usuário autorizou testar a exclusão de qualquer rascunho real. Foi excluído um único rascunho sem título do Setor de teste, arquivado em 12/11 às 20:14:01; mensagem de sucesso e redução de 8 para 7 registros confirmadas. Essa autorização foi específica ao teste desta sessão, não permite excluir outros registros arbitrariamente em trabalhos futuros. Nenhuma solicitação foi excluída.
 
 Próximos módulos aprovados para discussão em **chats separados**: estoque, biblioteca de conhecimentos/POPs com organização estilo Notion, tarefas/responsabilidades estilo ClickUp/Asana e planejamento de integração com Escolar Manager. Consultar `ROADMAP.md`; não iniciar esses módulos sem o escopo do chat correspondente.
+
+
+## Agenda de contatos — 14/11/2026
+
+Agenda unifica supplier existente e agenda_contact geral; só Master/ADM podem consultar/editar/sincronizar/importar. Novos contatos importados entram sem classificação, sem inferir loja/Manaus por nome ou DDD. Para cotação exigem classificação explícita como fornecedor, categoria e abrangência; reutilizar regras atuais material/serviço e local/nacional. Telefone duplicado não sobrescreve cadastro; promoção preserva UUID, versões e históricos. Não despromover fornecedor com histórico nem redirecionar tarefa preparada por edição de telefone. Guardar auditoria e rejeitar telefone alterado durante envio running/uncertain.
+
+WhatsApp cobre somente conversas conhecidas da conta operacional via adaptador readonly de fontes nativas; pode ser parcial. Não prometer agenda completa do aparelho, consultar textos/anexos/tokens, usar default ou abrir outra conexão. CSV/VCF complementam a agenda, com prévia, erros, até 5 MB / 5.000 números e lotes de 50; sincronização também exige prévia/importação/classificação humana. Nenhuma dessas ações prepara/envia cotação. Ver INTEGRACOES.md e docs/superpowers/specs/2026-11-14-agenda-contatos-design.md. Atualização/reinício da ponte e publicação são do coordenador; preservar as sete cotações reais bloqueadas e as duas chaves de envio desativadas.

@@ -16,7 +16,7 @@ export function bridgeConfig(env=process.env) {
   if(!local&&!env.ESTRELAS_SITES_SERVICE_TOKEN)throw new Error('Configure o acesso de serviço ao Site privado.');
   const gateway=new URL(env.OPENCLAW_GATEWAY_URL||'http://127.0.0.1:18789');
   if(!['http:','https:'].includes(gateway.protocol)||!['127.0.0.1','localhost','[::1]'].includes(gateway.hostname)||gateway.username||gateway.password||gateway.pathname!=='/'||gateway.search||gateway.hash)throw new Error('O gateway deve permanecer no loopback da máquina OpenClaw.');
-  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local};
+  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local};
 }
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());

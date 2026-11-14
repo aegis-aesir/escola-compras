@@ -77,11 +77,11 @@ assert.equal(navigation.requestMatchesView({status:'execution',archived:{at:'202
 assert.deepEqual(navigation.contextualActionsForView('requests','admin'),[{view:'drafts',label:'Rascunhos e arquivadas'}],'Master abre a área unificada dentro de Solicitação');
 assert.deepEqual(navigation.contextualActionsForView('requests','administrativo'),[],'Diretoria Administrativa não recebe o controle exclusivo de arquivamento');
 assert.deepEqual(navigation.contextualActionsForView('quotes','admin'),[
-  {view:'suppliers',label:'Fornecedores'},
+  {view:'suppliers',label:'Agenda de contatos'},
   {view:'whatsapp',label:'Agente WhatsApp'},
 ]);
 assert.deepEqual(navigation.contextualActionsForView('quotes','administrativo'),[
-  {view:'suppliers',label:'Fornecedores'},
+  {view:'suppliers',label:'Agenda de contatos'},
   {view:'whatsapp',label:'Agente WhatsApp'},
 ]);
 assert.deepEqual(navigation.contextualActionsForView('requests','solicitante'),[],'Setor mantém a tela simples');
