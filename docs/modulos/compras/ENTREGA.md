@@ -1,4 +1,30 @@
-# Entrega atual de Compras — teste no pedido CE-F18F1D55 — 14/11/2026
+# Entrega atual de Compras — agenda de contatos — 14/11/2026
+
+Usuário aprovou implementar sincronização dos contatos conhecidos do WhatsApp e importação CSV/VCF para completar a agenda. Implementado na branch **codex/compras**, worktree Compras/porta **5185**. Base do trabalho: 0a6055979283d4973e9775eb0a037ffdbdb92e12; SHA final da entrega comunicado diretamente ao coordenador após commit. **Não publicado/instalado em produção por este chat.**
+
+- Cotação → Agenda de contatos: fornecedores existentes e novos contatos gerais, busca por nome/empresa/telefone/categoria, filtros, páginas, cadastro/edição e classificação individual/em lote. Somente Master/ADM.
+- CSV UTF-8/VCF 3/4: leitura no navegador, prévia, erros por linha/campo, limites de 5 MB / 5.000 números, lotes de 50, progresso e repetição segura. Importação não sobrescreve cadastros. Telefones não recebem nono dígito por inferência.
+- WhatsApp: solicitação explícita, prévia e importação selecionada de conversas conhecidas operacional. Adaptador SQL readonly nas duas fontes nativas verificadas no OpenClaw 2026.10.10; extrai só identidade/nome/telefone, sem mensagens/anexos/transcrições/tokens. Cobertura limitada e avisos parciais visíveis. Conferir INTEGRACOES.md.
+- Novos contatos entram sem classificação; só fornecedores com segmento e abrangência confirmados participam da seleção compatível atual. Material de manutenção continua buscando lojas de materiais/homecenter/utilidades; serviço procura prestador. Janela de cotação oferece selecionar todos os compatíveis (até 100 por lote) e limpar. Marcar/importar/classificar não prepara mensagens.
+- API administrativa e protocolo contacts-v1 separados da fila comercial, HMAC, lease/páginas idempotentes, limites, versões e auditoria. Não exportar lease no snapshot. Deduplicação também nos caminhos legados de fornecedor e descoberta. Telefone alterado não redireciona tarefa antiga; running/uncertain impedem alteração. Sem dependências ou migrações novas.
+
+## Validação
+
+36/36 testes da rodada de regressão aprovados: contact-import, contact-sync (16 casos), contact-agenda, contact-agenda-ui, contact-runner, supplier-import, integration, openclaw, process-navigation, quotation-suppliers, workflow, finance-profile e maintenance-suppliers. HTTP  local 5185 aprovado: autenticação, perfis proibidos, origem/JSON/lotes, classificação, versão, duplicado por API legada, HMAC, sincronização fake/prévia/importação e ausência de novas tarefas/envios. Tipos, lint dos novos TS/TSX e build aprovados. Revisão independente encontrou2 achados P2 de validação (parser/nomes), ambos corrigidos e revalidados.
+
+Navegador local: busca, prévia/status de cobertura parcial, cadastro e classificação de contato fictício conferidos; desktop e390 × 844 sem rolagem horizontal. Corrigidos conflito da classe supplier e contraste do tema escuro com tokens existentes. Evidências privadas fora do Git: outputs/agenda-desktop.jpg e outputs/agenda-mobile.jpg. **Limitação visual:** upload pelo seletor da extensão Chrome não concluído, pois Allow access to file URLs está desativado; parsers CSV/VCF, lotes/erros e escrita foram testados automaticamente e via HTTP. Não afirmar upload visual aprovado.
+
+Nenhuma produção acessada/modificada para este recurso, nenhum contato real importado, ponte de produção iniciada/reiniciada ou mensagem enviada. As sete cotações reais e as duas chaves de envio não foram alteradas. FixtureHTTP confirmou envio local desativado e nenhuma tarefa comercial criada pelas ações da agenda. Dados do teste anterior CE-F18F1D55 permanecem históricos abaixo.
+
+## Arquivos e integração
+
+Novos: app/contact-model.ts, contact-import.ts, contact-agenda.tsx, contact-agenda-operations.tsx, contact-agenda.css; app/api/contacts/route.ts; lib/contact-agenda.ts, contact-sync.ts, contact-validation.ts; integrations/openclaw/contact-phone.mjs, contact-sync.mjs; seis scripts contact-* de teste e plano/spec. Compartilhados: app/dashboard.tsx, process-navigation.ts, quotation-message-form.tsx, api/data/route.ts; lib/integrations.ts, integration-endpoint.ts, supplier-import.ts; integrations/openclaw/client.mjs, runner.mjs; scripts/process-navigation-test.mjs; AGENTS.md e INTEGRACOES.md. Preservar trabalho simultâneo dos outros módulos ao integrar.
+
+Coordenador deve revisar/integrar/publicar servidor no Site existente e atualizar módulos da ponte instalada; reiniciar a tarefa existente mantendo flags desativadas, journals/cofre, operacional e número exato +559292017107. Verificar agenda com Master/ADM, CSV/VCF e primeiro sync explícito; sem fonte/ponte atualizada mostrar pendência real. Não liberar sete cotações, reenviar teste anterior, confirmar equivalência ou selecionar compra. A ativação da sincronização não exige ativar envio. Sem main merge/push/publicação por este chat.
+
+---
+
+# Histórico — teste no pedido CE-F18F1D55 — 14/11/2026
 
 ## Autorização e resultado
 

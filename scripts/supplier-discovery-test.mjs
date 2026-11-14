@@ -45,6 +45,12 @@ try{
  const vendor=(await api.rows(db,'supplier')).find(s=>s.id===saved);
  assert.equal(vendor.scope,'local');assert.equal(vendor.category,'Informática');
  assert.equal(vendor.discovery.sourceUrl,'https://example.com/local');
+ const winnerId=crypto.randomUUID(),concurrentSupplier={name:'Cadastro manual fictício',phone:'+5592999990033',category:'Informática',scope:'local',contact:''};
+ let manualInserted=false;
+ const manualRaceDb={prepare:sql=>db.prepare(sql),async batch(statements){if(!manualInserted){manualInserted=true;await put(winnerId,'supplier',concurrentSupplier);}return db.batch(statements);}};
+ const winnerResult=await api.registerDiscoveredSupplier(manualRaceDb,job.id,0,concurrentSupplier,'test',now);
+ assert.equal(winnerResult,winnerId,'discovery returns the existing manual supplier ID after concurrent deduplication');
+ assert.ok(await db.prepare("SELECT id FROM records WHERE id=? AND kind='supplier'").bind(winnerResult).first());
  assert.equal((await api.rows(db,'integration_job')).filter(j=>j.type==='whatsapp_quote').length,0);
  const race={...r,id:'race',items:[{...r.items[0],category:'Limpeza'}]};await put(race.id,'request',race);
  await api.enqueueSupplierSearch(db,race,'test',now);

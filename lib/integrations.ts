@@ -27,7 +27,8 @@ function audit(db:D1Database,entity:string,actor:string,action:string,at:string)
   return db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),entity,actor,action,at);
 }
 async function insert(db:D1Database,id:string,kind:string,data:object,entity:string,actor:string,action:string,at:string) {
-  const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records (id,kind,data,version) VALUES (?,?,?,1)').bind(id,kind,JSON.stringify(data)),audit(db,entity,actor,action,at)]);
+  const guard=kind==='supplier'?" WHERE NOT EXISTS(SELECT 1 FROM records WHERE kind IN ('supplier','agenda_contact') AND REPLACE(json_extract(data,'$.phone'),'+','')=?)":'';
+  const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records (id,kind,data,version) SELECT ?,?,?,1'+guard).bind(id,kind,JSON.stringify(data),...(kind==='supplier'?[phone((data as Supplier).phone).slice(1)]:[])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
 async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[]) {
@@ -124,12 +125,14 @@ export async function registerDiscoveredSupplier(db:D1Database,jobId:string,sour
     if(matchingSuppliers([existing],data.category,data.scope).length)return existing.id;
     throw new FlowError('Este telefone já está cadastrado em outra categoria ou abrangência. Confira o cadastro existente.');
   }
+  if((await rows<{phone:string}>(db,'agenda_contact')).some(c=>phone(c.phone)===phone(data.phone)))throw new FlowError('Este telefone já consta na agenda. Classifique o contato existente como fornecedor.',409);
   const hash=await digest(phone(data.phone));
   const id=`${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`;
   const created=await insert(db,id,'supplier',{...data,discovery:{sourceUrl:source.url,researchedAt:j.researchedAt,reviewedAt:now,reviewedBy:actor,jobId}},r.id,actor,`Fornecedor cadastrado após conferência da pesquisa: ${data.name}`,now);
   if(!created) {
-    const winner=await row<Supplier>(db,id,'supplier');
+    const winner=(await rows<Supplier>(db,'supplier')).find(s=>phone(s.phone)===phone(data.phone));
     if(!winner||!matchingSuppliers([winner],data.category,data.scope).length)throw new FlowError('Este telefone foi cadastrado simultaneamente em outra categoria ou abrangência. Recarregue e confira.',409);
+    return winner.id;
   }
   return id;
 }

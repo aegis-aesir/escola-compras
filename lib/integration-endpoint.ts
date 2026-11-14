@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { FlowError } from '../app/workflow';
 import { claimJob, completeJob, receiveMessage, retryJob, row, tick, type IntegrationEnv } from './integrations';
 import { importSuppliers } from './supplier-import';
+import {claimContactSync,completeContactSync} from './contact-sync';
 
 const encoder=new TextEncoder();
 export async function validSignature(raw:string,timestamp:string,signature:string,secret:string,now:number) {
@@ -26,6 +27,9 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
     const raw=await limitedBody(req),now=new Date().toISOString();
     if(!await validSignature(raw,req.headers.get('x-estrelas-timestamp')||'',req.headers.get('x-estrelas-signature')||'',env.INTEGRATION_SECRET,Date.parse(now)))return response({error:'Assinatura inválida ou expirada.'},401);
     let b:any;try{b=JSON.parse(raw)}catch{return response({error:'JSON inválido.'},400)}
+    if(!b||typeof b!=='object'||Array.isArray(b))return response({error:'Operação inválida.'},400);
+    if(b.op==='contact_sync_poll')return response({job:await claimContactSync(env.DB,b.protocol,now)});
+    if(b.op==='contact_sync_result')return response(await completeContactSync(env.DB,b,now));
     if(b.op==='poll') {
       await tick(env.DB,env,now);
       return response({job:await claimJob(env.DB,env,now,b.canSend===true,b.researchProtocol)});

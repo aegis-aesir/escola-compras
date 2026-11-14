@@ -1,4 +1,5 @@
 import {consolidateDeferredDrafts} from '../../../lib/deferred-requests';
+import {saveAgendaContact} from '../../../lib/contact-agenda';
 import {reapplyDeferredRequest} from '../../deferred-request';
 import { env } from 'cloudflare:workers';
 import { currentLocalUser } from '../../local-session';
@@ -138,7 +139,8 @@ export async function POST(req:Request){try{
     if(!Object.keys(data.management).length)delete data.management;
     delete data.estimate;delete data.adminReview;delete data.generalApproval;delete data.returnForCorrection;delete data.needDecision;delete data.deferred;action='Solicitação complementada pelo setor; aguardando a Diretoria Administrativa iniciar nova estimativa';
   }else if(b.action==='supplier'){
-    permit(['admin','administrativo']);kind='supplier';data=supplierSchema.parse(b.data);action='Fornecedor cadastrado';
+    permit(['admin','administrativo']);const input=supplierSchema.parse(b.data);
+    return Response.json({ok:true,...await saveAgendaContact(db,{classification:'supplier',data:input},me.name,now)});
   }else if(b.action==='member'){
     throw new AppError('Use Pessoas e acessos para administrar os usuários locais.',400);
   }else if(b.action==='settings'){
