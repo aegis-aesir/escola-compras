@@ -1,5 +1,6 @@
 import {consolidateDeferredDrafts} from '../../../lib/deferred-requests';
 import {saveAgendaContact} from '../../../lib/contact-agenda';
+import {enqueueSelectedContacts} from '../../../lib/quotation-contacts';
 import {reapplyDeferredRequest} from '../../deferred-request';
 import { env } from 'cloudflare:workers';
 import { currentLocalUser } from '../../local-session';
@@ -89,6 +90,7 @@ export async function POST(req:Request){try{
       if(b.action==='supplier_categories')await setSupplierCategories(db,r,b.categories,me.name,now);
       else if(b.action==='research_item'||b.action==='research'&&b.criteria){await configureEstimateResearch(db,r,b.criteria,b.action==='research_item'?z.number().int().nonnegative().parse(b.itemIndex):undefined,me.name,now)}
       else if(b.action==='research'){if(r.status==='pending')await startEstimateSearch(db,r,me.name,now);else await enqueueSearch(db,r,me.name,now)}
+      else if(b.action==='prepare_openclaw'&&b.recipients!==undefined)await enqueueSelectedContacts(db,r,b.recipients,me.name,now,env);
       else if(b.supplierIds!==undefined)await enqueueQuotations(db,r,all.filter(s=>s.kind==='supplier'),b.supplierIds,me.name,now,env);
       else {const s=all.find(s=>s.id===b.supplierId&&s.kind==='supplier');if(!s)throw new AppError('Fornecedor não encontrado.');await enqueueQuotation(db,r,s,me.name,now,env)}
     }

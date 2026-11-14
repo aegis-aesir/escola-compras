@@ -5,6 +5,8 @@ import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEst
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
+import type {AgendaEntry} from '../app/contact-model';
+import {normalizeContactPhone} from '../integrations/openclaw/contact-phone.mjs';
 
 type Row<T> = T & {id:string;version:number};
 export type IntegrationEnv = {DB?:D1Database;INTEGRATION_SECRET?:string;WHATSAPP_SEND_ENABLED?:string};
@@ -31,20 +33,21 @@ async function insert(db:D1Database,id:string,kind:string,data:object,entity:str
   const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records (id,kind,data,version) SELECT ?,?,?,1'+guard).bind(id,kind,JSON.stringify(data),...(kind==='supplier'?[phone((data as Supplier).phone).slice(1)]:[])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
-async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[]) {
+async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[],monthRequestId=old.id) {
   const openMonth=" AND NOT EXISTS(SELECT 1 FROM records AS target JOIN records AS closing ON closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(json_extract(target.data,'$.management.referenceMonth'),json_extract(target.data,'$.form.fields.referenceMonth')) WHERE target.id=? AND target.kind='request' AND json_extract(closing.data,'$.status')='Concluído')";
   const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+openMonth+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('');
-  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,old.id,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
+  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,monthRequestId,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
 export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>&Partial<IntegrationJob>,suppliers:Supplier[]) {
+function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>&Partial<IntegrationJob>,suppliers:Supplier[],contacts:AgendaEntry[]=[]) {
   if(r.archived)return false;
   if(j.type==='estimate_search')return r.status==='estimating'&&('id' in j?isCurrentEstimateJob(r,j as IntegrationJob):(j.estimateRevision||'')===(r.estimateRevision||''));
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestSupplierCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
+  if(j.type==='whatsapp_quote'&&j.manualSelection){const recipient=[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId);return !!recipient&&['quoting','national'].includes(r.status)&&normalizeContactPhone(recipient.phone)===j.target&&j.target!==schoolPhone;}
   const s=suppliers.find(s=>s.id===j.supplierId);
   return !!s&&compatibleQuotationSuppliers(r,[s]).length>0;
 }
@@ -158,6 +161,19 @@ export async function enqueueQuotations(db:D1Database,r:Purchase,suppliers:Suppl
   for(const supplier of selected)jobs.push(await enqueueQuotation(db,r,supplier,actor,now,env));
   return jobs;
 }
+export async function enqueueManualQuotation(db:D1Database,r:Purchase,recipient:AgendaEntry,actor:string,now:string,env:IntegrationEnv,suggested:boolean){
+  if(r.archived||!r.generalApproval||!['quoting','national'].includes(r.status))throw new FlowError('A escolha de contatos exige pedido aprovado e em cotação.',409);
+  const target=normalizeContactPhone(recipient.phone);if(!target||!/^\+[1-9]\d{9,14}$/.test(target)||target===schoolPhone)throw new FlowError('Confira o telefone do contato.',400);
+  const existing=(await rows<IntegrationJob>(db,jobKind)).find(j=>j.type==='whatsapp_quote'&&j.requestId===r.id&&j.target===target);
+  if(existing)return existing.id; // Never change/release a previously prepared task.
+  const id='whatsapp:'+await digest(JSON.stringify([r.id,target,r.generalApproval.at]));
+  const contact=recipient.contact||recipient.name,template=quotationMessageTemplate(r);
+  const job={id,requestId:r.id,type:'whatsapp_quote',supplierId:recipient.kind==='supplier'?recipient.id:undefined,contactId:recipient.kind==='agenda_contact'?recipient.id:undefined,supplierName:recipient.name,target,accountId,schoolPhone,message:quotationMessage(r,{...recipient,contact} as Supplier),quotationTemplate:{version:'contact-v1',text:template,contact},manualSelection:{recipientId:recipient.id,actor,at:now,suggested},state:env.WHATSAPP_SEND_ENABLED==='true'?'queued':'blocked',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+  const guard=" WHERE EXISTS(SELECT 1 FROM records AS request WHERE request.id=? AND request.kind='request' AND request.version=?) AND EXISTS(SELECT 1 FROM records AS contact WHERE contact.id=? AND contact.version=? AND contact.kind IN ('supplier','agenda_contact')) AND NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(?,?) AND json_extract(closing.data,'$.status')='Concluído')";
+  const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records(id,kind,data,version) SELECT ?,?,?,1'+guard).bind(id,jobKind,JSON.stringify(job),r.id,r.version,recipient.id,recipient.version,r.management?.referenceMonth||null,r.form?.fields.referenceMonth||null),audit(db,r.id,actor,'Cotação preparada para contato escolhido explicitamente; envio depende das duas liberações',now)]);
+  if(result[0].meta.changes!==1&&!await row(db,id,jobKind))throw new FlowError('Pedido ou contato atualizado, ou mês fechado. Reabra a seleção.',409);
+  return id;
+}
 // Called by both the authenticated panel and the independent bridge, using the
 // same version check. No migration or change to existing purchase records needed.
 export async function advanceDeadlines(db:D1Database,now:string) {
@@ -181,8 +197,8 @@ export async function retryJob(db:D1Database,id:string,version:number,actor:stri
   if(!['failed','blocked'].includes(j.state)&&!(j.type==='estimate_search'&&j.state==='review'))throw new FlowError('Esta tarefa não permite nova tentativa.');
   if(j.type==='whatsapp_quote'&&(j.state!=='blocked'||env.WHATSAPP_SEND_ENABLED!=='true'))throw new FlowError('Envio desativado ou exige conferência manual.');
   const r=await row<Purchase>(db,j.requestId,'request');
-  if(!r||!eligible(r,j,await rows<Supplier>(db,'supplier')))throw new FlowError('A etapa do pedido não permite esta tarefa.');
-  if(!await update(db,j,{...j,state:'queued',attempts:0,error:undefined,priceEvidence:undefined,sources:undefined,researchedAt:undefined,updatedAt:now,nextAttemptAt:now},j.requestId,actor,'Nova tentativa de integração solicitada',now))throw new FlowError('Tarefa atualizada. Recarregue.',409);
+  if(!r||!eligible(r,j,await rows<Supplier>(db,'supplier'),await rows<AgendaEntry>(db,'agenda_contact')))throw new FlowError('A etapa do pedido não permite esta tarefa.');
+  if(!await update(db,j,{...j,state:'queued',attempts:0,error:undefined,priceEvidence:undefined,sources:undefined,researchedAt:undefined,updatedAt:now,nextAttemptAt:now},j.requestId,actor,'Nova tentativa de integração solicitada',now,[],j.manualSelection?r.id:j.id))throw new FlowError('Tarefa atualizada. Recarregue.',409);
 }
 async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
@@ -238,23 +254,25 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
 }
 export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSend:boolean,researchProtocol?:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
+  const contacts=await rows<AgendaEntry>(db,'agenda_contact');
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.state==='queued'&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
     const r=await row<Purchase>(db,j.requestId,'request');
     if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
     const internalMatch=r&&eligible(r,j,suppliers)&&j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
-    if(!r||!eligible(r,j,suppliers)||internalMatch) {
+    if(!r||!eligible(r,j,suppliers,contacts)||internalMatch) {
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
     }
     if(j.researchCriteria&&researchProtocol!=='criteria-v1')continue;
     if(j.type==='whatsapp_quote') {
       if(!canSend||env.WHATSAPP_SEND_ENABLED!=='true')continue;
       // A changed phone number requires a fresh human decision, never silent rerouting.
-      if(phone(suppliers.find(s=>s.id===j.supplierId)!.phone)!==j.target)continue;
+      const recipient=j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId):suppliers.find(s=>s.id===j.supplierId);
+      if(!recipient||(j.manualSelection?normalizeContactPhone(recipient.phone):phone(recipient.phone))!==j.target)continue;
     }
     const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?600000:120000),updatedAt:now};
-    const guards=[r,...(j.type==='whatsapp_quote'?[suppliers.find(s=>s.id===j.supplierId)!]:[])];
-    if(await update(db,j,next,j.requestId,'Ponte OpenClaw','Processamento da integração iniciado',now,guards))return {...next,version:j.version+1};
+    const guards=[r,...(j.type==='whatsapp_quote'?[j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId)!:suppliers.find(s=>s.id===j.supplierId)!]:[])];
+    if(await update(db,j,next,j.requestId,'Ponte OpenClaw','Processamento da integração iniciado',now,guards,j.manualSelection?r.id:j.id))return {...next,version:j.version+1};
   }
   return null;
 }
@@ -289,9 +307,10 @@ export async function receiveMessage(db:D1Database,input:unknown,now:string) {
     if(existing.from!==b.from||existing.to!==b.to||existing.text!==b.text)throw new FlowError('Identificador de mensagem com conteúdo diferente.',409);
     return {id,duplicate:true};
   }
-  const suppliers=(await rows<Supplier>(db,'supplier')).filter(s=>phone(s.phone)===b.from);
+  const suppliers=(await rows<Supplier>(db,'supplier')).filter(s=>normalizeContactPhone(s.phone)===b.from);
+  const contacts=(await rows<AgendaEntry>(db,'agenda_contact')).filter(c=>normalizeContactPhone(c.phone)===b.from);
   const candidates=(await rows<Purchase>(db,'request')).filter(r=>r.generalApproval&&['quoting','national','execution','ordered'].includes(r.status)&&new RegExp(`\\b${r.code}\\b`,'i').test(b.text));
-  const message:Omit<InboxMessage,'version'>={...b,id,state:'review',recordedAt:now,supplierId:suppliers.length===1?suppliers[0].id:undefined,requestId:candidates.length===1?candidates[0].id:undefined};
+  const message:Omit<InboxMessage,'version'>={...b,id,state:'review',recordedAt:now,supplierId:suppliers.length===1?suppliers[0].id:undefined,contactId:!suppliers.length&&contacts.length===1?contacts[0].id:undefined,contactName:!suppliers.length&&contacts.length===1?contacts[0].name:undefined,requestId:candidates.length===1?candidates[0].id:undefined};
   const created=await insert(db,id,inboxKind,message,message.requestId||id,'OpenClaw','Mensagem recebida para conferência; nenhuma proposta criada automaticamente',now);
   return {id,duplicate:!created};
 }

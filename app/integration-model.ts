@@ -8,12 +8,14 @@ export type IntegrationJob = {
   estimateRevision?:string;item?:Item;researchItem?:Item;researchCriteria?:SavedEstimateCriteria;browserResearch?:{state:'ready'|'login_required'|'unverified'|'unavailable';detail:string;profile:'compras';checkedAt:string};analysisReason?:string;priceEvidence?:{url:string;title:string;text:string;origin?:'public'|'authenticated_browser';analysis?:unknown};itemIndex?:number;query?:string;category?:string;supplierId?:string;supplierName?:string;target?:string;
   accountId?:string;schoolPhone?:string;message?:string;sources?:SearchSource[];
   quotationTemplate?:{version:'contact-v1';text:string;contact:string};
+  contactId?:string;manualSelection?:{recipientId:string;actor:string;at:string;suggested:boolean};
   researchedAt?:string;providerMessageId?:string;sentAt?:string;error?:string;
   leaseToken?:string;leaseUntil?:string;
 };
 export type InboxMessage = {
   id:string;version:number;messageId:string;accountId:string;from:string;to:string;
   text:string;receivedAt:string;recordedAt:string;requestId?:string;supplierId?:string;
+  contactId?:string;contactName?:string;
   state:'review'|'reviewed';note?:string;reviewedBy?:string;reviewedAt?:string;
 };
 export type IntegrationSnapshot = {
