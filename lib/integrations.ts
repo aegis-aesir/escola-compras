@@ -293,6 +293,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
     if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
     const internalMatch=r&&eligible(r,j,suppliers)&&j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
     if(!r||!eligible(r,j,suppliers,contacts)||internalMatch) {
+      if(test)continue; // A failed scoped preflight never cancels the preserved test draft.
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
     }
     if(j.researchCriteria&&researchProtocol!=='criteria-v1')continue;

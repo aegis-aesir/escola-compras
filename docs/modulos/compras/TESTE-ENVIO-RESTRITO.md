@@ -35,6 +35,8 @@ Atualizar ponte **antes de configurar a autorização**, incluindo o novo `integ
 
 O claim aceita somente o ID/versão/destino exatos, blocked/queued, attempts0, sem recibo/lease/testSend. Mantém aprovação, etapa, telefone atual do contato, versões do pedido/contato, arquivamento e fechamento mensal. Um único CAS muda a tarefa para running, incrementa attempts/versão e registra lease/testSend. O mesmo CAS atualiza somente esse rascunho para o modelo curto atual e guarda mensagem/template anteriores em `messageHistory`, com motivo e auditoria.
 
+Se o pedido ou contato deixar de ser elegível, a autorização restrita apenas recusa a retirada e preserva o rascunho bloqueado. Não aplica cancelamento automático ao teste nem afrouxa a elegibilidade de tarefas legadas sem seleção manual.
+
 A ponte verifica novamente autorização vigente, ID/destino, versão pós-claim, tentativa1, lease e marcador. Personaliza contact-v1 e usa a conta operacional pelo transporte existente, com idempotência por tarefa. Journal e confirmação nativa continuam obrigatórios. Sem confirmação confiável, manter uncertain e conferir manualmente: nunca repetir o envio. Recibo após expiração não é descartado se ainda pertence ao lease válido.
 
 Após o resultado, remover a autorização do servidor e do cofre e reiniciar a ponte sem o campo; preservar as duas chaves globais false. Conferir um único envio/tentativa no teste e nenhum nas sete canceladas. O usuário responde no WhatsApp com a referência do pedido. A importação continua entrando para conferência; não cria proposta, compra ou aprovação automaticamente.

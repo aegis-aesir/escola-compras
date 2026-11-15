@@ -30,6 +30,11 @@ try {
   assert.equal(await api.claimJob(db,env,now,false,'criteria-v1',grant),null,'deny unsafe task '+JSON.stringify(change));
  }
  await db.prepare('UPDATE records SET data=?,version=1 WHERE id=?').bind(JSON.stringify(job),grant.jobId).run();
+ const requestBefore=await api.row(db,requestId,'request');
+ await db.prepare('UPDATE records SET data=? WHERE id=?').bind(JSON.stringify({...requestBefore,generalApproval:undefined}),requestId).run();
+ assert.equal(await api.claimJob(db,env,now,false,'criteria-v1',grant),null,'withdrawn approval refuses scoped send');
+ assert.equal((await api.row(db,grant.jobId,'integration_job')).state,'blocked','invalid scoped preflight must preserve task instead of cancelling it');
+ await db.prepare('UPDATE records SET data=? WHERE id=?').bind(JSON.stringify(requestBefore),requestId).run();
  await put('closing','budget_closing',{month:'2026-11',status:'Concluído'});
  assert.equal(await api.claimJob(db,env,now,false,'criteria-v1',grant),null,'month must remain open at atomic claim');
  await db.prepare("UPDATE records SET data='{}' WHERE id='closing'").run();
