@@ -19,6 +19,8 @@ try {
     $env:ESTRELAS_STATE_DIR = Join-Path $bridgeHome 'state'
     $env:ESTRELAS_INBOX_DIR = Join-Path $bridgeHome 'inbox'
     $env:ESTRELAS_ENABLE_SEND = 'false'
+    # Optional one-task grant lives only in the existing private DPAPI vault.
+    $env:ESTRELAS_TEST_SEND_GRANT = if ($credentials.testSendGrant) { $credentials.testSendGrant | ConvertTo-Json -Compress -Depth 4 } else { $null }
     $env:ESTRELAS_BROWSER_RESEARCH = 'true'
     $env:ESTRELAS_LOCAL_TEST = 'false'
     $runner = Join-Path $PSScriptRoot 'runner.mjs'
@@ -28,7 +30,7 @@ try {
     Write-Error 'Ponte indisponível. Confira o cofre privado, o gateway e INTEGRACOES.md. Nenhuma credencial foi exibida.'
     exit 1
 } finally {
-    foreach ($key in @('INTEGRATION_SECRET','ESTRELAS_SITES_SERVICE_TOKEN','OPENCLAW_GATEWAY_TOKEN')) {
+    foreach ($key in @('INTEGRATION_SECRET','ESTRELAS_SITES_SERVICE_TOKEN','OPENCLAW_GATEWAY_TOKEN','ESTRELAS_TEST_SEND_GRANT')) {
         [Environment]::SetEnvironmentVariable($key, $null, 'Process')
     }
     if ($locked) { $mutex.ReleaseMutex() }

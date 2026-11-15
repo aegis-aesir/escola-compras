@@ -1,9 +1,10 @@
 'use client';
+import {useState} from 'react';
 import {money,type Snapshot,type Purchase} from './model';
 import EstimateCriteriaPanel from './estimate-criteria-panel';
 import {isCurrentEstimateJob} from './estimate-criteria';
 import {estimateProgress} from './estimate-progress';
-import { jobLabels } from './integration-model';
+import { jobLabels,canCancelQuotationJob } from './integration-model';
 type Props={data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>};
 const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Manaus'});
 
@@ -29,6 +30,8 @@ export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purcha
   </section>;
 }
 export default function IntegrationPanel({data,busy,onSave,onRefresh}:Props&{onRefresh:()=>void}) {
+  const [cancelSelection,setCancelSelection]=useState<{id:string;version:number}[]>([]);
+  const [cancelReason,setCancelReason]=useState('');
   const integration=data.integrations;
   if(!integration)return null;
   const recent=!!integration.lastSeenAt&&Date.now()-Date.parse(integration.lastSeenAt)<180000;
@@ -40,6 +43,12 @@ export default function IntegrationPanel({data,busy,onSave,onRefresh}:Props&{onR
     <p className="muted">A pesquisa usa a ferramenta web_search do OpenClaw. O processamento com o painel fechado depende da ponte em execução. Credenciais são configuradas fora do painel.</p>
     <p className="note"><b>Pesquisa no Mercado Livre:</b> entre na sua conta no navegador OpenClaw, perfil compras. Depois, abra o pedido e use “Refazer pesquisa de preços”. O resultado informa se a sessão foi reconhecida. Senhas e cookies ficam no computador.</p><h3>Cotações preparadas</h3>
     {!jobs.length&&<p className="muted">Abra um pedido aprovado para preparar uma cotação ao fornecedor.</p>}
+    {['admin','administrativo'].includes(data.me.role)&&jobs.some(canCancelQuotationJob)&&<form className="note" onSubmit={async e=>{e.preventDefault();if(await onSave({action:'cancel_quotation_jobs',jobs:cancelSelection,reason:cancelReason})){setCancelSelection([]);setCancelReason('')}}}>
+      <h3>Cancelar cotações preparadas</h3><p>Marque somente as tarefas que deseja cancelar. O histórico e as mensagens serão preservados. Tarefas já tentadas ou com envio incerto exigem conferência.</p>
+      {jobs.filter(canCancelQuotationJob).map(j=><label className="check" key={j.id}><input type="checkbox" disabled={busy} checked={cancelSelection.some(s=>s.id===j.id)} onChange={e=>setCancelSelection(s=>e.target.checked?[...s,{id:j.id,version:j.version}]:s.filter(a=>a.id!==j.id))}/><span>{data.requests.find(r=>r.id===j.requestId)?.code} · {j.supplierName} · {j.target} · {jobLabels[j.state]}</span></label>)}
+      <label className="field"><span>Motivo do cancelamento</span><textarea required minLength={5} maxLength={2000} value={cancelReason} onChange={e=>setCancelReason(e.target.value)} disabled={busy}/></label>
+      <button className="button secondary" disabled={busy||!cancelSelection.length}>Cancelar {cancelSelection.length} tarefa(s) selecionada(s)</button>
+    </form>}
     {jobs.map(j=><details className="source-row" key={j.id}><summary>{data.requests.find(r=>r.id===j.requestId)?.code} · {j.supplierName} · {jobLabels[j.state]}</summary><p>{j.target} · {date(j.updatedAt)}</p><pre className="integration-message">{j.message}</pre>{j.providerMessageId&&<p>Identificador de envio: {j.providerMessageId}</p>}{j.error&&<p className="note">{j.error}</p>}{j.state==='blocked'&&integration.sendingEnabled&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'retry_integration',id:j.id,version:j.version})}>Liberar este rascunho para envio</button>}</details>)}
     <h3>Mensagens recebidas para conferência</h3>
     {!integration.inbox.length&&<p className="muted">Nenhuma mensagem importada. O recebimento depende do hook e da ponte configurados no OpenClaw.</p>}

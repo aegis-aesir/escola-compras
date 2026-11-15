@@ -35,7 +35,7 @@ export async function runOnce(config,options={}) {
     try{contacts=await (options.syncContacts||runContactSync)(config,{site});}
     catch{contacts={error:'A sincronização de contatos não foi concluída; confira a agenda.'};}
   }
-  const {job}=await site({op:'poll',canSend:config.canSend,researchProtocol:'criteria-v1'});
+  const {job}=await site({op:'poll',canSend:config.canSend,researchProtocol:'criteria-v1',...(config.testSendGrant?{testSendGrant:config.testSendGrant}:{})});
   if(!job)return {processed:0,...(contacts?{contacts}:{})};
   const result=await execute(job);
   const file=path.join(stateDir,createHash('sha256').update(job.id+job.leaseToken).digest('hex')+'.result.json');

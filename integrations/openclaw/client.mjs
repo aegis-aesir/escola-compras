@@ -5,6 +5,7 @@ import { createHmac } from 'node:crypto';
 import { isGoogleMapsUrl } from './search-utils.mjs';
 import { routeTool } from './agent-routing.mjs';
 import { quotationJobMessage } from './quotation-template.mjs';
+import {parseTestSendGrant,matchesTestSendJob} from './test-send-grant.mjs';
 
 export const ACCOUNT = 'operacional';
 export const SCHOOL_PHONE = '+559292017107';
@@ -16,7 +17,8 @@ export function bridgeConfig(env=process.env) {
   if(!local&&!env.ESTRELAS_SITES_SERVICE_TOKEN)throw new Error('Configure o acesso de serviço ao Site privado.');
   const gateway=new URL(env.OPENCLAW_GATEWAY_URL||'http://127.0.0.1:18789');
   if(!['http:','https:'].includes(gateway.protocol)||!['127.0.0.1','localhost','[::1]'].includes(gateway.hostname)||gateway.username||gateway.password||gateway.pathname!=='/'||gateway.search||gateway.hash)throw new Error('O gateway deve permanecer no loopback da máquina OpenClaw.');
-  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local};
+  const scoped=!!env.ESTRELAS_TEST_SEND_GRANT;
+  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
 }
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());
@@ -63,7 +65,9 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
   if(job.type==='whatsapp_quote') {
     // Never rely on OpenClaw's HTTP dryRun flag: that flag is ignored by the
     // installed gateway. Two independent switches are required before claim/send.
-    if(!config.canSend||job.accountId!==ACCOUNT||job.schoolPhone!==SCHOOL_PHONE||!/^\+[1-9]\d{9,14}$/.test(job.target)||!job.message)throw new Error('Envio bloqueado.');
+    const scoped=!!config.testSendMode||!!config.testSendGrant||!!job.testSend;
+    const allowed=scoped?matchesTestSendJob(config.testSendGrant,job,'dispatch'):config.canSend;
+    if(!allowed||job.accountId!==ACCOUNT||job.schoolPhone!==SCHOOL_PHONE||!/^\+[1-9]\d{9,14}$/.test(job.target)||!job.message)throw new Error('Envio bloqueado.');
     const message=quotationJobMessage(job);
     try {
       const reply=structured(await invokeJob({tool:'message',args:{action:'send',channel:'whatsapp',accountId:ACCOUNT,target:job.target,message},idempotencyKey:job.id}));

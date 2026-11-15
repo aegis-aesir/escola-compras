@@ -5,11 +5,13 @@ import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEst
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
+import {canCancelQuotationJob} from '../app/integration-model';
 import type {AgendaEntry} from '../app/contact-model';
 import {normalizeContactPhone} from '../integrations/openclaw/contact-phone.mjs';
+import {pairedTestSendGrant,matchesTestSendJob} from '../integrations/openclaw/test-send-grant.mjs';
 
 type Row<T> = T & {id:string;version:number};
-export type IntegrationEnv = {DB?:D1Database;INTEGRATION_SECRET?:string;WHATSAPP_SEND_ENABLED?:string};
+export type IntegrationEnv = {DB?:D1Database;INTEGRATION_SECRET?:string;WHATSAPP_SEND_ENABLED?:string;WHATSAPP_TEST_SEND_GRANT?:string};
 export const accountId = 'operacional';
 export const schoolPhone = '+559292017107';
 const jobKind = 'integration_job';
@@ -200,6 +202,32 @@ export async function retryJob(db:D1Database,id:string,version:number,actor:stri
   if(!r||!eligible(r,j,await rows<Supplier>(db,'supplier'),await rows<AgendaEntry>(db,'agenda_contact')))throw new FlowError('A etapa do pedido não permite esta tarefa.');
   if(!await update(db,j,{...j,state:'queued',attempts:0,error:undefined,priceEvidence:undefined,sources:undefined,researchedAt:undefined,updatedAt:now,nextAttemptAt:now},j.requestId,actor,'Nova tentativa de integração solicitada',now,[],j.manualSelection?r.id:j.id))throw new FlowError('Tarefa atualizada. Recarregue.',409);
 }
+export async function cancelQuotationJobs(db:D1Database,input:unknown,note:unknown,actor:{role:string;name:string},now:string){
+  if(!['admin','administrativo'].includes(actor.role))throw new FlowError('Seu perfil não permite cancelar tarefas.',403);
+  const selected=z.array(z.object({id:z.string().regex(/^whatsapp:[a-f0-9]{64}$/),version:z.number().int().positive()}).strict()).min(1).max(100).parse(input);
+  const reason=z.string().trim().min(5,'Informe o motivo do cancelamento (mínimo 5 caracteres).').max(2000).parse(note);
+  if(new Set(selected.map(j=>j.id)).size!==selected.length)throw new FlowError('Selecione cada tarefa somente uma vez.');
+  const jobs:IntegrationJob[]=[],requests:Row<Purchase>[]=[];
+  for(const s of selected){
+    const j=await row<IntegrationJob>(db,s.id,jobKind);
+    if(!j||j.version!==s.version||!canCancelQuotationJob(j))throw new FlowError('Tarefa atualizada, enviada ou com processamento que exige conferência. Recarregue.',409);
+    const r=await row<Purchase>(db,j.requestId,'request');
+    if(!r||r.archived)throw new FlowError('Pedido ausente ou arquivado. Restaure antes de cancelar.',409);
+    jobs.push(j);if(!requests.some(a=>a.id===r.id))requests.push(r);
+  }
+  // One UPDATE for the entire explicit batch: any version/closing conflict changes zero rows.
+  const guards=[...jobs,...requests].map(({id,version})=>({id,version}));
+  const payload=jobs.map(j=>({id:j.id,data:{...j,state:'cancelled',updatedAt:now,cancellation:{actor:actor.name,at:now,reason,previousState:j.state}},audit:{id:crypto.randomUUID(),entity:j.requestId,actor:actor.name,action:`Cotação ${j.id} cancelada manualmente: ${reason}`,at:now}}));
+  const sql=`UPDATE records SET data=(SELECT json_extract(value,'$.data') FROM json_each(?) WHERE json_extract(value,'$.id')=records.id),version=version+1 WHERE kind=? AND id IN (SELECT json_extract(value,'$.id') FROM json_each(?)) AND NOT EXISTS(SELECT 1 FROM json_each(?) AS expected LEFT JOIN records AS actual ON actual.id=json_extract(expected.value,'$.id') AND actual.version=json_extract(expected.value,'$.version') WHERE actual.id IS NULL) AND NOT EXISTS(SELECT 1 FROM records AS target JOIN records AS closing ON closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(json_extract(target.data,'$.management.referenceMonth'),json_extract(target.data,'$.form.fields.referenceMonth')) WHERE target.id IN (SELECT value FROM json_each(?)) AND target.kind='request' AND json_extract(closing.data,'$.status')='Concluído')`;
+  const auditSql=`INSERT INTO audit(id,entity,actor,action,at) SELECT json_extract(value,'$.audit.id'),json_extract(value,'$.audit.entity'),json_extract(value,'$.audit.actor'),json_extract(value,'$.audit.action'),json_extract(value,'$.audit.at') FROM json_each(?) WHERE changes()=?`;
+  const raw=JSON.stringify(payload);
+  const result=await db.batch([
+    db.prepare(sql).bind(raw,jobKind,raw,JSON.stringify(guards),JSON.stringify(requests.map(r=>r.id))),
+    db.prepare(auditSql).bind(raw,jobs.length)
+  ]);
+  if(result[0].meta.changes!==jobs.length)throw new FlowError('Tarefa ou pedido atualizado, ou mês fechado. Nenhuma tarefa foi cancelada; recarregue.',409);
+  return {cancelled:jobs.length};
+}
 async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
   const suppliers=await rows<Supplier>(db,'supplier');
   for(const j of (await rows<IntegrationJob>(db,jobKind)).filter(j=>j.type==='whatsapp_quote'&&j.state==='done'&&j.sentAt&&j.providerMessageId)) {
@@ -252,11 +280,15 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   }
   await db.prepare('INSERT INTO records (id,kind,data,version) VALUES (?,?,?,1) ON CONFLICT(id) DO UPDATE SET data=excluded.data,version=records.version+1').bind('integration:heartbeat','integration_state',JSON.stringify({lastSeenAt:now})).run();
 }
-export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSend:boolean,researchProtocol?:string) {
+export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSend:boolean,researchProtocol?:string,testSendGrant?:unknown) {
   const suppliers=await rows<Supplier>(db,'supplier');
   const contacts=await rows<AgendaEntry>(db,'agenda_contact');
-  const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.state==='queued'&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
+  const testMode=!!env.WHATSAPP_TEST_SEND_GRANT||testSendGrant!==undefined;
+  const grant=pairedTestSendGrant(env.WHATSAPP_TEST_SEND_GRANT,testSendGrant,now);
+  const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>(j.state==='queued'||j.state==='blocked'&&!!grant&&j.id===grant.jobId)&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
+    const test=!!grant&&matchesTestSendJob(grant,j,'claim',now);
+    if(j.type==='whatsapp_quote'&&((testMode&&!test)||j.testSend))continue;
     const r=await row<Purchase>(db,j.requestId,'request');
     if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
     const internalMatch=r&&eligible(r,j,suppliers)&&j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
@@ -265,14 +297,21 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
     }
     if(j.researchCriteria&&researchProtocol!=='criteria-v1')continue;
     if(j.type==='whatsapp_quote') {
-      if(!canSend||env.WHATSAPP_SEND_ENABLED!=='true')continue;
+      if(!test&&(!canSend||env.WHATSAPP_SEND_ENABLED!=='true'))continue;
       // A changed phone number requires a fresh human decision, never silent rerouting.
       const recipient=j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId):suppliers.find(s=>s.id===j.supplierId);
       if(!recipient||(j.manualSelection?normalizeContactPhone(recipient.phone):phone(recipient.phone))!==j.target)continue;
     }
     const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?600000:120000),updatedAt:now};
+    if(test){
+      const recipient=j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId)!:suppliers.find(s=>s.id===j.supplierId)!;
+      const contact=recipient.contact||recipient.name,text=quotationMessageTemplate(r);
+      next.messageHistory=[...(j.messageHistory||[]),{message:j.message,quotationTemplate:j.quotationTemplate,at:now,reason:'Teste único autorizado: modelo atual; texto anterior preservado'}];
+      next.message=quotationMessage(r,{...recipient,contact} as Supplier);next.quotationTemplate={version:'contact-v1',text,contact};
+      next.testSend={version:grant!.version,issuedAt:grant!.issuedAt,expiresAt:grant!.expiresAt};
+    }
     const guards=[r,...(j.type==='whatsapp_quote'?[j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId)!:suppliers.find(s=>s.id===j.supplierId)!]:[])];
-    if(await update(db,j,next,j.requestId,'Ponte OpenClaw','Processamento da integração iniciado',now,guards,j.manualSelection?r.id:j.id))return {...next,version:j.version+1};
+    if(await update(db,j,next,j.requestId,'Ponte OpenClaw',test?'Teste único autorizado por tarefa, versão, destino e prazo; modelo revisado com histórico':'Processamento da integração iniciado',now,guards,j.manualSelection||test?r.id:j.id))return {...next,version:j.version+1};
   }
   return null;
 }
