@@ -301,13 +301,17 @@ export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
 export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSend:boolean,researchProtocol?:string,testSendGrant?:unknown) {
   const suppliers=await rows<Supplier>(db,'supplier');
   const contacts=await rows<AgendaEntry>(db,'agenda_contact');
-  const testMode=!!env.WHATSAPP_TEST_SEND_GRANT||testSendGrant!==undefined;
-  const grant=pairedTestSendGrant(env.WHATSAPP_TEST_SEND_GRANT,testSendGrant,now);
+  // An explicit operator setting clears residual provider bindings when leaving
+  // a scoped test. Every other configured value, including malformed/expired
+  // grants, still fails closed; bridge-supplied grants always require a pair.
+  const serverTestGrant=env.WHATSAPP_TEST_SEND_GRANT==='disabled'?undefined:env.WHATSAPP_TEST_SEND_GRANT;
+  const testMode=serverTestGrant!==undefined||testSendGrant!==undefined;
+  const grant=pairedTestSendGrant(serverTestGrant,testSendGrant,now);
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>!j.removed&&(j.state==='queued'||j.state==='blocked'&&!!grant&&j.id===grant.jobId)&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
     // Restricted operational metadata only: never log targets, message bodies,
     // headers, credentials or grant contents. No diagnostic changes eligibility.
-    const trace=(reason:string)=>{if(j.type==='whatsapp_quote')console.info('quotation_claim',JSON.stringify({jobId:j.id,jobVersion:j.version,reason,canSend,serverEnabled:env.WHATSAPP_SEND_ENABLED==='true',serverFlagType:typeof env.WHATSAPP_SEND_ENABLED,testMode,nextAttemptReady:j.nextAttemptAt<=now}));};
+    const trace=(reason:string)=>{if(j.type==='whatsapp_quote')console.info('quotation_claim',JSON.stringify({jobId:j.id,jobVersion:j.version,reason,canSend,serverEnabled:env.WHATSAPP_SEND_ENABLED==='true',serverFlagType:typeof env.WHATSAPP_SEND_ENABLED,testMode,serverGrantConfigured:serverTestGrant!==undefined,serverGrantType:typeof env.WHATSAPP_TEST_SEND_GRANT,bridgeGrantSupplied:testSendGrant!==undefined,bridgeGrantType:typeof testSendGrant,nextAttemptReady:j.nextAttemptAt<=now}));};
     trace('candidate');
     const test=!!grant&&matchesTestSendJob(grant,j,'claim',now);
     if(j.type==='whatsapp_quote'&&((testMode&&!test)||j.testSend)){trace('test_restriction');continue;}

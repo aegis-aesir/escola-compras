@@ -19,8 +19,11 @@ try{
  const raceDb={prepare:db.prepare.bind(db),batch:async statements=>{await db.prepare('UPDATE records SET version=version+1 WHERE id=?').bind(requestId).run();return db.batch(statements)}};
  assert.equal(await claimJob(raceDb,{WHATSAPP_SEND_ENABLED:'true'},now,true),null);
  assert.ok(logs.some(l=>l.includes('cas_not_matched')),'failed CAS must be distinguishable from a disabled flag');
+ for(const invalid of ['invalid','',' ',null,false])assert.equal(await claimJob(db,{WHATSAPP_SEND_ENABLED:'true',WHATSAPP_TEST_SEND_GRANT:invalid},now,true),null,'invalid configured grants still fail closed, including empty bindings');
+ assert.equal(await claimJob(db,{WHATSAPP_SEND_ENABLED:'true',WHATSAPP_TEST_SEND_GRANT:'disabled'},now,false),null,'explicit no-grant mode still needs bridge authorization');
+ assert.equal(await claimJob(db,{WHATSAPP_SEND_ENABLED:'true',WHATSAPP_TEST_SEND_GRANT:'disabled'},now,true,'criteria-v1',{invalid:true}),null,'bridge-supplied grant must not bypass disabled server grants');
  logs.length=0;
- const claimed=await claimJob(db,{WHATSAPP_SEND_ENABLED:'true'},now,true);assert.equal(claimed.id,jobId);
+ const claimed=await claimJob(db,{WHATSAPP_SEND_ENABLED:'true',WHATSAPP_TEST_SEND_GRANT:'disabled'},now,true);assert.equal(claimed?.id,jobId,'explicit no-grant mode permits normal authorized dispatch');
  assert.ok(logs.some(l=>l.includes('claimed')));
  for(const l of logs)for(const privateValue of [target,'PRIVATE CONTACT','PRIVATE MESSAGE'])assert.ok(!l.includes(privateValue),'diagnostics must omit personal and message data');
  original('PASS: claim diagnostics identify disabled sending, CAS conflict and successful claim without private data.');
