@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+await build({entryPoints:['app/contact-agenda.tsx'],outfile:'outputs/contact-removal-ui-test.mjs',bundle:true,platform:'node',format:'esm',external:['react','react-dom','lucide-react'],loader:{'.css':'empty'}});
+const {ContactRemovalDialog}=await import('../outputs/contact-removal-ui-test.mjs');
+const entry={id:crypto.randomUUID(),version:3,name:'Contato TESTE LOCAL',phone:'+5592999990801',kind:'agenda_contact',classification:'general'};
+const props={entry,restore:false,onClose(){},async onSaved(){throw Error('Renderização não pode gravar nem enviar')}};
+const markup=renderToStaticMarkup(createElement(ContactRemovalDialog,props));
+assert.match(markup,/<dialog[^>]*aria-labelledby=/,'confirmation is a visible modal, independent of row position');
+assert.match(markup,/Contato TESTE LOCAL/);assert.match(markup,/\+5592999990801/);
+assert.match(markup,/Cancelar/);assert.match(markup,/Confirmar exclusão/);
+assert.match(markup,/textarea[^>]*required[^>]*minLength="5"/,'reason must be mandatory and constrained');
+assert.match(markup,/Lixeira/);assert.match(markup,/histórico/i);
+const restored=renderToStaticMarkup(createElement(ContactRemovalDialog,{...props,restore:true,entry:{...entry,removed:{at:'2026-11-15T14:00:00Z',by:'Operador TESTE',reason:'Motivo fictício'}}}));
+assert.match(restored,/Confirmar restauração/);assert.match(restored,/Motivo fictício/);assert.match(restored,/Operador TESTE/);assert.match(restored,/não envia/i);
+console.log('PASS contact removal UI: modal, name/phone, required reason, explicit trash/restore and no-send explanation.');

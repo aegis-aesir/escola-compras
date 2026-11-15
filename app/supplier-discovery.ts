@@ -34,6 +34,7 @@ export function matchingSuppliers(suppliers:Supplier[],category:string,scope:'lo
   const key=categoryKey(category);
   if(!key)return [];
   return suppliers.filter(s=>{
+    if(s.removed)return false;
     if((s.scope||'local')!==scope)return false;
     if(key==='materiais de construcao')return suppliesMaintenanceMaterials(s);
     if(key==='servicos de manutencao'){

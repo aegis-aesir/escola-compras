@@ -1,3 +1,14 @@
+# Entrega atual — envio normal, aviso de reenvio e Lixeiras — 15/11/2026
+
+Branch **codex/compras**, base **cc962ef4a1f152ec19cd465617648b278419b9af**. SHA final comunicado ao coordenador após commit/push. Pedido humano direto: envio para qualquer contato explicitamente escolhido, excluir contato/cotação concluída para novos testes e aviso quando esse pedido já foi enviado ao contato. Implementado com exclusão recuperável e histórico preservado; reenvio exige confirmação e cria nova identidade. Sem envio nativo ou alterações de produção pelo módulo.
+
+Procedimento, configuração `enableSend` booleana, preflight de fila, testes, limites e revisão: [REENVIO-E-LIXEIRA.md](REENVIO-E-LIXEIRA.md). Coordenador deve publicar/atualizar ponte e habilitar as duas chaves para o envio normal autorizado, sem grant temporário, sem rearmar as sete canceladas ou backlog. Usuário fará os próximos envios/exclusões.
+
+Sem migração/dependência. Compartilhados: modelos, agenda, seleção/mensagem, painel integração/dashboard/workflow, rotas data/contacts, integrações, matching de fornecedores e launcher. Novos helpers de histórico/remoção e modal. API `prepare_openclaw` passa `preparationId` e refs `resendOf`; `retry_integration` WhatsApp passa a recusar e orientar a seleção. Dados antigos/recibos continuam consultáveis.
+
+Testes D1/HTTP5185/UI local, tipos/build e revisão independente passaram; quatro achados reproduzidos RED/GREEN corrigidos, sem P1/P2 remanescentes na rechecagem. Lint novo/UI nova limpo; lint compartilhado contém problemas anteriores. Não declarar publicação ou envio normal ativo até confirmação operacional do coordenador.
+
+---
 # Entrega atual — envio único de teste e cancelamento auditado — 14/11/2026
 
 Follow-up da entrega 11af4da: se a aprovação ou elegibilidade mudar antes do claim restrito, recusar o envio preservando o teste bloqueado, sem aplicar o cancelamento automático normal da fila. Regressão RED/GREEN com aprovação retirada; integração, tipos e build novamente aprovados; revisão independente sem bloqueantes. UI local também confirmou cancelamento explícito de dois rascunhos fictícios e preservação do terceiro com envio desativado. SHA do follow-up comunicado após commit/push.

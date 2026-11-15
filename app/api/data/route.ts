@@ -1,6 +1,7 @@
 import {consolidateDeferredDrafts} from '../../../lib/deferred-requests';
 import {saveAgendaContact} from '../../../lib/contact-agenda';
 import {enqueueSelectedContacts} from '../../../lib/quotation-contacts';
+import {removeQuotationJob,restoreQuotationJob} from '../../../lib/quotation-removal';
 import {reapplyDeferredRequest} from '../../deferred-request';
 import { env } from 'cloudflare:workers';
 import { currentLocalUser } from '../../local-session';
@@ -79,10 +80,12 @@ export async function POST(req:Request){try{
   if(target&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(target)))throw new AppError('Reabra o fechamento mensal com justificativa antes de alterar o pedido.');
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
   if(b.action==='cancel_quotation_jobs')return Response.json({ok:true,...await cancelQuotationJobs(db,b.jobs,b.reason,me,now)});
+  if(b.action==='remove_quotation')return Response.json({ok:true,...await removeQuotationJob(db,b,me,now)});
+  if(b.action==='restore_quotation')return Response.json({ok:true,...await restoreQuotationJob(db,b,me,now)});
   if(['research','research_item','prepare_openclaw','retry_integration','review_message','supplier_categories','register_discovered_supplier'].includes(b.action)){
     permit(['admin','administrativo']);
     if(b.action==='register_discovered_supplier')return Response.json({ok:true,id:await registerDiscoveredSupplier(db,b.jobId,b.sourceIndex,b.data,me.name,now)});
-    if(b.action==='retry_integration')await retryJob(db,b.id,b.version,me.name,now,env);
+    if(b.action==='retry_integration')await retryJob(db,b.id,b.version,me.name,now);
     else if(b.action==='review_message')await reviewMessage(db,b.id,b.version,b.reason,me.name,now);
     else {
       const r=all.find(r=>r.id===b.id&&r.kind==='request') as Purchase|undefined;
@@ -91,7 +94,7 @@ export async function POST(req:Request){try{
       if(b.action==='supplier_categories')await setSupplierCategories(db,r,b.categories,me.name,now);
       else if(b.action==='research_item'||b.action==='research'&&b.criteria){await configureEstimateResearch(db,r,b.criteria,b.action==='research_item'?z.number().int().nonnegative().parse(b.itemIndex):undefined,me.name,now)}
       else if(b.action==='research'){if(r.status==='pending')await startEstimateSearch(db,r,me.name,now);else await enqueueSearch(db,r,me.name,now)}
-      else if(b.action==='prepare_openclaw'&&b.recipients!==undefined)await enqueueSelectedContacts(db,r,b.recipients,me.name,now,env);
+      else if(b.action==='prepare_openclaw'&&b.recipients!==undefined)await enqueueSelectedContacts(db,r,b.recipients,me.name,now,env,b.preparationId);
       else if(b.supplierIds!==undefined)await enqueueQuotations(db,r,all.filter(s=>s.kind==='supplier'),b.supplierIds,me.name,now,env);
       else {const s=all.find(s=>s.id===b.supplierId&&s.kind==='supplier');if(!s)throw new AppError('Fornecedor não encontrado.');await enqueueQuotation(db,r,s,me.name,now,env)}
     }

@@ -16,6 +16,7 @@ const suppliers=[
 const now='2026-11-13T12:00:00.000Z';
 const request={id:'request-test',version:1,code:'CE-TESTE',status:'quoting',items:[{name:'Registro TESTE',category:'Manutenção',quantity:4,unit:'un.',spec:'Especificação fictícia'},{name:'Papel TESTE',category:'Papelaria',quantity:1,unit:'resma',spec:'A4'}],quotes:[],generalApproval:{actor:'DG TESTE',at:now,reason:'Necessidade aprovada'}};
 const matches=api.compatibleQuotationSuppliers(request,suppliers);
+assert.deepEqual(api.compatibleQuotationSuppliers(request,[{...suppliers[0],removed:{at:now,by:'ADM TESTE',reason:'Removido da agenda'}}]),[],'contato excluído não pode continuar sugerido como fornecedor');
 assert.deepEqual(matches.map(m=>m.supplier.id),ids.slice(0,2),'todos os locais compatíveis, uma única vez por cadastro');
 assert.deepEqual(matches[0].itemIndexes,[0,1],'fornecedor de várias categorias mantém os itens compatíveis');
 assert.equal(api.compatibleQuotationSuppliers({...request,status:'national'},suppliers).length,3,'etapa nacional admite locais e nacionais, como a fila existente');
@@ -34,6 +35,8 @@ try{
  const db=await mf.getD1Database('DB');
  await db.prepare('CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,data TEXT,version INTEGER)').run();
  await db.prepare('CREATE TABLE audit(id TEXT PRIMARY KEY,entity TEXT,actor TEXT,action TEXT,at TEXT)').run();
+ await db.prepare('INSERT INTO records VALUES(?,?,?,1)').bind(request.id,'request',JSON.stringify(request)).run();
+ for(const supplier of suppliers)await db.prepare('INSERT INTO records VALUES(?,?,?,1)').bind(supplier.id,'supplier',JSON.stringify(supplier)).run();
  await assert.rejects(api.enqueueQuotations(db,request,suppliers,[ids[0],ids[3]],'ADM TESTE',now,{}),/compatível/);
  assert.equal((await api.rows(db,'integration_job')).length,0,'validar todos os selecionados antes de preparar tarefas');
  await api.enqueueQuotations(db,request,suppliers,ids.slice(0,2),'ADM TESTE',now,{});
@@ -41,6 +44,7 @@ try{
  const jobs=await api.rows(db,'integration_job');
  assert.equal(jobs.length,2,'repetir a preparação não duplica contatos');
  assert.ok(jobs.every(j=>j.state==='blocked'),'chaves de envio continuam desligadas');
+ assert.ok(jobs.every(j=>j.manualSelection===undefined),'a rota legada preserva compatibilidade estrita no despacho');
  assert.ok(jobs.every(j=>j.quotationTemplate.text===template),'uma base genérica por solicitação');
  const sent=[];
  for(const job of jobs){

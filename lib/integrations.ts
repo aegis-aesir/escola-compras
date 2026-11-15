@@ -5,10 +5,11 @@ import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEst
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
 import type { IntegrationJob, IntegrationSnapshot, InboxMessage } from '../app/integration-model';
-import {canCancelQuotationJob} from '../app/integration-model';
+import {canCancelQuotationJob,hasAmbiguousQuotation} from '../app/integration-model';
 import type {AgendaEntry} from '../app/contact-model';
 import {normalizeContactPhone} from '../integrations/openclaw/contact-phone.mjs';
 import {pairedTestSendGrant,matchesTestSendJob} from '../integrations/openclaw/test-send-grant.mjs';
+import {lastSentQuotation} from '../app/quotation-history';
 
 type Row<T> = T & {id:string;version:number};
 export type IntegrationEnv = {DB?:D1Database;INTEGRATION_SECRET?:string;WHATSAPP_SEND_ENABLED?:string;WHATSAPP_TEST_SEND_GRANT?:string};
@@ -17,6 +18,7 @@ export const schoolPhone = '+559292017107';
 const jobKind = 'integration_job';
 const inboxKind = 'integration_inbox';
 const maxAttempts = 3;
+const relatedQuotationGuard=" AND NOT EXISTS(SELECT 1 FROM records AS previous WHERE previous.kind='integration_job' AND json_extract(previous.data,'$.type')='whatsapp_quote' AND json_extract(previous.data,'$.requestId')=? AND json_extract(previous.data,'$.target')=? AND NOT EXISTS(SELECT 1 FROM json_each(?) AS expected WHERE json_extract(expected.value,'$.id')=previous.id AND json_extract(expected.value,'$.version')=previous.version))";
 const addMs = (at:string,ms:number)=>new Date(Date.parse(at)+ms).toISOString();
 const phone = (value:string)=>'+'+value.replace(/\D/g,'');
 export async function rows<T>(db:D1Database,kind:string):Promise<Row<T>[]> {
@@ -35,21 +37,21 @@ async function insert(db:D1Database,id:string,kind:string,data:object,entity:str
   const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records (id,kind,data,version) SELECT ?,?,?,1'+guard).bind(id,kind,JSON.stringify(data),...(kind==='supplier'?[phone((data as Supplier).phone).slice(1)]:[])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
-async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[],monthRequestId=old.id) {
+async function update(db:D1Database,old:{id:string;version:number},data:object,entity:string,actor:string,action:string,at:string,guards:{id:string;version:number}[]=[],monthRequestId=old.id,quotationGuard?:{requestId:string;target:string;jobs:{id:string;version:number}[]}) {
   const openMonth=" AND NOT EXISTS(SELECT 1 FROM records AS target JOIN records AS closing ON closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(json_extract(target.data,'$.management.referenceMonth'),json_extract(target.data,'$.form.fields.referenceMonth')) WHERE target.id=? AND target.kind='request' AND json_extract(closing.data,'$.status')='Concluído')";
-  const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+openMonth+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('');
-  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,monthRequestId,...guards.flatMap(g=>[g.id,g.version])),audit(db,entity,actor,action,at)]);
+  const sql='UPDATE records SET data=?,version=version+1 WHERE id=? AND version=?'+openMonth+guards.map(()=> ' AND EXISTS (SELECT 1 FROM records AS guard WHERE guard.id=? AND guard.version=?)').join('')+(quotationGuard?relatedQuotationGuard:'');
+  const result=await db.batch([db.prepare(sql).bind(JSON.stringify(data),old.id,old.version,monthRequestId,...guards.flatMap(g=>[g.id,g.version]),...(quotationGuard?[quotationGuard.requestId,quotationGuard.target,JSON.stringify(quotationGuard.jobs.map(({id,version})=>({id,version})))]:[])),audit(db,entity,actor,action,at)]);
   return result[0].meta.changes===1;
 }
 export async function digest(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>&Partial<IntegrationJob>,suppliers:Supplier[],contacts:AgendaEntry[]=[]) {
-  if(r.archived)return false;
+  if(r.archived||j.removed)return false;
   if(j.type==='estimate_search')return r.status==='estimating'&&('id' in j?isCurrentEstimateJob(r,j as IntegrationJob):(j.estimateRevision||'')===(r.estimateRevision||''));
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestSupplierCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
-  if(j.type==='whatsapp_quote'&&j.manualSelection){const recipient=[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId);return !!recipient&&['quoting','national'].includes(r.status)&&normalizeContactPhone(recipient.phone)===j.target&&j.target!==schoolPhone;}
+  if(j.type==='whatsapp_quote'&&j.manualSelection){const recipient=[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId);return !!recipient&&!recipient.removed&&['quoting','national'].includes(r.status)&&normalizeContactPhone(recipient.phone)===j.target&&j.target!==schoolPhone;}
   const s=suppliers.find(s=>s.id===j.supplierId);
   return !!s&&compatibleQuotationSuppliers(r,[s]).length>0;
 }
@@ -143,15 +145,7 @@ export async function registerDiscoveredSupplier(db:D1Database,jobId:string,sour
 }
 export async function enqueueQuotation(db:D1Database,r:Purchase,s:Supplier,actor:string,now:string,env:IntegrationEnv) {
   if(!eligible(r,{type:'whatsapp_quote',supplierId:s.id},[s]))throw new FlowError('A cotação exige aprovação da necessidade e fornecedor permitido nesta etapa.');
-  const target=phone(s.phone);
-  if(!/^\+[1-9]\d{9,14}$/.test(target))throw new FlowError('Confira o telefone internacional do fornecedor antes de preparar a cotação.');
-  const existing=(await rows<IntegrationJob>(db,jobKind)).find(j=>j.type==='whatsapp_quote'&&j.requestId===r.id&&j.target===target);
-  if(existing)return existing.id;
-  const id='whatsapp:'+await digest(JSON.stringify([r.id,target,r.generalApproval?.at]));
-  const job:Omit<IntegrationJob,'version'>={id,requestId:r.id,type:'whatsapp_quote',supplierId:s.id,supplierName:s.name,target:phone(s.phone),accountId,schoolPhone,message:quotationMessage(r,s),state:env.WHATSAPP_SEND_ENABLED==='true'?'queued':'blocked',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
-  job.quotationTemplate={version:'contact-v1',text:quotationMessageTemplate(r),contact:s.contact||s.name};
-  await insert(db,id,jobKind,job,r.id,actor,'Cotação preparada para OpenClaw; envio depende da ativação',now);
-  return id;
+  return enqueueManualQuotation(db,r,{...s,kind:'supplier',classification:'supplier'},actor,now,env,true,{legacy:true});
 }
 export async function enqueueQuotations(db:D1Database,r:Purchase,suppliers:Supplier[],input:unknown,actor:string,now:string,env:IntegrationEnv) {
   const ids=z.array(z.string().uuid()).min(1,'Selecione ao menos um fornecedor.').max(100,'Prepare até 100 fornecedores por vez.').refine(values=>new Set(values).size===values.length,'Seleção de fornecedores repetida.').parse(input);
@@ -163,17 +157,35 @@ export async function enqueueQuotations(db:D1Database,r:Purchase,suppliers:Suppl
   for(const supplier of selected)jobs.push(await enqueueQuotation(db,r,supplier,actor,now,env));
   return jobs;
 }
-export async function enqueueManualQuotation(db:D1Database,r:Purchase,recipient:AgendaEntry,actor:string,now:string,env:IntegrationEnv,suggested:boolean){
+export async function enqueueManualQuotation(db:D1Database,r:Purchase,recipient:AgendaEntry,actor:string,now:string,env:IntegrationEnv,suggested:boolean,options:{preparationId?:string;resendOf?:{id:string;version:number};legacy?:boolean}={}){
   if(r.archived||!r.generalApproval||!['quoting','national'].includes(r.status))throw new FlowError('A escolha de contatos exige pedido aprovado e em cotação.',409);
-  const target=normalizeContactPhone(recipient.phone);if(!target||!/^\+[1-9]\d{9,14}$/.test(target)||target===schoolPhone)throw new FlowError('Confira o telefone do contato.',400);
-  const existing=(await rows<IntegrationJob>(db,jobKind)).find(j=>j.type==='whatsapp_quote'&&j.requestId===r.id&&j.target===target);
-  if(existing)return existing.id; // Never change/release a previously prepared task.
-  const id='whatsapp:'+await digest(JSON.stringify([r.id,target,r.generalApproval.at]));
+  const target=normalizeContactPhone(recipient.phone);if(recipient.removed||!target||!/^\+[1-9]\d{9,14}$/.test(target)||target===schoolPhone)throw new FlowError('Confira o contato e seu telefone.',400);
+  if(options.preparationId)z.string().uuid().parse(options.preparationId);
+  const related=(await rows<IntegrationJob>(db,jobKind)).filter(j=>j.type==='whatsapp_quote'&&j.requestId===r.id&&j.target===target);
+  if(related.some(hasAmbiguousQuotation))throw new FlowError('Há histórico de envio ambíguo para este contato. Confira o WhatsApp e os recibos antes de uma nova tentativa.',409);
+  const repeated=options.preparationId&&related.find(j=>j.preparationId===options.preparationId);
+  if(repeated){if(repeated.removed)throw new FlowError('Este preparo foi excluído. Reabra a seleção para um novo preparo.',409);return repeated.id;}
+  if(related.some(j=>j.state==='uncertain'))throw new FlowError('Há envio incerto para este contato. Confira o WhatsApp antes de uma nova tentativa.',409);
+  const sent=lastSentQuotation(related,r.id,target);
+  if(sent&&(!options.preparationId||options.resendOf?.id!==sent.id||options.resendOf?.version!==sent.version))throw new FlowError('Cotação já enviada para este contato. A confirmação de reenvio está ausente ou atualizada. Reabra a seleção.',409);
+  const active=related.find(j=>!j.removed&&['queued','running','blocked'].includes(j.state));
+  if(active){
+    if(active.state==='blocked'&&options.preparationId&&env.WHATSAPP_SEND_ENABLED==='true'){
+      if(!canCancelQuotationJob(active))throw new FlowError('Este rascunho exige conferência antes de enviar.',409);
+      const contact=recipient.contact||recipient.name,text=quotationMessageTemplate(r);
+      const next={...active,accountId,schoolPhone,supplierId:recipient.kind==='supplier'?recipient.id:undefined,contactId:recipient.kind==='agenda_contact'?recipient.id:undefined,supplierName:recipient.name,state:'queued',preparationId:options.preparationId,resendOf:options.resendOf,updatedAt:now,message:quotationMessage(r,{...recipient,contact} as Supplier),quotationTemplate:{version:'contact-v1' as const,text,contact},messageHistory:[...(active.messageHistory||[]),{message:active.message,quotationTemplate:active.quotationTemplate,at:now,reason:'Novo preparo explícito do usuário; texto anterior preservado'}],manualSelection:{recipientId:recipient.id,actor,at:now,suggested}};
+      if(!await update(db,active,next,r.id,actor,'Rascunho escolhido explicitamente colocado na fila de envio',now,[r,recipient],r.id,{requestId:r.id,target,jobs:related}))throw new FlowError('Pedido, recibo ou contato atualizado, ou mês fechado. Reabra a seleção.',409);
+    }
+    return active.id;
+  }
+  const latest=[...related].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id))[0];
+  if(latest&&!latest.removed&&latest.state==='cancelled'&&!sent)throw new FlowError('A cotação foi cancelada. Exclua o registro da lista antes de preparar novamente.',409);
+  const id='whatsapp:'+await digest(JSON.stringify(options.preparationId?[r.id,target,'manual-v2',options.preparationId]:[r.id,target,r.generalApproval.at,...(related.length?related.map(j=>[j.id,j.version]):[])]));
   const contact=recipient.contact||recipient.name,template=quotationMessageTemplate(r);
-  const job={id,requestId:r.id,type:'whatsapp_quote',supplierId:recipient.kind==='supplier'?recipient.id:undefined,contactId:recipient.kind==='agenda_contact'?recipient.id:undefined,supplierName:recipient.name,target,accountId,schoolPhone,message:quotationMessage(r,{...recipient,contact} as Supplier),quotationTemplate:{version:'contact-v1',text:template,contact},manualSelection:{recipientId:recipient.id,actor,at:now,suggested},state:env.WHATSAPP_SEND_ENABLED==='true'?'queued':'blocked',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
-  const guard=" WHERE EXISTS(SELECT 1 FROM records AS request WHERE request.id=? AND request.kind='request' AND request.version=?) AND EXISTS(SELECT 1 FROM records AS contact WHERE contact.id=? AND contact.version=? AND contact.kind IN ('supplier','agenda_contact')) AND NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(?,?) AND json_extract(closing.data,'$.status')='Concluído')";
-  const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records(id,kind,data,version) SELECT ?,?,?,1'+guard).bind(id,jobKind,JSON.stringify(job),r.id,r.version,recipient.id,recipient.version,r.management?.referenceMonth||null,r.form?.fields.referenceMonth||null),audit(db,r.id,actor,'Cotação preparada para contato escolhido explicitamente; envio depende das duas liberações',now)]);
-  if(result[0].meta.changes!==1&&!await row(db,id,jobKind))throw new FlowError('Pedido ou contato atualizado, ou mês fechado. Reabra a seleção.',409);
+  const job={id,requestId:r.id,type:'whatsapp_quote',supplierId:recipient.kind==='supplier'?recipient.id:undefined,contactId:recipient.kind==='agenda_contact'?recipient.id:undefined,supplierName:recipient.name,target,accountId,schoolPhone,message:quotationMessage(r,{...recipient,contact} as Supplier),quotationTemplate:{version:'contact-v1',text:template,contact},manualSelection:options.legacy?undefined:{recipientId:recipient.id,actor,at:now,suggested},preparationId:options.preparationId,resendOf:sent?options.resendOf:undefined,state:env.WHATSAPP_SEND_ENABLED==='true'?'queued':'blocked',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+  const guard=" WHERE EXISTS(SELECT 1 FROM records AS request WHERE request.id=? AND request.kind='request' AND request.version=?) AND EXISTS(SELECT 1 FROM records AS contact WHERE contact.id=? AND contact.version=? AND contact.kind IN ('supplier','agenda_contact') AND json_extract(contact.data,'$.removed') IS NULL) AND NOT EXISTS(SELECT 1 FROM records AS closing WHERE closing.kind='budget_closing' AND json_extract(closing.data,'$.month')=COALESCE(?,?) AND json_extract(closing.data,'$.status')='Concluído')"+relatedQuotationGuard;
+  const result=await db.batch([db.prepare('INSERT OR IGNORE INTO records(id,kind,data,version) SELECT ?,?,?,1'+guard).bind(id,jobKind,JSON.stringify(job),r.id,r.version,recipient.id,recipient.version,r.management?.referenceMonth||null,r.form?.fields.referenceMonth||null,r.id,target,JSON.stringify(related.map(({id,version})=>({id,version})))),audit(db,r.id,actor,sent?'Reenvio confirmado explicitamente; novo registro e recibo independente':'Cotação preparada para contato escolhido explicitamente; envio depende das duas liberações',now)]);
+  if(result[0].meta.changes!==1){const existing=await row<IntegrationJob>(db,id,jobKind);if(existing&&!existing.removed)return id;throw new FlowError('Cotação, pedido ou contato atualizado, ou mês fechado. Reabra a seleção antes de reenviar.',409);}
   return id;
 }
 // Called by both the authenticated panel and the independent bridge, using the
@@ -192,12 +204,12 @@ export async function integrationSnapshot(db:D1Database,env:IntegrationEnv):Prom
   const jobs=await rows<IntegrationJob>(db,jobKind);
   return {provider:'OpenClaw',accountId,schoolPhone,bridgeConfigured:(env.INTEGRATION_SECRET?.length||0)>=32,sendingEnabled:env.WHATSAPP_SEND_ENABLED==='true',lastSeenAt:state?.lastSeenAt,jobs:jobs.map(({leaseToken,leaseUntil,...j})=>j),inbox:await rows<InboxMessage>(db,inboxKind)};
 }
-export async function retryJob(db:D1Database,id:string,version:number,actor:string,now:string,env:IntegrationEnv) {
+export async function retryJob(db:D1Database,id:string,version:number,actor:string,now:string) {
   const j=await row<IntegrationJob>(db,id,jobKind);
-  if(!j||j.version!==version)throw new FlowError('Tarefa atualizada. Recarregue o painel.',409);
+  if(!j||j.removed||j.version!==version)throw new FlowError('Tarefa atualizada ou excluída. Recarregue o painel.',409);
+  if(j.type==='whatsapp_quote')throw new FlowError('Para enviar ou reenviar uma cotação, abra a solicitação, escolha os contatos e confira o aviso de envio anterior.',409);
   // Uncertain sends can never be retried automatically or through this action.
   if(!['failed','blocked'].includes(j.state)&&!(j.type==='estimate_search'&&j.state==='review'))throw new FlowError('Esta tarefa não permite nova tentativa.');
-  if(j.type==='whatsapp_quote'&&(j.state!=='blocked'||env.WHATSAPP_SEND_ENABLED!=='true'))throw new FlowError('Envio desativado ou exige conferência manual.');
   const r=await row<Purchase>(db,j.requestId,'request');
   if(!r||!eligible(r,j,await rows<Supplier>(db,'supplier'),await rows<AgendaEntry>(db,'agenda_contact')))throw new FlowError('A etapa do pedido não permite esta tarefa.');
   if(!await update(db,j,{...j,state:'queued',attempts:0,error:undefined,priceEvidence:undefined,sources:undefined,researchedAt:undefined,updatedAt:now,nextAttemptAt:now},j.requestId,actor,'Nova tentativa de integração solicitada',now,[],j.manualSelection?r.id:j.id))throw new FlowError('Tarefa atualizada. Recarregue.',409);
@@ -285,7 +297,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   const contacts=await rows<AgendaEntry>(db,'agenda_contact');
   const testMode=!!env.WHATSAPP_TEST_SEND_GRANT||testSendGrant!==undefined;
   const grant=pairedTestSendGrant(env.WHATSAPP_TEST_SEND_GRANT,testSendGrant,now);
-  const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>(j.state==='queued'||j.state==='blocked'&&!!grant&&j.id===grant.jobId)&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
+  const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>!j.removed&&(j.state==='queued'||j.state==='blocked'&&!!grant&&j.id===grant.jobId)&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
     const test=!!grant&&matchesTestSendJob(grant,j,'claim',now);
     if(j.type==='whatsapp_quote'&&((testMode&&!test)||j.testSend))continue;
@@ -301,7 +313,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
       if(!test&&(!canSend||env.WHATSAPP_SEND_ENABLED!=='true'))continue;
       // A changed phone number requires a fresh human decision, never silent rerouting.
       const recipient=j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId):suppliers.find(s=>s.id===j.supplierId);
-      if(!recipient||(j.manualSelection?normalizeContactPhone(recipient.phone):phone(recipient.phone))!==j.target)continue;
+      if(!recipient||normalizeContactPhone(recipient.phone)!==j.target)continue;
     }
     const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?600000:120000),updatedAt:now};
     if(test){

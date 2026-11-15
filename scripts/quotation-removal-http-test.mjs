@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {localBase,localTestSession,testUsers} from './local-test-session.mjs';
+assert.equal(localBase,'http://127.0.0.1:5185');
+await import('./quotation-contacts-http-test.mjs');
+const {requestId}=JSON.parse(await readFile('outputs/quotation-contacts-fixture.json','utf8'));
+const master=await localTestSession(),sector=await localTestSession(testUsers[1]),general=await localTestSession(testUsers[2]);
+async function api(body,cookie=master,status=200){const response=await fetch(localBase+'/api/data',{method:body?'POST':'GET',headers:{Cookie:cookie,Origin:localBase,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const raw=await response.text();assert.equal(response.status,status,raw);return JSON.parse(raw)}
+const before=await api(),job=before.integrations.jobs.find(j=>j.requestId===requestId&&j.type==='whatsapp_quote');
+const payload={action:'remove_quotation',id:job.id,version:job.version,reason:'TESTE LOCAL exclusão para novo preparo explícito'};
+await api(payload,sector,403);await api(payload,general,403);await api({...payload,reason:''},master,400);await api({...payload,version:99},master,409);
+await api(payload);let after=await api(),removed=after.integrations.jobs.find(j=>j.id===job.id);assert.equal(removed.state,'cancelled');assert.ok(removed.removed);assert.equal(removed.message,job.message);
+for(const old of before.integrations.jobs.filter(j=>j.id!==job.id))assert.deepEqual(after.integrations.jobs.find(j=>j.id===old.id),old);
+await api({...payload,action:'restore_quotation',version:removed.version});after=await api();const restored=after.integrations.jobs.find(j=>j.id===job.id);assert.equal(restored.state,'cancelled');assert.equal(restored.removed,undefined);
+await api({...payload,version:restored.version});
+const current=(await api()).requests.find(r=>r.id===requestId),response=await fetch(localBase+'/api/contacts?quotationRequestId='+requestId,{headers:{Cookie:master}}),choices=await response.json();
+const choice=choices.choices.find(c=>c.phone===job.target),operation=crypto.randomUUID(),prepare={action:'prepare_openclaw',id:current.id,version:current.version,recipients:[choice.selection],preparationId:operation};
+await api({...prepare,preparationId:'invalid'},master,400);await api(prepare);await api(prepare);
+after=await api();const related=after.integrations.jobs.filter(j=>j.requestId===requestId&&j.target===job.target);assert.equal(related.length,2);const fresh=related.find(j=>j.id!==job.id);assert.equal(fresh.state,'blocked');assert.equal(fresh.attempts,0);assert.equal(fresh.preparationId,operation);assert.equal(after.integrations.sendingEnabled,false);
+await writeFile('outputs/quotation-removal-fixture.json',JSON.stringify({requestId,oldId:job.id,newId:fresh.id,target:job.target}));
+console.log('PASS HTTP 5185: remove/restore permissions, reason/version, history, fresh preparation ID, idempotent retry, no send or old task reactivation.');

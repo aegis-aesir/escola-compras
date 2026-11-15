@@ -43,7 +43,7 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       if(old.status==='admin_review')permit('administrativo');else{permit('geral');stage('general_review')};data.decision=reason();data.status='rejected';action='Pedido não aprovado: '+data.decision;break;
     case 'local_contact':{
       permit('administrativo');stage('quoting');if(!old.generalApproval)throw new FlowError('Regularize as aprovações deste pedido do fluxo anterior.');
-      const s=suppliers.find(s=>s.id===b.supplierId&&(s.scope||'local')==='local');if(!s)throw new FlowError('Selecione um fornecedor local.');
+      const s=suppliers.find(s=>s.id===b.supplierId&&!s.removed&&(s.scope||'local')==='local');if(!s)throw new FlowError('Selecione um fornecedor local.');
       const note=reason();data.localAttempts=[...(old.localAttempts||[]),{supplierId:s.id,supplierName:s.name,at:now,note}];
       if(!old.localStartedAt){data.localStartedAt=now;data.localDeadline=nextBusinessDay(now,settings.holidays||[])}
       action='Contato local registrado: '+s.name+' — '+note;break;
@@ -52,7 +52,7 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       permit('administrativo');stage('quoting');if(!localExpired(old,now))throw new FlowError('A busca nacional exige 1 dia útil desde o primeiro contato local e nenhuma proposta válida.');data.nationalReason=reason();data.status='national';action='Prazo local encerrado; encaminhado à pesquisa nacional: '+data.nationalReason;break;
     case 'quote':{
       permit('administrativo');stage('quoting','national');if(!old.generalApproval)throw new FlowError('Regularize as aprovações deste pedido do fluxo anterior.');
-      const q=quoteSchema.parse(b.data);const s=suppliers.find(s=>s.id===q.supplierId);if(!s)throw new FlowError('Fornecedor não encontrado.');
+      const q=quoteSchema.parse(b.data);const s=suppliers.find(s=>s.id===q.supplierId&&!s.removed);if(!s)throw new FlowError('Fornecedor não encontrado.');
       if(old.status==='quoting'&&(s.scope||'local')!=='local')throw new FlowError('Nesta etapa, cote primeiro com fornecedores de Manaus.');
       const normalized=normalizeQuote(old,q);
       data.quoteHistory=[...(old.quoteHistory||[]),...old.quotes.filter(v=>v.supplierId===q.supplierId)];

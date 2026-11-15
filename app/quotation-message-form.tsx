@@ -7,7 +7,7 @@ import type {QuotationContactSelection,QuotationContactsSnapshot} from './quotat
 import {filterQuotationChoices,initialQuotationSelection} from './quotation-contact-selection';
 import './quotation-contacts.css';
 
-type Props={request:Purchase;suppliers:Supplier[];busy:boolean;error:string;onPrepare:(recipients:QuotationContactSelection[])=>Promise<boolean>};
+type Props={request:Purchase;suppliers:Supplier[];busy:boolean;error:string;onPrepare:(recipients:QuotationContactSelection[],preparationId:string)=>Promise<boolean>};
 
 export default function QuotationMessageForm(props:Props){
  return <QuotationContactMessageForm key={`${props.request.id}:${props.request.version}`} {...props}/>;
@@ -16,6 +16,7 @@ function QuotationContactMessageForm({request,busy,error,onPrepare}:Props){
  const [snapshot,setSnapshot]=useState<QuotationContactsSnapshot|null>(null),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState(''),[retry,setRetry]=useState(0);
  const [selected,setSelected]=useState<string[]>([]),[query,setQuery]=useState(''),[mode,setMode]=useState<'all'|'recommended'|'selected'>('all'),[page,setPage]=useState(0);
  const [copied,setCopied]=useState(false),[copyError,setCopyError]=useState(''),[prepared,setPrepared]=useState(false),[submitting,setSubmitting]=useState(false),[submitError,setSubmitError]=useState('');
+ const [confirmResend,setConfirmResend]=useState(false),[preparationId,setPreparationId]=useState(()=>crypto.randomUUID());
  const initialized=useRef(false),submitLock=useRef(false);
  useEffect(()=>{
   const controller=new AbortController();let active=true;
@@ -36,14 +37,16 @@ function QuotationContactMessageForm({request,busy,error,onPrepare}:Props){
  },[request.id,request.version,retry]);
  const choices=snapshot?.choices||[],selectedKeys=new Set(selected);
  const selectedChoices=choices.filter(choice=>selectedKeys.has(choice.key)&&!choice.disabledReason);
+ const sentChoices=selectedChoices.filter(choice=>choice.lastSent);
  const filtered=filterQuotationChoices(choices,query,mode,selected),pages=Math.max(1,Math.ceil(filtered.length/25)),currentPage=Math.min(page,pages-1),visible=filtered.slice(currentPage*25,currentPage*25+25);
  const locked=busy||submitting,template=quotationMessageTemplate(request),previewCount=selectedChoices.filter(choice=>choice.selection.kind==='sync').length;
- function changeSelection(next:string[]){setSelected(next);setPrepared(false);setSubmitError('')}
+ function changeSelection(next:string[]){setSelected(next);setPrepared(false);setSubmitError('');setConfirmResend(false);setPreparationId(crypto.randomUUID())}
  return <form className="modal-body quotation-message-form" onSubmit={async event=>{
   event.preventDefault();
   if(locked||submitLock.current||loading||loadError||!selectedChoices.length||selectedChoices.length>100)return;
+  if(sentChoices.length&&!confirmResend){setSubmitError('Este pedido já foi enviado a um ou mais contatos selecionados. Confira o aviso e confirme o reenvio.');return;}
   submitLock.current=true;setSubmitting(true);setPrepared(false);setSubmitError('');
-  try{if(await onPrepare(selectedChoices.map(choice=>choice.selection)))setPrepared(true)}
+  try{if(await onPrepare(selectedChoices.map(choice=>({...choice.selection,...(choice.lastSent&&confirmResend?{resendOf:{id:choice.lastSent.id,version:choice.lastSent.version}}:{})})),preparationId))setPrepared(true)}
   catch(cause){setSubmitError(cause instanceof Error?cause.message:'Não foi possível preparar as cotações.')}
   finally{submitLock.current=false;setSubmitting(false)}
  }}>
@@ -73,6 +76,7 @@ function QuotationContactMessageForm({request,busy,error,onPrepare}:Props){
        <small>{choice.company?`${choice.company} · `:''}{choice.phone||'Sem telefone'}</small>
        <small>{choice.sourceLabel} · {choice.classification==='supplier'?'Fornecedor':choice.classification==='general'?'Contato geral':'Sem classificação'}{choice.category?` · ${choice.category}`:''}{choice.scope?` · ${choice.scope==='local'?'Local':'Nacional'}`:''}</small>
        {choice.recommended&&<small>Itens compatíveis: {choice.itemIndexes.map(index=>request.items[index]?.name).filter(Boolean).join('; ')}</small>}
+       {choice.lastSent&&<small className="quotation-contacts-reason">Já enviada em {new Date(choice.lastSent.sentAt).toLocaleString('pt-BR',{timeZone:'America/Manaus'})} · Pedido {request.code}</small>}
        {choice.disabledReason&&<small className="quotation-contacts-reason">Indisponível: {choice.disabledReason}</small>}
       </span>
      </label>)}
@@ -82,6 +86,12 @@ function QuotationContactMessageForm({request,busy,error,onPrepare}:Props){
     {!choices.some(choice=>choice.recommended)&&<p className="muted">Sem sugestões para este pedido. Você pode escolher manualmente os contatos disponíveis, sem alterar sua classificação.</p>}
    </>}
   </fieldset>
+  {sentChoices.length>0&&<section className="note" aria-label="Aviso de cotação já enviada">
+   <strong>Este pedido já foi enviado a {sentChoices.length} contato(s) selecionado(s).</strong>
+   <ul>{sentChoices.map(choice=><li key={choice.key}>{choice.name} · {choice.phone} · {new Date(choice.lastSent!.sentAt).toLocaleString('pt-BR',{timeZone:'America/Manaus'})}</li>)}</ul>
+   <p>Um reenvio gera outra mensagem no WhatsApp. Excluir o registro da lista não apaga o envio anterior.</p>
+   <label className="check"><input type="checkbox" required checked={confirmResend} disabled={locked} onChange={event=>{setConfirmResend(event.target.checked);setPrepared(false)}}/><span>Conferi os contatos e confirmo o reenvio deste pedido.</span></label>
+  </section>}
   <p className="note">Ao clicar em Preparar cotações, você confirma os {selectedChoices.length} destinatários escolhidos, inclusive os não sugeridos. Contatos escolhidos da prévia do WhatsApp serão salvos sem classificação ao preparar.{previewCount>0?` Nesta seleção: ${previewCount} contato(s) da prévia.`:''}</p>
   <label className="field"><span>Modelo genérico da mensagem</span><textarea rows={13} readOnly value={template}/></label>
   <p className="muted">O OpenClaw substitui {'{{contato}}'} pelo contato ou nome cadastrado de cada destinatário no despacho. Itens, quantidades e condições do modelo são preservados. O envio depende da liberação no servidor e na ponte.</p>

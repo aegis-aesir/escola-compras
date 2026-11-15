@@ -12,6 +12,9 @@ export type IntegrationJob = {
   testSend?:{version:number;issuedAt:string;expiresAt:string};
   messageHistory?:{message?:string;quotationTemplate?:IntegrationJob['quotationTemplate'];at:string;reason:string}[];
   cancellation?:{actor:string;at:string;reason:string;previousState:IntegrationJob['state']};
+  removed?:{at:string;by:string;reason:string};
+  removalHistory?:{action:'remove'|'restore';at:string;by:string;reason:string}[];
+  preparationId?:string;resendOf?:{id:string;version:number};
   researchedAt?:string;providerMessageId?:string;sentAt?:string;error?:string;
   leaseToken?:string;leaseUntil?:string;
 };
@@ -31,5 +34,16 @@ export const jobLabels:Record<IntegrationJob['state'],string> = {
   blocked:'Envio desativado',cancelled:'Cancelado',
 };
 export function canCancelQuotationJob(j:IntegrationJob){
-  return j.type==='whatsapp_quote'&&['blocked','queued','failed'].includes(j.state)&&j.attempts===0&&j.sentAt===undefined&&j.providerMessageId===undefined&&j.leaseToken===undefined&&j.leaseUntil===undefined&&j.testSend===undefined;
+  return j.type==='whatsapp_quote'&&!j.removed&&['blocked','queued','failed'].includes(j.state)&&j.attempts===0&&j.sentAt===undefined&&j.providerMessageId===undefined&&j.leaseToken===undefined&&j.leaseUntil===undefined&&j.testSend===undefined;
+}
+export function canRemoveQuotationJob(j:IntegrationJob){
+ if(j.type!=='whatsapp_quote'||j.removed)return false;
+ if(j.state==='done')return j.attempts>=1&&!!j.sentAt&&!!j.providerMessageId;
+ return ['blocked','queued','failed','cancelled'].includes(j.state)&&j.attempts===0&&j.sentAt===undefined&&j.providerMessageId===undefined&&j.leaseToken===undefined&&j.leaseUntil===undefined&&j.testSend===undefined;
+}
+export function hasAmbiguousQuotation(j:IntegrationJob){
+ if(j.state==='uncertain')return true;
+ if(j.state==='done')return !j.sentAt||!j.providerMessageId||!(j.attempts>=1);
+ if(['failed','blocked','queued','cancelled'].includes(j.state))return j.attempts!==0||j.sentAt!==undefined||j.providerMessageId!==undefined||j.leaseToken!==undefined||j.leaseUntil!==undefined||j.testSend!==undefined;
+ return false;
 }

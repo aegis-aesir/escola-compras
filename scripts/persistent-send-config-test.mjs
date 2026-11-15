@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {bridgeConfig} from '../integrations/openclaw/client.mjs';
+const launcher=readFileSync('integrations/openclaw/start-windows.ps1','utf8');
+const line=launcher.split(/\r?\n/).find(s=>s.trim().startsWith('$env:ESTRELAS_ENABLE_SEND ='));
+const script=`$ErrorActionPreference='Stop'; $inputs=@(@{enableSend=$true},@{enableSend=$false},@{enableSend='true'},@{}); foreach($item in $inputs){$credentials=[pscustomobject]$item; ${line}; Write-Output $env:ESTRELAS_ENABLE_SEND}`;
+const result=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/);
+assert.deepEqual(result,['true','false','false','false'],'only the explicit persisted boolean enables the bridge');
+const config=bridgeConfig({ESTRELAS_SITE_URL:'http://127.0.0.1:5185',ESTRELAS_LOCAL_TEST:'true',ESTRELAS_ENABLE_SEND:'true',INTEGRATION_SECRET:'FAKE'.repeat(16)});assert.equal(config.canSend,false);
+console.log('PASS: strict persisted enableSend boolean, absent/string/false remain disabled, local mode cannot send.');

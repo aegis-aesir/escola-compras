@@ -5,6 +5,7 @@ export type ContactSource = {kind:'manual'|'csv'|'vcf'|'whatsapp';label:string;a
 export type AgendaEntry = ContactDraft & {
  id:string;version:number;kind:'supplier'|'agenda_contact';classification:'unclassified'|'general'|'supplier';
  contact?:string;scope?:'local'|'national';source?:ContactSource;
+ removed?:{at:string;by:string;reason:string};
 };
 export type ContactParseResult = {contacts:ContactDraft[];issues:{line:number;message:string}[];duplicates:number;total:number};
 export type ContactSyncView = {
@@ -12,5 +13,5 @@ export type ContactSyncView = {
  contacts:ContactDraft[];coverage:'known_conversations';error?:string;counts?:{candidates:number;skipped:number};
  warnings?:{source:'ingress'|'session_metadata';error:'source_unavailable'|'schema_unsupported'|'limit_exceeded'|'read_failed'}[];
 };
-export type ContactsSnapshot = {entries:AgendaEntry[];sync?:ContactSyncView;bridgeReady:boolean};
+export type ContactsSnapshot = {entries:AgendaEntry[];removedEntries?:AgendaEntry[];sync?:ContactSyncView;bridgeReady:boolean};
 export type ContactImportResult = {created:number;existing:number;conflicts:number;results:{index:number;id:string;status:'created'|'existing'|'conflict'}[]};
