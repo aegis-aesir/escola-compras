@@ -4,8 +4,9 @@ import {money,type Snapshot,type Purchase} from './model';
 import EstimateCriteriaPanel from './estimate-criteria-panel';
 import {isCurrentEstimateJob} from './estimate-criteria';
 import {estimateProgress} from './estimate-progress';
-import { jobLabels,canCancelQuotationJob } from './integration-model';
-type Props={data:Snapshot;busy:boolean;onSave:(value:unknown)=>Promise<boolean>};
+import { jobLabels,canCancelQuotationJob,canRemoveQuotationJob,type IntegrationJob } from './integration-model';
+import QuotationRemovalDialog from './quotation-removal-dialog';
+type Props={data:Snapshot;busy:boolean;error?:string;onSave:(value:unknown)=>Promise<boolean>};
 const date=(s:string)=>new Date(s).toLocaleString('pt-BR',{timeZone:'America/Manaus'});
 
 export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purchase}) {
@@ -29,13 +30,14 @@ export function ResearchPanel({data,request:r,busy,onSave}:Props&{request:Purcha
     </div>)}
   </section>;
 }
-export default function IntegrationPanel({data,busy,onSave,onRefresh}:Props&{onRefresh:()=>void}) {
+export default function IntegrationPanel({data,busy,error,onSave,onRefresh}:Props&{onRefresh:()=>void}) {
   const [cancelSelection,setCancelSelection]=useState<{id:string;version:number}[]>([]);
   const [cancelReason,setCancelReason]=useState('');
+  const [showRemoved,setShowRemoved]=useState(false),[removal,setRemoval]=useState<{job:IntegrationJob;restore:boolean}|null>(null);
   const integration=data.integrations;
   if(!integration)return null;
   const recent=!!integration.lastSeenAt&&Date.now()-Date.parse(integration.lastSeenAt)<180000;
-  const jobs=integration.jobs.filter(j=>j.type==='whatsapp_quote');
+  const allJobs=integration.jobs.filter(j=>j.type==='whatsapp_quote'),jobs=allJobs.filter(j=>showRemoved?!!j.removed:!j.removed);
   return <section className="panel padded integration-status">
     <div className="panel-heading inline"><h2>Conexão OpenClaw</h2><button className="button secondary" disabled={busy} onClick={onRefresh}>Atualizar estado</button></div>
     <p><b>Conta:</b> {integration.accountId} · <b>Número da escola:</b> {integration.schoolPhone}</p>
@@ -43,13 +45,15 @@ export default function IntegrationPanel({data,busy,onSave,onRefresh}:Props&{onR
     <p className="muted">A pesquisa usa a ferramenta web_search do OpenClaw. O processamento com o painel fechado depende da ponte em execução. Credenciais são configuradas fora do painel.</p>
     <p className="note"><b>Pesquisa no Mercado Livre:</b> entre na sua conta no navegador OpenClaw, perfil compras. Depois, abra o pedido e use “Refazer pesquisa de preços”. O resultado informa se a sessão foi reconhecida. Senhas e cookies ficam no computador.</p><h3>Cotações preparadas</h3>
     {!jobs.length&&<p className="muted">Abra um pedido aprovado para preparar uma cotação ao fornecedor.</p>}
+    <div className="actions"><button type="button" className="button secondary" disabled={busy} aria-pressed={showRemoved} onClick={()=>{setShowRemoved(!showRemoved);setCancelSelection([])}}>{showRemoved?'Voltar às cotações ativas':`Lixeira de cotações (${allJobs.filter(j=>j.removed).length})`}</button></div>
     {['admin','administrativo'].includes(data.me.role)&&jobs.some(canCancelQuotationJob)&&<form className="note" onSubmit={async e=>{e.preventDefault();if(await onSave({action:'cancel_quotation_jobs',jobs:cancelSelection,reason:cancelReason})){setCancelSelection([]);setCancelReason('')}}}>
       <h3>Cancelar cotações preparadas</h3><p>Marque somente as tarefas que deseja cancelar. O histórico e as mensagens serão preservados. Tarefas já tentadas ou com envio incerto exigem conferência.</p>
       {jobs.filter(canCancelQuotationJob).map(j=><label className="check" key={j.id}><input type="checkbox" disabled={busy} checked={cancelSelection.some(s=>s.id===j.id)} onChange={e=>setCancelSelection(s=>e.target.checked?[...s,{id:j.id,version:j.version}]:s.filter(a=>a.id!==j.id))}/><span>{data.requests.find(r=>r.id===j.requestId)?.code} · {j.supplierName} · {j.target} · {jobLabels[j.state]}</span></label>)}
       <label className="field"><span>Motivo do cancelamento</span><textarea required minLength={5} maxLength={2000} value={cancelReason} onChange={e=>setCancelReason(e.target.value)} disabled={busy}/></label>
       <button className="button secondary" disabled={busy||!cancelSelection.length}>Cancelar {cancelSelection.length} tarefa(s) selecionada(s)</button>
     </form>}
-    {jobs.map(j=><details className="source-row" key={j.id}><summary>{data.requests.find(r=>r.id===j.requestId)?.code} · {j.supplierName} · {jobLabels[j.state]}</summary><p>{j.target} · {date(j.updatedAt)}</p><pre className="integration-message">{j.message}</pre>{j.providerMessageId&&<p>Identificador de envio: {j.providerMessageId}</p>}{j.error&&<p className="note">{j.error}</p>}{j.state==='blocked'&&integration.sendingEnabled&&<button className="button secondary" disabled={busy} onClick={()=>onSave({action:'retry_integration',id:j.id,version:j.version})}>Liberar este rascunho para envio</button>}</details>)}
+    {jobs.map(j=><details className="source-row" key={j.id}><summary>{data.requests.find(r=>r.id===j.requestId)?.code} · {j.supplierName} · {jobLabels[j.state]}</summary><p>{j.target} · {date(j.updatedAt)}</p><pre className="integration-message">{j.message}</pre>{j.providerMessageId&&<p>Identificador de envio: {j.providerMessageId}</p>}{j.error&&<p className="note">{j.error}</p>}{['admin','administrativo'].includes(data.me.role)&&(j.removed?<><p className="muted">Excluída por {j.removed.by}. {j.removed.reason}</p><button className="button secondary" disabled={busy} onClick={()=>setRemoval({job:j,restore:true})}>Restaurar cotação</button></>:canRemoveQuotationJob(j)&&<button className="button secondary" disabled={busy} onClick={()=>setRemoval({job:j,restore:false})}>Excluir cotação</button>)}</details>)}
+    {removal&&<QuotationRemovalDialog job={removal.job} code={data.requests.find(r=>r.id===removal.job.requestId)?.code||removal.job.requestId} restore={removal.restore} busy={busy} error={error} onSave={onSave} onClose={()=>setRemoval(null)}/>}
     <h3>Mensagens recebidas para conferência</h3>
     {!integration.inbox.length&&<p className="muted">Nenhuma mensagem importada. O recebimento depende do hook e da ponte configurados no OpenClaw.</p>}
     {integration.inbox.map(m=><details className="source-row" key={m.id}><summary>{m.from} · {m.state==='review'?'Conferência pendente':'Conferida'} · {date(m.receivedAt)}</summary><p>Pedido: {data.requests.find(r=>r.id===m.requestId)?.code||'Não identificado — conferir manualmente'} · Fornecedor: {data.suppliers.find(s=>s.id===m.supplierId)?.name||(m.contactName?m.contactName+' (contato da agenda; fornecedor não classificado)':'Não identificado')}</p><pre className="integration-message">{m.text}</pre><p className="note">Mensagem do fornecedor é informação recebida. Confira itens, preços, frete, validade e condições antes de registrar a proposta no pedido.</p>{m.state==='review'?<form onSubmit={async e=>{e.preventDefault();const reason=new FormData(e.currentTarget).get('reason');await onSave({action:'review_message',id:m.id,version:m.version,reason})}}><label className="field"><span>Resultado da conferência e referência ao pedido/proposta</span><textarea name="reason" required minLength={5} maxLength={2000}/></label><button className="button secondary" disabled={busy}>Marcar como conferida</button></form>:<p>{m.reviewedBy}: {m.note}</p>}</details>)}

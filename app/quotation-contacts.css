@@ -20,4 +20,6 @@
 .quotation-contacts-details .quotation-contacts-reason{color:var(--ink);font-weight:600}
 .quotation-contacts-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;color:var(--muted);font-size:12px}
 .quotation-contacts-load-error .alert{margin-bottom:10px}
+.quotation-message-form .check{display:flex;align-items:flex-start;gap:10px;line-height:1.6}
+.quotation-message-form .check input[type="checkbox"]{width:1rem;height:1rem;flex:none;margin-top:3px;accent-color:var(--purple)}
 @media(max-width:600px){.quotation-contacts-toolbar{display:block}.quotation-contacts-filters{margin-top:12px}.quotation-contacts-filters .button{flex:1;padding:9px}.quotation-contacts-actions .button{flex:1;white-space:normal}.quotation-contacts-option{padding:12px 10px}.quotation-contacts-pagination{gap:8px}.quotation-message-form>.actions .button{white-space:normal;width:100%}}

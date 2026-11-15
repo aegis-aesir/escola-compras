@@ -41,7 +41,7 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
       const input=z.object({jobId:z.string().min(1).max(200),version:z.number().int().positive()}).parse(b);
       const job=await row<{type:string}>(env.DB,input.jobId,'integration_job');
       if(job?.type!=='estimate_search')throw new FlowError('Esta operação aceita apenas pesquisas de estimativa.');
-      await retryJob(env.DB,input.jobId,input.version,'Ponte autenticada — nova pesquisa de estimativa',now,env);
+      await retryJob(env.DB,input.jobId,input.version,'Ponte autenticada — nova pesquisa de estimativa',now);
       return response({queued:true});
     }
     return response({error:'Operação desconhecida.'},400);

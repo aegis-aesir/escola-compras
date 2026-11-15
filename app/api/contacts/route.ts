@@ -4,6 +4,7 @@ import {currentLocalUser} from '../../local-session';
 import {FlowError} from '../../workflow';
 import {agendaSnapshot,importAgendaContacts,importSyncedContacts,saveAgendaContact} from '../../../lib/contact-agenda';
 import {requestContactSync} from '../../../lib/contact-sync';
+import {removeAgendaContact,restoreAgendaContact} from '../../../lib/contact-removal';
 import {quotationContactsSnapshot} from '../../../lib/quotation-contacts';
 import {row} from '../../../lib/integrations';
 import type {Purchase} from '../../model';
@@ -25,6 +26,8 @@ export async function POST(req:Request){try{
  const b=parsed as Record<string,unknown>;
  const now=new Date().toISOString();
  if(b.action==='save')return response({ok:true,...await saveAgendaContact(db,b,user.name,now)});
+ if(b.action==='remove')return response({ok:true,...await removeAgendaContact(db,b,user.name,now)});
+ if(b.action==='restore')return response({ok:true,...await restoreAgendaContact(db,b,user.name,now)});
  if(b.action==='import')return response({ok:true,...await importAgendaContacts(db,b.contacts,b.source,user.name,now)});
  if(b.action==='request_sync')return response({ok:true,...await requestContactSync(db,user.name,now)});
  if(b.action==='import_sync')return response({ok:true,...await importSyncedContacts(db,z.string().uuid().parse(b.syncId),b.phones,user.name,now)});

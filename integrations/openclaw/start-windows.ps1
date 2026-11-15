@@ -18,7 +18,7 @@ try {
     $env:ESTRELAS_SITE_URL = 'https://ceea.colegioestrelas.com'
     $env:ESTRELAS_STATE_DIR = Join-Path $bridgeHome 'state'
     $env:ESTRELAS_INBOX_DIR = Join-Path $bridgeHome 'inbox'
-    $env:ESTRELAS_ENABLE_SEND = 'false'
+    $env:ESTRELAS_ENABLE_SEND = if (($credentials.enableSend -is [bool]) -and $credentials.enableSend) { 'true' } else { 'false' }
     # Optional one-task grant lives only in the existing private DPAPI vault.
     $env:ESTRELAS_TEST_SEND_GRANT = if ($credentials.testSendGrant) { $credentials.testSendGrant | ConvertTo-Json -Compress -Depth 4 } else { $null }
     $env:ESTRELAS_BROWSER_RESEARCH = 'true'
