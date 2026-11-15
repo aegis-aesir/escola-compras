@@ -13,7 +13,7 @@ import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type P
 import type {BudgetClosing,BudgetRecord} from '../../budget-month';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
-import { advanceDeadlines, enqueueSearch, enqueueQuotation, enqueueQuotations, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch, configureEstimateResearch } from '../../../lib/integrations';
+import { advanceDeadlines, enqueueSearch, enqueueQuotation, enqueueQuotations, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch, configureEstimateResearch, cancelQuotationJobs } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
@@ -78,6 +78,7 @@ export async function POST(req:Request){try{
   if(target?.archived&&!archiveAction&&!masterReanalysis)throw new AppError('Solicitação arquivada. O Master deve restaurá-la antes de alterar.',409);
   if(target&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(target)))throw new AppError('Reabra o fechamento mensal com justificativa antes de alterar o pedido.');
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
+  if(b.action==='cancel_quotation_jobs')return Response.json({ok:true,...await cancelQuotationJobs(db,b.jobs,b.reason,me,now)});
   if(['research','research_item','prepare_openclaw','retry_integration','review_message','supplier_categories','register_discovered_supplier'].includes(b.action)){
     permit(['admin','administrativo']);
     if(b.action==='register_discovered_supplier')return Response.json({ok:true,id:await registerDiscoveredSupplier(db,b.jobId,b.sourceIndex,b.data,me.name,now)});

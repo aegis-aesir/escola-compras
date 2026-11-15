@@ -9,6 +9,9 @@ export type IntegrationJob = {
   accountId?:string;schoolPhone?:string;message?:string;sources?:SearchSource[];
   quotationTemplate?:{version:'contact-v1';text:string;contact:string};
   contactId?:string;manualSelection?:{recipientId:string;actor:string;at:string;suggested:boolean};
+  testSend?:{version:number;issuedAt:string;expiresAt:string};
+  messageHistory?:{message?:string;quotationTemplate?:IntegrationJob['quotationTemplate'];at:string;reason:string}[];
+  cancellation?:{actor:string;at:string;reason:string;previousState:IntegrationJob['state']};
   researchedAt?:string;providerMessageId?:string;sentAt?:string;error?:string;
   leaseToken?:string;leaseUntil?:string;
 };
@@ -25,5 +28,8 @@ export type IntegrationSnapshot = {
 export const jobLabels:Record<IntegrationJob['state'],string> = {
   queued:'Na fila',running:'Em processamento',review:'Conferir resultado',done:'Concluído',
   failed:'Falha — pode tentar novamente',uncertain:'Envio incerto — conferir no WhatsApp',
-  blocked:'Envio desativado',cancelled:'Cancelado pela etapa do pedido',
+  blocked:'Envio desativado',cancelled:'Cancelado',
 };
+export function canCancelQuotationJob(j:IntegrationJob){
+  return j.type==='whatsapp_quote'&&['blocked','queued','failed'].includes(j.state)&&j.attempts===0&&j.sentAt===undefined&&j.providerMessageId===undefined&&j.leaseToken===undefined&&j.leaseUntil===undefined&&j.testSend===undefined;
+}

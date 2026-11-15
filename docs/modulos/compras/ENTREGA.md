@@ -1,3 +1,14 @@
+# Entrega atual — envio único de teste e cancelamento auditado — 14/11/2026
+
+Branch **codex/compras**, base **80abea9d6790f8b4814132c4cab0ed5ef8d7e3b5**; SHA final comunicado ao coordenador após commit/push. Implementado grant pareado de tarefa/versão/destino/prazo, no máximo15min e uma tentativa, mantendo ambas as flags globais false. Somente o rascunho autorizado usa o texto curto atual, com anterior preservado em histórico. Cancelamento lógico em lote explícito no painel/API Master/ADM, motivo obrigatório, versões e auditoria atômicas, recusando tarefas com indícios de envio e pedidos arquivados/competências fechadas.
+
+Procedimento completo, configuração temporária privada, proteções e verificações: [TESTE-ENVIO-RESTRITO.md](TESTE-ENVIO-RESTRITO.md). Última autorização direta recebida pelo coordenador: cancelar somente as sete lojas e preservar ambos os testes. Essa orientação substitui o cancelamento anterior de oito. Preservar os dois não autoriza dois envios; a concessão continua exclusiva de uma tarefa/destino confirmado, sem liberação global. Não há IDs/telefones reais ou segredos nesta entrega. Nenhuma operação/envio em produção pelo módulo.
+
+Sem migração ou dependência nova. Compartilhados: app/api/data/route.ts, integration-model.ts e integration-panel.tsx; lib/integrations.ts e integration-endpoint.ts; client.mjs, runner.mjs e start-windows.ps1. Novo helper test-send-grant.mjs deve acompanhar a instalação da ponte. Conta operacional, idempotência, journal e importação de respostas preservados.
+
+Validação: testes D1 isolados de grant/cancelamento, HTTP5185 (inclui permissões e seleção/preparo fictícios), integração, OpenClaw9casos, runner de contatos, seleção/UI de contatos e workflow passaram; tipos e build aprovados. Revisão independente sem bloqueantes. Lint dirigido tem os mesmos oito erros/oito avisos anteriores, sem novos achados; lint geral não está aprovado. Produção/envio/retorno dependem da operação do coordenador após integrar/publicar/atualizar a ponte.
+
+---
 # Entrega atual — mensagem curta de cotação — 14/11/2026
 
 O usuário pediu simplificar o texto para saudação, confirmação e quantidade/item, e confirmou que pode incluir o código do pedido. Modelo gerado:

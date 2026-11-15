@@ -32,7 +32,7 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
     if(b.op==='contact_sync_result')return response(await completeContactSync(env.DB,b,now));
     if(b.op==='poll') {
       await tick(env.DB,env,now);
-      return response({job:await claimJob(env.DB,env,now,b.canSend===true,b.researchProtocol)});
+      return response({job:await claimJob(env.DB,env,now,b.canSend===true,b.researchProtocol,b.testSendGrant)});
     }
     if(b.op==='result')return response(await completeJob(env.DB,b.result,now));
     if(b.op==='inbox')return response(await receiveMessage(env.DB,b.message,now));
