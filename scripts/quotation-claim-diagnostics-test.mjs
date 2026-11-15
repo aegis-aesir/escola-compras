@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {Miniflare} from 'miniflare';
+await build({entryPoints:['lib/integrations.ts'],outfile:'outputs/quotation-claim-diagnostics-test.mjs',bundle:true,platform:'node',format:'esm'});
+const {claimJob}=await import('../outputs/quotation-claim-diagnostics-test.mjs');
+const mf=new Miniflare({modules:true,script:'export default{fetch(){return new Response("fixture")}}',d1Databases:['DB']});
+const original=console.info,logs=[];console.info=(...args)=>logs.push(args.join(' '));
+try{
+ const db=await mf.getD1Database('DB'),now='2026-11-15T14:00:00.000Z',requestId=crypto.randomUUID(),contactId=crypto.randomUUID(),jobId='whatsapp:fake-diagnostics',target='+5592999990022';
+ await db.prepare('CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,data TEXT,version INTEGER)').run();await db.prepare('CREATE TABLE audit(id TEXT PRIMARY KEY,entity TEXT,actor TEXT,action TEXT,at TEXT)').run();
+ const put=(id,kind,data)=>db.prepare('INSERT INTO records VALUES(?,?,?,1)').bind(id,kind,JSON.stringify(data)).run();
+ await put(requestId,'request',{status:'quoting',generalApproval:{at:now},form:{fields:{referenceMonth:'2026-11'}},items:[],quotes:[]});
+ await put(contactId,'agenda_contact',{name:'PRIVATE CONTACT',phone:target,classification:'general'});
+ await put(jobId,'integration_job',{requestId,type:'whatsapp_quote',target,contactId,manualSelection:{recipientId:contactId},state:'queued',attempts:0,createdAt:now,updatedAt:now,nextAttemptAt:now,message:'PRIVATE MESSAGE'});
+ assert.equal(await claimJob(db,{},now,true),null);
+ assert.ok(logs.some(l=>l.includes('quotation_claim')&&l.includes('send_disabled')),'a disabled Worker flag must be observable');
+ assert.ok(logs.some(l=>l.includes('"serverEnabled":false')&&l.includes('"canSend":true')));
+ logs.length=0;
+ const raceDb={prepare:db.prepare.bind(db),batch:async statements=>{await db.prepare('UPDATE records SET version=version+1 WHERE id=?').bind(requestId).run();return db.batch(statements)}};
+ assert.equal(await claimJob(raceDb,{WHATSAPP_SEND_ENABLED:'true'},now,true),null);
+ assert.ok(logs.some(l=>l.includes('cas_not_matched')),'failed CAS must be distinguishable from a disabled flag');
+ logs.length=0;
+ const claimed=await claimJob(db,{WHATSAPP_SEND_ENABLED:'true'},now,true);assert.equal(claimed.id,jobId);
+ assert.ok(logs.some(l=>l.includes('claimed')));
+ for(const l of logs)for(const privateValue of [target,'PRIVATE CONTACT','PRIVATE MESSAGE'])assert.ok(!l.includes(privateValue),'diagnostics must omit personal and message data');
+ original('PASS: claim diagnostics identify disabled sending, CAS conflict and successful claim without private data.');
+}finally{console.info=original;await mf.dispose()}

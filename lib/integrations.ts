@@ -305,21 +305,26 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   const grant=pairedTestSendGrant(env.WHATSAPP_TEST_SEND_GRANT,testSendGrant,now);
   const jobs=(await rows<IntegrationJob>(db,jobKind)).filter(j=>!j.removed&&(j.state==='queued'||j.state==='blocked'&&!!grant&&j.id===grant.jobId)&&j.nextAttemptAt<=now).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
   for(const j of jobs) {
+    // Restricted operational metadata only: never log targets, message bodies,
+    // headers, credentials or grant contents. No diagnostic changes eligibility.
+    const trace=(reason:string)=>{if(j.type==='whatsapp_quote')console.info('quotation_claim',JSON.stringify({jobId:j.id,jobVersion:j.version,reason,canSend,serverEnabled:env.WHATSAPP_SEND_ENABLED==='true',serverFlagType:typeof env.WHATSAPP_SEND_ENABLED,testMode,nextAttemptReady:j.nextAttemptAt<=now}));};
+    trace('candidate');
     const test=!!grant&&matchesTestSendJob(grant,j,'claim',now);
-    if(j.type==='whatsapp_quote'&&((testMode&&!test)||j.testSend))continue;
+    if(j.type==='whatsapp_quote'&&((testMode&&!test)||j.testSend)){trace('test_restriction');continue;}
     const r=await row<Purchase>(db,j.requestId,'request');
-    if(r?.archived)continue; // Preserve queued work and its idempotency; never dispatch archived requests.
+    if(r?.archived){trace('request_archived');continue;} // Preserve queued work and its idempotency; never dispatch archived requests.
     const internalMatch=r&&eligible(r,j,suppliers)&&j.category&&['local_supplier_search','national_search'].includes(j.type)&&matchingSuppliers(suppliers,j.category,j.type==='local_supplier_search'?'local':'national').length>0;
     if(!r||!eligible(r,j,suppliers,contacts)||internalMatch) {
+      trace('ineligible');
       if(test)continue; // A failed scoped preflight never cancels the preserved test draft.
       await update(db,j,{...j,state:'cancelled',updatedAt:now},j.requestId,'Sistema',internalMatch?'Busca externa cancelada: fornecedor compatível disponível no cadastro':'Tarefa cancelada após mudança da etapa ou categoria',now);continue;
     }
     if(j.researchCriteria&&researchProtocol!=='criteria-v1')continue;
     if(j.type==='whatsapp_quote') {
-      if(!test&&(!canSend||env.WHATSAPP_SEND_ENABLED!=='true'))continue;
+      if(!test&&(!canSend||env.WHATSAPP_SEND_ENABLED!=='true')){trace('send_disabled');continue;}
       // A changed phone number requires a fresh human decision, never silent rerouting.
       const recipient=j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId):suppliers.find(s=>s.id===j.supplierId);
-      if(!recipient||normalizeContactPhone(recipient.phone)!==j.target)continue;
+      if(!recipient||normalizeContactPhone(recipient.phone)!==j.target){trace('recipient_changed');continue;}
     }
     const next={...j,state:'running' as const,attempts:j.attempts+1,leaseToken:crypto.randomUUID(),leaseUntil:addMs(now,j.type==='estimate_search'?600000:120000),updatedAt:now};
     if(test){
@@ -330,7 +335,8 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
       next.testSend={version:grant!.version,issuedAt:grant!.issuedAt,expiresAt:grant!.expiresAt};
     }
     const guards=[r,...(j.type==='whatsapp_quote'?[j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId)!:suppliers.find(s=>s.id===j.supplierId)!]:[])];
-    if(await update(db,j,next,j.requestId,'Ponte OpenClaw',test?'Teste único autorizado por tarefa, versão, destino e prazo; modelo revisado com histórico':'Processamento da integração iniciado',now,guards,j.manualSelection||test?r.id:j.id))return {...next,version:j.version+1};
+    if(await update(db,j,next,j.requestId,'Ponte OpenClaw',test?'Teste único autorizado por tarefa, versão, destino e prazo; modelo revisado com histórico':'Processamento da integração iniciado',now,guards,j.manualSelection||test?r.id:j.id)){trace('claimed');return {...next,version:j.version+1};}
+    trace('cas_not_matched');
   }
   return null;
 }
