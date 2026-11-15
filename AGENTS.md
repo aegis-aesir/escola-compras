@@ -1,5 +1,11 @@
 # Colégio Estrelas — instruções para continuar o projeto
 
+## Equipe coordenada por subagentes — 15/11/2026
+
+O usuário autorizou este chat `01a1b74c-f58c-7bd1-a47b-ea6c53153b36` como coordenador único, com delegação sob demanda para Compras, Estoque, Conhecimento/POPs, Tarefas, Escolar Manager, OpenClaw/Integrações, Revisor e Validação. Ler `config/codex/EQUIPE.md` e `config/codex/team.json` antes de delegar. Usar subagentes em partes independentes quando trouxer ganho; tarefas simples ficam no coordenador. Até três subagentes simultâneos neste ambiente; não iniciar agentes ociosos nem novas funcionalidades como efeito da configuração.
+
+Reutilizar as cinco worktrees, com um único autor/reserva por checkout. OpenClaw/Integrações e Compras compartilham `.worktrees/compras` em tarefas alternadas. Cada delegação deve incluir workdir absoluto, branch, porta, SHA, escopo e arquivos compartilhados autorizados; nunca escrever por cwd herdado. Revisão somente leitura de SHA estável pode ser paralela; testes com estado reservam o checkout. Somente este coordenador integra main, publica e aplica operações/configurações reais. Chats antigos ficam preservados para consulta e não iniciam escrita concorrente sem nova designação. Esta seção atualiza o modelo de chats independentes descrito anteriormente.
+
 Responda em português do Brasil, com linguagem simples. Leia `IMPLEMENTACAO.md` e `CONTINUAR-NO-VSCODE.md` antes de alterar o sistema. Trabalhe neste projeto existente; não gere outro aplicativo nem recrie a hospedagem.
 
 ## Coordenação e desenvolvimento paralelo (13/11/2026)

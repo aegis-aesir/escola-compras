@@ -1,5 +1,13 @@
 # CEEA Manager — coordenação dos módulos
 
+## Modelo vigente — 15/11/2026
+
+O usuário aprovou centralizar o desenvolvimento neste chat com subagentes sob demanda, incluindo **OpenClaw e Integrações**. Guia operacional: `config/codex/EQUIPE.md`; perfis: `config/codex/team.json`; instalação local: `node scripts/configure-codex-team.mjs --install` e conferência `--check`.
+
+As cinco worktrees/branches/portas abaixo são preservadas. OpenClaw e Compras usam `.worktrees/compras` alternadamente, com reserva exclusiva. Até três subagentes trabalham simultaneamente, respeitando o limite do ambiente. Um único autor por checkout e arquivos compartilhados concedidos explicitamente; testes com estado também são serializados. As reservas ficam em `outputs/coordination/leases.json`, concedidas/liberadas somente pelo coordenador após comprovar o fim do autor anterior. Perfis e regras não constituem sandbox ou bloqueio mecânico de escrita.
+
+Chats históricos são mantidos; não é necessário abrir chats novos para cada tarefa. As entregas dos subagentes retornam por colaboração a este coordenador, que revisa, integra, testa o conjunto e publica. Nenhum subagente opera serviços reais ou recebe segredos. Registros anteriores deste documento sobre criação de chats são históricos; esta atualização prevalece na operação atual. A instalação não mescla branches dos módulos nem inicia novas funcionalidades.
+
 Autorizado em 13/11/2026: este chat é o coordenador de integração e publicação. Cada módulo trabalha em sua própria worktree/branch do mesmo repositório.
 
 ## Coordenador

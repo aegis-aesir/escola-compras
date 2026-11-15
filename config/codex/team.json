@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "coordinatorThread": "01a1b74c-f58c-7bd1-a47b-ea6c53153b36",
+  "maxConcurrentSubagents": 3,
+  "modules": {
+    "estoque": {
+      "branch": "codex/estoque",
+      "port": 5181
+    },
+    "conhecimento-pops": {
+      "branch": "codex/conhecimento-pops",
+      "port": 5182
+    },
+    "tarefas": {
+      "branch": "codex/tarefas",
+      "port": 5183
+    },
+    "integracao-escolar-manager": {
+      "branch": "codex/integracao-escolar-manager",
+      "port": 5184
+    },
+    "compras": {
+      "branch": "codex/compras",
+      "port": 5185
+    }
+  },
+  "roles": [
+    {
+      "name": "compras",
+      "title": "Compras",
+      "module": "compras",
+      "scope": "Solicitações, formulários, conferência administrativa, estimativas, aprovações, cotações, execução e histórico do módulo existente. Preserve as regras atuais e a separação entre estimativa e proposta real."
+    },
+    {
+      "name": "estoque",
+      "title": "Estoque",
+      "module": "estoque",
+      "scope": "Cadastros de materiais, entradas, saídas, saldos e inventário no escopo aprovado. Preserve os contratos com Compras; não invente regras de negócio pendentes."
+    },
+    {
+      "name": "conhecimento_pops",
+      "title": "Conhecimento e POPs",
+      "module": "conhecimento-pops",
+      "scope": "Biblioteca de conhecimentos, documentos, POPs, organização, versões e permissões no escopo aprovado."
+    },
+    {
+      "name": "tarefas",
+      "title": "Tarefas e responsabilidades",
+      "module": "tarefas",
+      "scope": "Projetos, tarefas, responsáveis, prazos e acompanhamento no escopo aprovado."
+    },
+    {
+      "name": "escolar_manager",
+      "title": "Integração Escolar Manager",
+      "module": "integracao-escolar-manager",
+      "scope": "Planejamento de integração, contratos, mapeamento e adaptadores fictícios do Escolar Manager. Conexões, importações, alterações em dados reais e credenciais exigem autorização específica; não deduza acesso de uma tarefa de planejamento."
+    },
+    {
+      "name": "openclaw_integracoes",
+      "title": "OpenClaw e Integrações",
+      "module": "compras",
+      "scope": "Ponte OpenClaw, pesquisa e retorno de estimativas, filas, polling, idempotência, recebimento de respostas/anexos, adaptadores, monitoramento e diagnóstico. Compartilha a worktree Compras em exclusividade: nunca escrever simultaneamente com compras. coordinator do OpenClaw faz pesquisa; operacional cuida do WhatsApp da conta operacional. Preserve exatamente +559292017107, default desativado/despareado, modelos, credenciais e autorizações de envio. Mudanças fora do repositório e serviços reais são aplicadas pelo coordenador, após revisão. O defeito conhecido do monitor que trata default desativado como falha é pendência, não autorização para iniciar sua correção nesta configuração."
+    },
+    {
+      "name": "revisor",
+      "title": "Revisão independente",
+      "module": null,
+      "scope": "Revisão somente leitura de SHA/diff estáveis indicados pelo coordenador. Priorize falhas reproduzíveis, regras, permissões, segurança, concorrência e regressões. Não editar, commitar, executar testes que gerem arquivos, tocar credenciais ou operar produção. Retorne achados com gravidade, caminho/linha e evidência; informe quando não houver bloqueadores."
+    },
+    {
+      "name": "validacao",
+      "title": "Validação",
+      "module": null,
+      "scope": "Execute os testes e verificações pertinentes ao SHA/checkout explicitamente designados. Use exclusivamente dados fictícios, loopback e a porta do manifesto. Reserve o checkout também para testes que geram artefatos ou usam o banco local; serialize-os com o implementador. Não alterar código de aplicação ou regras de negócio. Não fazer QA destrutivo, enviar mensagens, importar contatos reais, acionar a ponte ou alterar produção."
+    }
+  ]
+}
