@@ -48,7 +48,7 @@ try {
  await db.prepare('DELETE FROM records WHERE id=?').bind(closingId).run();
  const claimed=await api.claimJob(db,{WHATSAPP_SEND_ENABLED:'true'},now,true);assert.equal(claimed.id,genericJob.id,'manual general contact can dispatch only with both flags and explicit job');
  await assert.rejects(api.saveAgendaContact(db,{id:general,version:1,classification:'general',data:{name:'Contato geral TESTE',phone:'+5592999990088'}},actor,now),/processamento|incerto/);
- const reply=await api.receiveMessage(db,{messageId:'FAKE-ONLY',accountId:'operacional',from:'+5592999990013',to:'+559292017107',text:'CE-FAKE proposta fictícia',receivedAt:now},now);
+ const reply=await api.receiveMessage(db,{protocol:'selected-message-v1',selection:{accountId:'operacional',messageId:'FAKE-ONLY',actor:'Operador fixture',reason:'Usuário indicou a resposta',at:now,attachmentIds:[]},messageId:'FAKE-ONLY',accountId:'operacional',from:'+5592999990013',to:'+559292017107',text:'CE-FAKE proposta fictícia',receivedAt:now},now);
  const inbox=await api.row(db,reply.id,'integration_inbox');assert.equal(inbox.contactId,general);assert.equal(inbox.supplierId,undefined);assert.equal(inbox.requestId,request.id);
  const sync=await api.requestContactSync(db,actor,now),lease=await api.claimContactSync(db,'contacts-v1',now);
  await api.completeContactSync(db,{...lease,page:0,contacts:[{name:'Contato da prévia TESTE',phone:'+5592999990014'},{name:'Não selecionado TESTE',phone:'+5592999990015'}],done:true},now);

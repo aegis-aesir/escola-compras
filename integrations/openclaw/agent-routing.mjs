@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 
-export const RESEARCH_AGENT = 'coordinator';
+export const RESEARCH_AGENT = 'pesquisa-web';
 export const WHATSAPP_AGENT = 'operacional';
 const researchJobs = new Set(['estimate_search', 'local_supplier_search', 'national_search']);
 const researchTools = new Set(['web_search', 'web_fetch', 'browser']);

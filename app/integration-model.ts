@@ -1,5 +1,6 @@
 import type {Item} from './model';
 import type {SavedEstimateCriteria} from './estimate-criteria';
+import type {PreliminaryProposal,MessageLink} from './inbox-proposals';
 export type SearchSource = {title:string;url:string;description:string};
 export type IntegrationJob = {
   id:string;version:number;requestId:string;type:'estimate_search'|'local_supplier_search'|'national_search'|'whatsapp_quote';
@@ -22,6 +23,11 @@ export type InboxMessage = {
   id:string;version:number;messageId:string;accountId:string;from:string;to:string;
   text:string;receivedAt:string;recordedAt:string;requestId?:string;supplierId?:string;
   contactId?:string;contactName?:string;
+  protocol?:'selected-message-v1';selection?:{accountId:string;messageId:string;actor:string;reason:string;at:string;attachmentIds:string[];requestId?:string};
+  replyToMessageId?:string;correlationJobId?:string;link?:MessageLink;proposal?:PreliminaryProposal;
+  attachments?:{id:string;name:string;sha256:string;size:number;key:string;extractedText?:string}[];
+  confirmedQuoteId?:string;confirmation?:{actor:string;at:string;requestId:string;quoteId:string};
+  proposalHistory?:{at:string;actor:string;previous?:PreliminaryProposal;requestId?:string;supplierId?:string}[];
   state:'review'|'reviewed';note?:string;reviewedBy?:string;reviewedAt?:string;
 };
 export type IntegrationSnapshot = {

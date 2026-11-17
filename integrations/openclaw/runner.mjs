@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { bridgeConfig, callSite, executeJob } from './client.mjs';
 import {runContactSync} from './contact-sync.mjs';
+import {hasMessageSelection} from './selected-message.mjs';
 
 export async function runOnce(config,options={}) {
   const site=options.site||((body)=>callSite(config,body));
@@ -23,8 +24,12 @@ export async function runOnce(config,options={}) {
   if(inbox) {
     if(!path.isAbsolute(inbox))throw new Error('ESTRELAS_INBOX_DIR deve ser absoluta.');
     await mkdir(inbox,{recursive:true});
-    for(const name of (await readdir(inbox)).filter(n=>/^[a-f0-9]{64}\.json$/.test(n)).slice(0,50)) {
-      const file=path.join(inbox,name),message=JSON.parse(await readFile(file,'utf8'));
+    let selectedCount=0;
+    for(const name of (await readdir(inbox)).filter(n=>/^[a-f0-9]{64}\.json$/.test(n))) {
+      const file=path.join(inbox,name);let message;
+      try {message=JSON.parse(await readFile(file,'utf8'))}catch{continue}
+      if(!hasMessageSelection(message))continue; // Preserve old backlog, never opt it in.
+      if(selectedCount++>=50)break;
       try{await site({op:'inbox',message});await rename(file,file+'.done')}
       catch(e){if([400,409].includes(e.status))await rename(file,file+'.review');else throw e}
     }

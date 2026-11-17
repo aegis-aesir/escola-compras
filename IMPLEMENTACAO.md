@@ -167,3 +167,8 @@ Em 13/11 o usuário autorizou testar a exclusão de qualquer rascunho real. Foi 
 Ampliação autorizada: o módulo existente de Compras passa a ter `.worktrees/compras`, branch `codex/compras` e porta 5185. Este coordenador continua na main, responsável por integração/publicação. Aplicar as mesmas regras de entrega e isolamento de COORDENACAO.md; nenhuma reconstrução, cópia de dados reais ou execução de ponte/envio em produção durante os testes.
 
 O usuário autorizou worktrees separadas para os quatro módulos e definiu este chat como coordenador de integração e publicação. Ler **COORDENACAO.md** para caminhos, branches, portas, regras e entrega. Módulos enviam apenas suas branches; somente o coordenador mescla main e publica. Dados locais e chaves fictícias são independentes por worktree; não compartilhar credenciais/estado de produção. Os chats devem ser abertos nas pastas preparadas e não foram criados automaticamente.
+
+
+## WhatsApp selecionado e pesquisa-web — regra vigente de 17/11/2026
+
+Recebimento geral desativado: hook sem captura, runner ignora backlog sem protocolo, endpoint exige selected-message-v1 antes de persistir. Somente mensagem/anexos individualmente indicados pelo usuário via painel/CLI entram no sistema. Propostas preliminares editáveis exigem confirmação Master/ADM; mesma proposta do fornecedor é revisada com histórico, versões e transação. Legado preservado fora da fila pendente padrão. Pesquisa/estimativas usam pesquisa-web, WhatsApp continua operacional +559292017107 e default desativada. Gateway, ponte e tarefas agendadas permanecem pausados; não iniciar/reiniciar nem mudar configurações de pausa. Procedimentos: docs/modulos/compras/WHATSAPP-SELECIONADO.md. Não configurar pesquisa-web nesta entrega.

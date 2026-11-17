@@ -1,7 +1,9 @@
+import {normalizeContactPhone} from '../../../integrations/openclaw/contact-phone.mjs';
 import {consolidateDeferredDrafts} from '../../../lib/deferred-requests';
 import {saveAgendaContact} from '../../../lib/contact-agenda';
 import {enqueueSelectedContacts} from '../../../lib/quotation-contacts';
 import {removeQuotationJob,restoreQuotationJob} from '../../../lib/quotation-removal';
+import {receiveSelectedMessage,confirmInboxProposal} from '../../../lib/inbox-selected';
 import {reapplyDeferredRequest} from '../../deferred-request';
 import { env } from 'cloudflare:workers';
 import { currentLocalUser } from '../../local-session';
@@ -14,7 +16,7 @@ import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type P
 import type {BudgetClosing,BudgetRecord} from '../../budget-month';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
-import { advanceDeadlines, enqueueSearch, enqueueQuotation, enqueueQuotations, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch, configureEstimateResearch, cancelQuotationJobs } from '../../../lib/integrations';
+import { advanceDeadlines, enqueueSearch, enqueueQuotation, enqueueQuotations, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch, configureEstimateResearch, cancelQuotationJobs, digest } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
@@ -79,6 +81,15 @@ export async function POST(req:Request){try{
   if(target?.archived&&!archiveAction&&!masterReanalysis)throw new AppError('Solicitação arquivada. O Master deve restaurá-la antes de alterar.',409);
   if(target&&!archiveAction&&closedBudgetMonth(budgetRecords,budgetMonth(target)))throw new AppError('Reabra o fechamento mensal com justificativa antes de alterar o pedido.');
   const permit=(roles:string[])=>{if(!roles.includes(me.role))throw new AppError('Seu perfil não permite esta ação.',403)};
+  if(b.action==='confirm_inbox_proposal')return Response.json({ok:true,...await confirmInboxProposal(db,b,me,settings,now)});
+  if(b.action==='import_selected_message'){
+    permit(['admin','administrativo']);
+    const input=z.object({supplierId:z.string(),text:z.string().trim().min(1).max(16000),receivedOn:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),reason:z.string().trim().min(5).max(2000)}).parse(b);
+    const supplier=all.find(s=>s.id===input.supplierId&&s.kind==='supplier'&&!s.removed);if(!supplier)throw new AppError('Selecione o fornecedor cadastrado.');
+    const from=normalizeContactPhone(supplier.phone);if(!from)throw new AppError('Telefone do fornecedor inválido.');
+    const messageId='manual:'+await digest(JSON.stringify([from,input.text,input.receivedOn]));
+    return Response.json({ok:true,...await receiveSelectedMessage(db,{protocol:'selected-message-v1',messageId,accountId:'operacional',from,to:'+559292017107',text:input.text,receivedAt:input.receivedOn+'T12:00:00.000Z',selection:{accountId:'operacional',messageId,actor:me.name,at:now,reason:input.reason,attachmentIds:[]}},now,env)});
+  }
   if(b.action==='cancel_quotation_jobs')return Response.json({ok:true,...await cancelQuotationJobs(db,b.jobs,b.reason,me,now)});
   if(b.action==='remove_quotation')return Response.json({ok:true,...await removeQuotationJob(db,b,me,now)});
   if(b.action==='restore_quotation')return Response.json({ok:true,...await restoreQuotationJob(db,b,me,now)});

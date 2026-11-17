@@ -13,7 +13,7 @@ import {pairedTestSendGrant,matchesTestSendJob} from '../integrations/openclaw/t
 import {lastSentQuotation} from '../app/quotation-history';
 
 type Row<T> = T & {id:string;version:number};
-export type IntegrationEnv = {DB?:D1Database;INTEGRATION_SECRET?:string;WHATSAPP_SEND_ENABLED?:string;WHATSAPP_TEST_SEND_GRANT?:string};
+export type IntegrationEnv = {DB?:D1Database;BUCKET?:R2Bucket;INTEGRATION_SECRET?:string;WHATSAPP_SEND_ENABLED?:string;WHATSAPP_TEST_SEND_GRANT?:string};
 export const accountId = 'operacional';
 export const schoolPhone = '+559292017107';
 const jobKind = 'integration_job';
@@ -365,23 +365,7 @@ export async function completeJob(db:D1Database,input:unknown,now:string) {
   if(j.type==='estimate_search')await projectAutomaticEstimates(db,now);
   return {duplicate:false};
 }
-const inboxSchema=z.object({messageId:z.string().min(1).max(300),accountId:z.literal(accountId),from:z.string().regex(/^\+[1-9]\d{9,14}$/),to:z.literal(schoolPhone),text:z.string().min(1).max(16000),receivedAt:z.string().datetime()});
-export async function receiveMessage(db:D1Database,input:unknown,now:string) {
-  const b=inboxSchema.parse(input);
-  if(b.receivedAt>addMs(now,300000))throw new FlowError('Data da mensagem inválida.');
-  const id='inbox:'+await digest(JSON.stringify([b.accountId,b.messageId]));
-  const existing=await row<InboxMessage>(db,id,inboxKind);
-  if(existing) {
-    if(existing.from!==b.from||existing.to!==b.to||existing.text!==b.text)throw new FlowError('Identificador de mensagem com conteúdo diferente.',409);
-    return {id,duplicate:true};
-  }
-  const suppliers=(await rows<Supplier>(db,'supplier')).filter(s=>normalizeContactPhone(s.phone)===b.from);
-  const contacts=(await rows<AgendaEntry>(db,'agenda_contact')).filter(c=>normalizeContactPhone(c.phone)===b.from);
-  const candidates=(await rows<Purchase>(db,'request')).filter(r=>r.generalApproval&&['quoting','national','execution','ordered'].includes(r.status)&&new RegExp(`\\b${r.code}\\b`,'i').test(b.text));
-  const message:Omit<InboxMessage,'version'>={...b,id,state:'review',recordedAt:now,supplierId:suppliers.length===1?suppliers[0].id:undefined,contactId:!suppliers.length&&contacts.length===1?contacts[0].id:undefined,contactName:!suppliers.length&&contacts.length===1?contacts[0].name:undefined,requestId:candidates.length===1?candidates[0].id:undefined};
-  const created=await insert(db,id,inboxKind,message,message.requestId||id,'OpenClaw','Mensagem recebida para conferência; nenhuma proposta criada automaticamente',now);
-  return {id,duplicate:!created};
-}
+export {receiveSelectedMessage as receiveMessage} from './inbox-selected';
 export async function reviewMessage(db:D1Database,id:string,version:number,note:string,actor:string,now:string) {
   const m=await row<InboxMessage>(db,id,inboxKind);
   if(!m||m.version!==version)throw new FlowError('Mensagem atualizada. Recarregue.',409);

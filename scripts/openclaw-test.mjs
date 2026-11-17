@@ -61,13 +61,13 @@ test('hook accepts only operational direct text with valid timestamp',()=>{
   assert.equal(normalizeEvent({...event,context:{...event.context,conversationId:'123@g.us'}}),null);
   assert.equal(normalizeEvent({...event,timestamp:'invalid'}),null);
 });
-test('hook journals repeated synthetic events in an isolated inbox',async()=>{
+test('hook does not capture repeated synthetic events without explicit operator selection',async()=>{
   const inbox=await mkdtemp(path.join(os.tmpdir(),'estrelas-inbox-test-'));
   const previous=process.env.ESTRELAS_INBOX_DIR;
   process.env.ESTRELAS_INBOX_DIR=inbox;
   try {
     await handler(event);await handler(event);
-    assert.equal((await readdir(inbox)).filter(n=>n.endsWith('.json')).length,1);
+    assert.equal((await readdir(inbox)).filter(n=>n.endsWith('.json')).length,0);
   } finally {
     if(previous===undefined)delete process.env.ESTRELAS_INBOX_DIR;
     else process.env.ESTRELAS_INBOX_DIR=previous;

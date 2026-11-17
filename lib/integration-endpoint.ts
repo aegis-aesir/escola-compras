@@ -14,7 +14,8 @@ export async function validSignature(raw:string,timestamp:string,signature:strin
 async function limitedBody(req:Request) {
   if(!req.body)return '';
   const reader=req.body.getReader();const parts:Uint8Array[]=[];let size=0;
-  while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>64000){await reader.cancel();throw new FlowError('Corpo muito grande.',413)}parts.push(value)}
+  const max=req.headers.get('x-estrelas-inbox-protocol')==='selected-message-v1'?7*1024*1024+64000:64000;
+  while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>max){await reader.cancel();throw new FlowError('Corpo muito grande.',413)}parts.push(value)}
   const body=new Uint8Array(size);let offset=0;for(const part of parts){body.set(part,offset);offset+=part.length}
   return new TextDecoder('utf-8',{fatal:true}).decode(body);
 }
@@ -28,6 +29,7 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
     if(!await validSignature(raw,req.headers.get('x-estrelas-timestamp')||'',req.headers.get('x-estrelas-signature')||'',env.INTEGRATION_SECRET,Date.parse(now)))return response({error:'Assinatura inválida ou expirada.'},401);
     let b:any;try{b=JSON.parse(raw)}catch{return response({error:'JSON inválido.'},400)}
     if(!b||typeof b!=='object'||Array.isArray(b))return response({error:'Operação inválida.'},400);
+    if(raw.length>64000&&(b.op!=='inbox'||b.message?.protocol!=='selected-message-v1'))return response({error:'Corpo muito grande.'},413);
     if(b.op==='contact_sync_poll')return response({job:await claimContactSync(env.DB,b.protocol,now)});
     if(b.op==='contact_sync_result')return response(await completeContactSync(env.DB,b,now));
     if(b.op==='poll') {
@@ -35,7 +37,7 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
       return response({job:await claimJob(env.DB,env,now,b.canSend===true,b.researchProtocol,b.testSendGrant)});
     }
     if(b.op==='result')return response(await completeJob(env.DB,b.result,now));
-    if(b.op==='inbox')return response(await receiveMessage(env.DB,b.message,now));
+    if(b.op==='inbox')return response(await receiveMessage(env.DB,b.message,now,env));
     if(b.op==='import_suppliers')return response(await importSuppliers(env.DB,b.batch,now));
     if(b.op==='retry_estimate') {
       const input=z.object({jobId:z.string().min(1).max(200),version:z.number().int().positive()}).parse(b);

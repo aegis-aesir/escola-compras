@@ -40,7 +40,7 @@ try {
   let purchase=(await api.rows(db,'request'))[0];
   assert.equal(purchase.localAttempts.length,1,'contact projected once');
   assert.equal(purchase.localDeadline,'2026-11-09T14:00:00.000Z');
-  const message={messageId:'FAKE-INBOX',accountId:'operacional',from:'+5592999990000',to:'+559292017107',text:'CE-12345678: cotação fictícia',receivedAt:now};
+  const message={protocol:'selected-message-v1',selection:{accountId:'operacional',messageId:'FAKE-INBOX',actor:'Operador fixture',reason:'Usuário indicou esta resposta',at:now,attachmentIds:[]},messageId:'FAKE-INBOX',accountId:'operacional',from:'+5592999990000',to:'+559292017107',text:'CE-12345678: cotação fictícia',receivedAt:now};
   assert.equal((await api.receiveMessage(db,message,now)).duplicate,false);
   assert.equal((await api.receiveMessage(db,message,now)).duplicate,true);
   await assert.rejects(api.receiveMessage(db,{...message,text:'different'},now));

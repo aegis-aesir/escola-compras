@@ -11,7 +11,7 @@ const needsReview={status:'needs_review',reason:'Referência fictícia exige con
 const searchJob=(type,id='job-test')=>({id,requestId:'request-test',leaseToken:'lease-test',type,query:'Papelaria fictícia Manaus',item});
 const requestBody=options=>JSON.parse(options.body);
 
-test('pesquisa, descoberta local e nacional e leitura de páginas usam coordinator por pedido',async()=>{
+test('pesquisa, descoberta local e nacional e leitura de páginas usam pesquisa-web por pedido',async()=>{
   for(const type of ['estimate_search','local_supplier_search','national_search']){
     const calls=[];
     const result=await executeJob(config,searchJob(type),async(_url,options)=>{
@@ -19,12 +19,12 @@ test('pesquisa, descoberta local e nacional e leitura de páginas usam coordinat
       return Response.json({ok:true,result:{details:body.tool==='web_search'?{results:[{title:page.title,url:page.url}]}:page}});
     },async()=>needsReview);
     assert.equal(result.outcome,'success');assert.ok(calls.length);
-    for(const body of calls){assert.equal(body.agentId,'coordinator');assert.match(body.sessionKey,/^agent:coordinator:compras-pesquisa:/);assert.notEqual(body.tool,'message');}
+    for(const body of calls){assert.equal(body.agentId,'pesquisa-web');assert.match(body.sessionKey,/^agent:pesquisa-web:compras-pesquisa:/);assert.notEqual(body.tool,'message');}
     if(type==='estimate_search')assert.ok(calls.some(body=>body.tool==='web_fetch'));
     if(type==='local_supplier_search')assert.equal(calls.filter(body=>body.tool==='web_search').length,2,'Maps e fallback mantêm o mesmo agente');
   }
 });
-test('leitura no navegador compras também usa coordinator, sem acesso ao WhatsApp',async()=>{
+test('leitura no navegador compras também usa pesquisa-web, sem acesso ao WhatsApp',async()=>{
   const calls=[],url='https://produto.mercadolivre.com.br/MLB-123456789-papel';
   const result=await executeJob({...config,browserResearch:true},searchJob('estimate_search'),async(_url,options)=>{
     const body=requestBody(options);calls.push(body);
@@ -34,16 +34,16 @@ test('leitura no navegador compras também usa coordinator, sem acesso ao WhatsA
   },async()=>needsReview);
   assert.equal(result.outcome,'success');assert.equal(result.browserResearch.state,'ready');
   assert.ok(calls.some(body=>body.tool==='browser'&&body.args.action==='close'));
-  for(const body of calls){assert.equal(body.agentId,'coordinator');assert.match(body.sessionKey,/^agent:coordinator:/);if(body.tool==='browser')assert.equal(body.args.profile,'compras');}
+  for(const body of calls){assert.equal(body.agentId,'pesquisa-web');assert.match(body.sessionKey,/^agent:pesquisa-web:/);if(body.tool==='browser')assert.equal(body.args.profile,'compras');}
 });
-test('análise estruturada usa coordinator sem mudar modelo ou permitir entrega de mensagens',async()=>{
+test('análise estruturada usa pesquisa-web sem mudar modelo ou permitir entrega de mensagens',async()=>{
   let params;
   const answer=await analyzePages(searchJob('estimate_search'),[page],async(_bin,args)=>{
     params=JSON.parse(args[args.indexOf('--params')+1]);
     return {stdout:JSON.stringify({status:'ok',result:{payloads:[{text:JSON.stringify(needsReview)}]}})};
   });
-  assert.equal(answer.status,'needs_review');assert.equal(params.agentId,'coordinator');
-  assert.match(params.sessionKey,/^agent:coordinator:compras-estimativa:/);
+  assert.equal(answer.status,'needs_review');assert.equal(params.agentId,'pesquisa-web');
+  assert.match(params.sessionKey,/^agent:pesquisa-web:compras-estimativa:/);
   assert.equal(params.deliver,false);assert.equal(params.disableMessageTool,true);
   assert.equal(params.model,undefined);assert.equal(params.modelRun,undefined);
 });
@@ -71,7 +71,7 @@ test('falha de pesquisa não recorre ao agente operacional nem à conta default'
     calls.push(requestBody(options));return Response.json({ok:false},{status:404});
   });
   assert.equal(result.outcome,'error');assert.equal(calls.length,2);
-  assert.ok(calls.every(body=>body.agentId==='coordinator'&&body.sessionKey.startsWith('agent:coordinator:')));
+  assert.ok(calls.every(body=>body.agentId==='pesquisa-web'&&body.sessionKey.startsWith('agent:pesquisa-web:')));
 });
 test('tarefas do mesmo pedido compartilham contexto de ferramenta e outro pedido fica isolado',async()=>{
   const calls=[];

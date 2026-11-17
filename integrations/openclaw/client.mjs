@@ -23,6 +23,7 @@ export function bridgeConfig(env=process.env) {
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());
   const headers={'Content-Type':'application/json','X-Estrelas-Timestamp':timestamp,'X-Estrelas-Signature':'sha256='+createHmac('sha256',config.secret).update(timestamp+'.'+raw).digest('hex')};
+  if(body.op==='inbox'&&body.message?.protocol==='selected-message-v1')headers['X-Estrelas-Inbox-Protocol']='selected-message-v1';
   if(config.serviceToken)headers['OAI-Sites-Authorization']='Bearer '+config.serviceToken;
   const r=await fetcher(config.site+'/api/integrations/bridge',{method:'POST',headers,body:raw,redirect:'error',signal:AbortSignal.timeout(20000)});
   if(!r.ok){const error=new Error(`Site recusou a operação (${r.status}).`);error.status=r.status;throw error}

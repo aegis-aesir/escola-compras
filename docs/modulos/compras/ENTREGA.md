@@ -1,3 +1,27 @@
+# Entrega atual — WhatsApp selecionado, propostas e pesquisa-web — 17/11/2026
+
+Branch **codex/compras**, base **e6a05a5**. SHA final informado ao coordenador após commit. Execução autorizada integralmente; nenhuma ação em runtime/produção, segredo, envio, gateway, tarefa agendada ou publicação nesta worktree. Procedimento completo: [WHATSAPP-SELECIONADO.md](WHATSAPP-SELECIONADO.md).
+
+Implementado: hook sem captura e independente; CLI por mensagem/manifesto explícito; protocolo selected-message-v1 exigido antes de D1/R2; runner preserva backlog legado inclusive JSON inválido e mais de50 arquivos. Conteúdo selecionado associa por código/receipt/correlação concordantes ou único envio confirmado anterior ao recebimento e telefone normalizado. Ambiguidade fica para revisão; contato geral nunca vira fornecedor automaticamente.
+
+Extração conservadora e proposta preliminar editável: itens/quantidades/preços, frete/total, pagamento, prazo/validade/moeda apenas quando expressos. Caso “Registro de mictório a10reais cada. Total de40reais para4registros” mapeia item “Registro para mictório”, q4/preço10/total40, com frete ausente. Dias úteis não viram corridos. Confirmar exige Master/ADM, quoteSchema/transition existentes, etapa/aprovação, fornecedor/telefone, versões e mês aberto; pedido/inbox/auditoria ficam numa transação. Retry após resposta perdida é idempotente; revisão preserva id lógico da proposta do mesmo fornecedor e quoteHistory. Falha forçada na inbox comprovou rollback da atualização do pedido.
+
+UI: caixa compacta agrupada, busca/pedido/estado, pendências selecionadas por padrão, histórico legado separado, originais sob demanda, importação manual sem IDs técnicos e editor completo de proposta. Painel técnico e ajuda legada começam recolhidos. Coordenador validou visualmente e confirmou revisão fictícia48 no mesmo fornecedor, com aviso de sucesso e pendências1→0. Fonte da screenshot fica na main em outputs/releases/2026.11.17.1/inbox-qa.jpg.
+
+Anexos individualmente escolhidos: até20 e5MB somados, hash/assinatura/extensão conferidos, base64 somente transitório; originais privados no R2, D1 só metadados/texto, download restrito ADM/Master. Testados5MB aceitos e5MB+1 recusado, transporte assinado acima do limite antigo64k, protocolo inválido antes deR2. Sem OCR automático: texto extraído opcional é indicado junto do original; upload privado existente preservado.
+
+Pesquisa, navegador e estimativas usam **pesquisa-web**, WhatsApp permanece **operacional +559292017107**, default desativada. Sem mudanças em modelos, cofre, flags, configuração do agente ou pausa. Gateway deve permanecer parado; instalar hook offline e CLI oneshot não exige iniciá-lo. O wrapper DPAPI import-selected-windows.ps1 é responsabilidade do coordenador na main e não foi criado nesta branch.
+
+**Validação:** tipos e build Sites passaram. Testes selected-inbox-test (4), openclaw-test e agent-routing-test somam21 casos Node; inbox-proposals-test, selected-inbox-d1-test, inbox-panel-test, integration-test, quotation-contacts-test, workflow-test, automatic-estimate-test, quotation-message-ui-test e redesign-styles-test passaram. selected-inbox-http-test passou somente127.0.0.1:5185 com fixtures e envio false. Sem mensagens ou transporte real. Sem migrações/dependências novas.
+
+Compartilhados alterados: app/api/data/route.ts, app/dashboard.tsx (somente ajuda recolhida), app/integration-model.ts, app/integration-panel.tsx, app/redesign.css, lib/integrations.ts, lib/integration-endpoint.ts. Novas unidades: app/inbox-panel.tsx, app/inbox-proposals.ts, lib/inbox-selected.ts, app/api/inbox-attachment/route.ts, selected-message.mjs e select-message.mjs. Documentos gerais atualizados sem editar AGENTS/team/system-version coordenados na main.
+
+Instalação: app primeiro; backup privado e substituição offline somente handler.js/HOOK.md no hook instalado; CLI a partir de integrations/openclaw completo, sem segredos no Git. Futuro runner exige runner.mjs+selected-message.mjs atualizados e autorização expressa de retomada. Nenhum backlog deve ser rearmado ou consentido em lote.
+
+Servidor local5185 permanece aberto a pedido do coordenador (sessão37266). Banco exclusivo de fixtures preservado: pedido CE-E50C5158 e fornecedor fictício; não rodar outros testes com estado durante QA. Credenciais fictícias são as documentadas em scripts/local-test-session.mjs; nenhum dado real foi acessado.
+
+---
+
 # Entrega atual — envio normal, aviso de reenvio e Lixeiras — 15/11/2026
 
 Branch **codex/compras**, base **cc962ef4a1f152ec19cd465617648b278419b9af**. SHA final comunicado ao coordenador após commit/push. Pedido humano direto: envio para qualquer contato explicitamente escolhido, excluir contato/cotação concluída para novos testes e aviso quando esse pedido já foi enviado ao contato. Implementado com exclusão recuperável e histórico preservado; reenvio exige confirmação e cria nova identidade. Sem envio nativo ou alterações de produção pelo módulo.

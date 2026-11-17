@@ -1,15 +1,16 @@
 ---
 name: estrelas-compras
-description: "Guarda mensagens da conta operacional para conferência na Central de Compras. Não responde aos fornecedores."
+description: "Hook sem captura. Mensagens são importadas somente por indicação explícita na CLI ou no painel."
 metadata:
   { "openclaw": { "events": ["message:received"] } }
 ---
 
-Este hook só registra texto recebido na conta operacional confirmada pela escola.
-O runner entrega os registros ao Site com assinatura e idempotência. Instalar apenas
-após configurar uma pasta privada e o acesso de serviço, conforme INTEGRACOES.md.
-Não altera respostas automáticas de outros agentes já configurados no OpenClaw.
-Anexos, grupos e identificadores sem telefone exigem conferência no WhatsApp.
+O handler deliberadamente não grava, registra em log ou encaminha eventos recebidos.
+Metadados/textos de fornecedores nunca concedem autorização de importação.
+Instalar somente handler.js é suficiente: ele não tem imports nem dependências.
+Não iniciar/reiniciar gateway nem reativar tarefas para instalar esta proteção.
 
-Pasta padrão: `~/.openclaw/estrelas-compras/inbox`. Pode ser substituída por
-`ESTRELAS_INBOX_DIR` no ambiente do processo do gateway.
+O operador indica cada mensagem pela CLI select-message.mjs ou pela caixa do painel.
+O runner só entrega JSON com protocolo selected-message-v1 e seleção explícita.
+Backlog antigo permanece intocado e não é importado. Nunca marcar toda a pasta,
+um contato ou conversa como autorizados. Documentação: docs/modulos/compras/WHATSAPP-SELECIONADO.md.

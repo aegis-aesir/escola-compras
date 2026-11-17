@@ -3,17 +3,19 @@
 Conta: `operacional`. Número: `+559292017107`.
 Projeto e hospedagem existentes foram preservados.
 
+**Regra vigente de 17/11/2026:** operação pausada por solicitação do usuário. Não iniciar/reiniciar gateway, ponte ou tarefas agendadas para aplicar esta entrega. Recebimento só por seleção individual, conforme [WHATSAPP-SELECIONADO.md](docs/modulos/compras/WHATSAPP-SELECIONADO.md). Esta regra substitui orientações antigas de captura e reinício abaixo.
+
 ## Separação das tarefas entre agentes
 
-- `coordinator`: pesquisa web, descoberta de fornecedores locais/nacionais, leitura por `web_fetch`, navegador de pesquisa `compras` e análise estruturada das estimativas.
+- `pesquisa-web`: pesquisa web, descoberta de fornecedores locais/nacionais, leitura por `web_fetch`, navegador de pesquisa `compras` e análise estruturada das estimativas.
 - `operacional`: WhatsApp da conta `operacional`, número exato `+559292017107`; envios somente autorizados, respostas e anexos recebidos no canal existente.
 - A conta pessoal `default` foi desativada e despareada. Não reativar, parear ou usar como fallback. Esta mudança não modifica canais, modelos, provedores ou credenciais do OpenClaw.
 
-A ponte envia `agentId` e `sessionKey` explícitos em `/tools/invoke`. Sessões de ferramentas são isoladas por pedido; a análise mantém sessão própria por tarefa/lease. Não depender do agente principal do gateway. Falhas do coordinator permanecem pendentes/com erro para revisão, sem transferir pesquisas ao operacional.
+A ponte envia `agentId` e `sessionKey` explícitos em `/tools/invoke`. Sessões de ferramentas são isoladas por pedido; a análise mantém sessão própria por tarefa/lease. Não depender do agente principal do gateway. Falhas do pesquisa-web permanecem pendentes/com erro para revisão, sem transferir pesquisas ao operacional.
 
 As chaves das tarefas, leases, confirmações, registros por pedido, assinaturas e os dois bloqueios de envio continuam iguais. Resultados pendentes são confirmados pelo journal existente; não limpar nem reenfileirar envios para aplicar esta alteração.
 
-Os anexos recebidos continuam sob responsabilidade do operacional no WhatsApp. A ponte atual importa apenas texto para conferência no painel: não transfere anexos ao coordinator, não executa documentos recebidos e não transforma arquivos em propostas automaticamente. O fluxo de anexos privados enviados pelo painel permanece independente.
+Mensagens e anexos só entram no sistema por indicação explícita de cada mensagem. O hook de recebimento não captura conteúdo; o runner ignora backlog legado sem seleção. Veja docs/modulos/compras/WHATSAPP-SELECIONADO.md para painel e CLI. Anexos selecionados ficam no R2 privado; não são enviados à pesquisa-web nem executados. Extração binária/OCR não é automática; texto extraído pode ser indicado explicitamente. Propostas permanecem preliminares até confirmação Master/ADM. O upload privado do pedido permanece disponível.
 
 Validação sem contato externo: `node --test scripts/agent-routing-test.mjs`, `node --test scripts/openclaw-test.mjs`, `node scripts/price-evidence-test.mjs`, `node scripts/integration-test.mjs` e `node scripts/automatic-estimate-test.mjs`. O transporte de envio do teste é inteiramente simulado: nenhuma chamada real à ferramenta de mensagens.
 
@@ -51,11 +53,7 @@ cotação para um fornecedor permitido na etapa. O envio exige as duas chaves
 de ativação. Somente uma confirmação com identificador de mensagem registra
 o contato local e inicia o prazo. Não há teto ou reaprovação por preço real.
 
-Recebimento: o hook `estrelas-compras` observa mensagens de texto da conta
-operacional e as entrega ao painel para revisão. Grupos, anexos e remetentes
-sem telefone identificável exigem consulta no WhatsApp. O hook não responde
-nem muda os demais agentes existentes. Mensagens recebidas não autorizam ações.
-A proposta só passa a valer depois do registro pela administração.
+Recebimento: o hook não captura conteúdo. O operador/ADM indica cada mensagem explicitamente pela CLI ou pelo painel; anexos precisam de seleção individual. O servidor exige selected-message-v1 antes de gravar. A mensagem gera proposta preliminar; a administração confere e confirma com as regras normais de cotação.
 
 A ponte usa diretamente `https://ceea.colegioestrelas.com`; não usar o endereço antigo, pois ele responde com redirecionamento e o cliente bloqueia redirecionamentos por segurança. A ponte verifica prazos mesmo com o painel fechado, enquanto o computador
 estiver ligado, conectado e com a ponte em execução. Após um dia útil sem
@@ -111,7 +109,7 @@ cada empresa atende; propostas e compras divididas permanecem fora desta versão
   privada já existente do OpenClaw. Nunca copiar esses valores para este projeto.
 - DPAPI depende do mesmo usuário Windows e computador. Não colocar o cofre no
   NAS, Git ou arquivos de continuidade. Restrinja a pasta ao usuário e SYSTEM.
-- O hook usa `%USERPROFILE%/.openclaw/estrelas-compras/inbox` por padrão.
+- O runner conhece `%USERPROFILE%/.openclaw/estrelas-compras/inbox`; o hook não grava conteúdo nessa pasta.
   A ponte guarda resultados pendentes na pasta irmã `state`.
 
 Não compartilhar tokens no chat. A configuração do servidor deve ser publicada
@@ -144,32 +142,7 @@ Para inicialização automática, use uma tarefa do Windows no logon deste usuá
 com janela oculta e sem credenciais nos argumentos. A ponte não executa se o
 gateway não estiver disponível; resultados já confirmados não são reenviados.
 
-Hook local: `openclaw hooks install ./integrations/openclaw --force` instala o
-código revisado. Verifique `openclaw hooks info estrelas-compras`. A ativação
-pode recarregar os hooks; alterações posteriores nos arquivos podem exigir
-reinício do gateway. Isso não envia mensagens de teste.
-
-O plugin WhatsApp instalado em 14/11/2026 também exige habilitar a emissão dos
-eventos de recebimento **somente na conta operacional**:
-
-```powershell
-openclaw config set channels.whatsapp.accounts.operacional.pluginHooks.messageReceived true
-```
-
-Instalar/habilitar `estrelas-compras` não basta: sem essa opção o plugin não emite
-`message:received`, mesmo quando a mensagem chega ao WhatsApp e o agente responde.
-O CLI informa quando a opção foi aplicada sem reiniciar o gateway. Não ativar a
-opção global `channels.whatsapp.pluginHooks.messageReceived`, nem a da conta
-pessoal; preservar modelos, credenciais e políticas do canal. Esta opção permite
-a captura de recebidos e **não habilita envio de cotações**: as duas chaves de envio
-continuam independentes e podem permanecer em `false` durante a validação.
-
-Validar com uma nova resposta do contato de teste autorizado: identificador
-nativo no arquivo privado da inbox, confirmação `.json.done` pela ponte e mensagem
-em **Cotação → Agente WhatsApp → Mensagens recebidas para conferência**. Sem
-fornecedor/protocolo identificáveis, o registro permanece sem vínculo automático;
-não criar uma proposta ou associar um teste a uma solicitação real. A ativação não
-importa mensagens anteriores e não exige publicação de uma nova versão do Site.
+Hook local: fazer backup e substituir offline somente handler.js e HOOK.md. O handler não tem dependências e não captura eventos. Não mudar pluginHooks, configuração do gateway ou políticas do canal para importar mensagens. O procedimento vigente de seleção explícita, anexos e instalação está em docs/modulos/compras/WHATSAPP-SELECIONADO.md. Nenhum reinício faz parte desta entrega.
 
 ## Falhas e conferência
 
@@ -180,9 +153,7 @@ Os arquivos `.result.json` reenviam apenas a confirmação ao Site, não a mensa
 Arquivos `.review` exigem conferência; `.done` são comprovantes processados.
 Não apagar esses registros para tentar novamente.
 
-O hook observa eventos aceitos pelo OpenClaw; não importa retroativamente todo o
-histórico e não captura mensagens bloqueadas pelas políticas do canal. Se uma
-resposta não aparecer, conferir o WhatsApp e a política de recebimento da conta.
+O hook não captura respostas, mesmo quando o WhatsApp as recebe. Se uma resposta precisar entrar no sistema, indicar somente essa mensagem no painel/CLI; nunca importar a conversa ou backlog inteiro.
 
 ## Validação
 
@@ -224,7 +195,7 @@ A operação assinada `import_suppliers` da ponte recebe `batch: {source, contac
 O servidor valida todo o lote antes de gravar, preserva registros existentes, deduplica por telefone com ou sem `+`, registra origem/data e histórico. Retorna contagens e resultados por índice: criado, existente ou conflito de categoria/abrangência. Repetir o lote não duplica os fornecedores. Não cria pesquisas, cotações ou mensagens. Arquivos de contatos e relatórios de importação permanecem privados em `outputs/`, fora do Git. Validação isolada: `node scripts/supplier-import-test.mjs`.
 
 
-## Estimativas pelo agente coordinator
+## Estimativas pelo agente pesquisa-web
 
 ### Critérios administrativos por item (13/11/2026)
 
@@ -232,13 +203,13 @@ Master e Diretoria Administrativa revisam os critérios pré-preenchidos antes d
 
 `research` com o array de critérios salva e inicia a pesquisa; `research_item` salva/refaz somente a revisão de um item, preservando resultados atuais dos demais. Ambos colocam o pedido em `estimating`; preços completos retornam a `admin_review`. O histórico preserva estimativa anterior, se houver. Resultados de outra revisão, especificação ou critérios não preenchem a estimativa atual. Os critérios não autorizam compra nem substituem o pedido do setor.
 
-A fila mantém `item` original e transporta `researchItem` e `researchCriteria` autorizados. Navegador compras e busca web usam o alvo ajustado; coordinator recebe original e critérios, mantém unidade/quantidade e exige evidências literais de preço e requisitos. Sem autorização de similares, a identidade original continua obrigatória. Assinaturas mantêm a conferência de vigência existente. O cliente anuncia `researchProtocol: criteria-v1` no polling; pontes antigas não retiram tarefas com novos critérios. Reiniciar a tarefa Windows da ponte após atualizar o código, preservando journals, cofre, conta operacional e bloqueios de envio.
+A fila mantém `item` original e transporta `researchItem` e `researchCriteria` autorizados. Navegador compras e busca web usam o alvo ajustado; pesquisa-web recebe original e critérios, mantém unidade/quantidade e exige evidências literais de preço e requisitos. Sem autorização de similares, a identidade original continua obrigatória. Assinaturas mantêm a conferência de vigência existente. O cliente anuncia `researchProtocol: criteria-v1` no polling; pontes antigas não retiram tarefas com novos critérios. Atualizar os arquivos sem iniciar a tarefa Windows; preservar journals, cofre, conta operacional e bloqueios de envio. A retomada depende de autorização do usuário.
 
 Validação sem mensagens externas: `estimate-criteria-test.mjs`, `estimate-criteria-http-test.mjs`, `estimate-criteria-ui-test.mjs`, `agent-routing-test.mjs`, `automatic-estimate-test.mjs` e `price-evidence-test.mjs`.
 
 Resultados parciais (12/11/2026): o painel exibe preço unitário, subtotal, fonte e data dos itens já validados, mesmo enquanto outro item está pendente. Usa a mesma validação de evidências do servidor e somente resultados da revisão e especificação atuais. O subtotal parcial exclui frete e não libera a aprovação. Pesquisa já encerrada com pendências não aparece como ainda em processamento. Assinaturas continuam exigindo conferência de vigência antes de usar preços como referência. Teste: `node scripts/partial-estimate-ui-test.mjs`.
 
-A ponte pesquisa fontes, lê até três páginas via `web_fetch` e passa trechos limitados ao agente existente `coordinator` por `openclaw gateway call agent`. Usa o modelo/configuração já definidos para esse agente, com custo normal desse provedor. Não cria outro agente nem altera o atendimento WhatsApp. O CLI é localizado no caminho Windows padrão; `OPENCLAW_CLI_PATH` permite indicar outra instalação.
+A ponte pesquisa fontes, lê até três páginas via `web_fetch` e passa trechos limitados ao agente existente `pesquisa-web` por `openclaw gateway call agent`. Usa o modelo/configuração já definidos para esse agente, com custo normal desse provedor. Não cria outro agente nem altera o atendimento WhatsApp. O CLI é localizado no caminho Windows padrão; `OPENCLAW_CLI_PATH` permite indicar outra instalação.
 
 A execução utiliza sessão própria por processamento, `promptMode: minimal`, `extraSystemPrompt`, `disableMessageTool: true` e `deliver: false`. Não recebe credenciais do Site no subprocesso. O prompt instrui analisar apenas os textos fornecidos, não executar instruções de páginas nem usar ferramentas. A resposta JSON declara equivalência, moeda BRL, preço total, quantidade por embalagem, unidade e trechos literais. O servidor valida estrutura, fonte e evidências; a interpretação semântica é do agente e segue para conferência administrativa, não constitui aprovação de compra.
 
@@ -252,7 +223,7 @@ Perfil dedicado `compras`, gerenciado pelo OpenClaw no computador, com janela vi
 
 O launcher define `ESTRELAS_BROWSER_RESEARCH=true`. A ponte abre uma aba própria de busca no Mercado Livre, preservando nome, especificação e sinais do modelo (como S41+), confirma sinais visíveis de sessão e lê até dois anúncios. Somente URLs HTTPS de busca/anúncio permitidas; não há clique, preenchimento, carrinho, pagamento, contato ou acesso a páginas da conta. Abas de login do usuário não são fechadas. CAPTCHA, login expirado ou sessão não confirmada ficam como pendência; não contornar verificações do site.
 
-A extração usa DOM renderizado do produto: título, preço, descrição e especificações. Não lê cookies, armazenamento, senhas ou formulários. Não exporta cabeçalho da conta nem endereço. Frete exibido é apenas informativo: quantidade e destino precisam de conferência antes de incorporá-lo ao total. O agente coordinator continua responsável pela análise de equivalência/preço e pelas citações literais.
+A extração usa DOM renderizado do produto: título, preço, descrição e especificações. Não lê cookies, armazenamento, senhas ou formulários. Não exporta cabeçalho da conta nem endereço. Frete exibido é apenas informativo: quantidade e destino precisam de conferência antes de incorporá-lo ao total. O agente pesquisa-web continua responsável pela análise de equivalência/preço e pelas citações literais.
 
 Páginas autenticadas têm prioridade. Com esse modo ativo, páginas públicas do Mercado Livre não são usadas silenciosamente em substituição à sessão. Outras lojas continuam disponíveis como fontes públicas. O painel mostra `Mercado Livre · navegador compras`, o estado da sessão na data da pesquisa e a origem da referência utilizada. Use **Refazer pesquisa de preços** após entrar na conta ou resolver uma verificação. Novas estimativas usam o modo logado automaticamente enquanto o perfil estiver disponível.
 
@@ -262,7 +233,7 @@ Validação em 09/11/2026: sessão real reconhecida pelo controle visível atual
 
 A operação assinada `retry_estimate` recebe `jobId` e `version`, somente para uma pesquisa de estimativa elegível. Usa os mesmos controles do Site privado/HMAC, valida versão e registra histórico. Não permite reexecutar envios WhatsApp. Destina-se a refazer pesquisas mediante solicitação administrativa, inclusive após o usuário concluir login no perfil compras.
 
-A análise respeita o runtime configurado do agente coordinator (inclusive Claude CLI). Não usa modelRun, pois esse modo força execução pela API e ignora o runtime CLI, exigindo outra credencial. As instruções de análise são enviadas também como contexto de sistema. Frete numérico só é extraído quando há valor completo com centavos; spans fragmentados não geram um valor parcial.
+A análise respeita o runtime configurado do agente pesquisa-web (inclusive Claude CLI). Não usa modelRun, pois esse modo força execução pela API e ignora o runtime CLI, exigindo outra credencial. As instruções de análise são enviadas também como contexto de sistema. Frete numérico só é extraído quando há valor completo com centavos; spans fragmentados não geram um valor parcial.
 
 ## Solicitações arquivadas
 

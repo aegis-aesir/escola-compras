@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+await build({entryPoints:['app/inbox-panel.tsx'],outfile:'outputs/inbox-panel-test.mjs',bundle:true,platform:'node',format:'esm',external:['react','react/jsx-runtime']});
+const {default:InboxPanel}=await import('../outputs/inbox-panel-test.mjs');
+const at='2026-11-17T12:00:00.000Z',base={version:1,accountId:'operacional',from:'+5592999990000',to:'+559292017107',receivedAt:at,recordedAt:at,state:'review'};
+const data={me:{role:'admin'},requests:[],suppliers:[],integrations:{inbox:[{...base,id:'legacy',messageId:'old',text:'SEGREDO-LEGADO-FORA-DA-FILA'},{...base,id:'chosen',messageId:'selected',protocol:'selected-message-v1',text:'CONTEUDO-ESCOLHIDO',selection:{actor:'Fixture',at,reason:'Usuário indicou esta mensagem',attachmentIds:[],accountId:'operacional',messageId:'selected'}}]}};
+const html=renderToStaticMarkup(React.createElement(InboxPanel,{data,busy:false,onSave:async()=>true}));
+assert.match(html,/1 pendência/);assert.match(html,/CONTEUDO-ESCOLHIDO/);assert.doesNotMatch(html,/SEGREDO-LEGADO-FORA-DA-FILA/);assert.match(html,/Histórico legado/);assert.match(html,/Importar somente esta mensagem/);assert.match(html,/Pedido a identificar/);assert.match(html,/Ver conteúdo original e indicação/);
+console.log('PASS UI: legado fora da fila inicial, contador de seleção, agrupamento, importação explícita e originais sob demanda.');

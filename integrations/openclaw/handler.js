@@ -1,8 +1,4 @@
-import { mkdir, writeFile, rename } from 'node:fs/promises';
-import { createHash, randomUUID } from 'node:crypto';
-import path from 'node:path';
-import os from 'node:os';
-import { ACCOUNT, SCHOOL_PHONE } from './client.mjs';
+const ACCOUNT='operacional',SCHOOL_PHONE='+559292017107';
 
 export function normalizeEvent(event) {
   const c=event?.context;
@@ -20,14 +16,8 @@ export function normalizeEvent(event) {
   return {messageId:c.messageId,accountId:ACCOUNT,from,to:SCHOOL_PHONE,text:c.content,receivedAt:received.toISOString()};
 }
 export default async function handler(event) {
-  const message=normalizeEvent(event);
-  if(!message)return;
-  const spool=process.env.ESTRELAS_INBOX_DIR||path.join(os.homedir(),'.openclaw','estrelas-compras','inbox');
-  if(!spool||!path.isAbsolute(spool))throw new Error('Configure uma pasta absoluta e privada para ESTRELAS_INBOX_DIR.');
-  await mkdir(spool,{recursive:true});
-  const name=createHash('sha256').update(JSON.stringify([message.accountId,message.messageId])).digest('hex')+'.json';
-  const temporary=path.join(spool,name+'.'+randomUUID()+'.tmp');
-  await writeFile(temporary,JSON.stringify(message),{flag:'wx',mode:0o600});
-  await rename(temporary,path.join(spool,name));
-  // No reply, model execution, or modification of OpenClaw's incoming message.
+  // Deliberately no capture, logging, disk write or forwarding here. Incoming
+  // events and supplier-supplied metadata cannot authorize their own import.
+  // Operators select one existing message with select-message.mjs or the panel.
+  void event;
 }
