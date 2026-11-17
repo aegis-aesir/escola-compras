@@ -31,7 +31,7 @@ As cinco worktrees existentes são reutilizadas. Compras e OpenClaw compartilham
 
 ## OpenClaw
 
-O perfil de desenvolvimento openclaw_integracoes é diferente dos agentes de execução do OpenClaw. No OpenClaw, `coordinator` continua responsável por web, fornecedores, páginas e estimativas; `operacional` continua responsável pelo WhatsApp operacional. Preservar exatamente `+559292017107`, conta pessoal `default` desativada/despareada e modelos/credenciais existentes. Serviços/cofre fora do Git permanecem com o coordenador. Testes fictícios não autorizam envios reais; uma tarefa real preparada e autorizada pelo usuário segue o fluxo normal, sem testes paralelos ou rearmar backlog.
+O perfil de desenvolvimento openclaw_integracoes é diferente dos agentes de execução do OpenClaw. Desde 17/11/2026, `pesquisa-web` é responsável por web, fornecedores, páginas e estimativas; `operacional` continua responsável pelo WhatsApp operacional. Importar somente conteúdo explicitamente selecionado por mensagem/anexo pelo usuário. Preservar exatamente `+559292017107`, conta pessoal `default` desativada/despareada e modelos/credenciais existentes. Serviços/cofre fora do Git permanecem com o coordenador. Testes fictícios não autorizam envios reais; uma tarefa real preparada e autorizada pelo usuário segue o fluxo normal, sem testes paralelos ou rearmar backlog.
 
 O monitor que considera default desativado uma falha é pendência registrada. Esta configuração não inicia sua correção, novos módulos ou novas mensagens.
 

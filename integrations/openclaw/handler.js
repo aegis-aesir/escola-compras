@@ -1,6 +1,6 @@
 const ACCOUNT='operacional',SCHOOL_PHONE='+559292017107';
 
-export function normalizeEvent(event) {
+export function normalizeEvent(event,{allowEmptyText=false}={}) {
   const c=event?.context;
   if(event?.type!=='message'||event.action!=='received'||c?.channelId!=='whatsapp'||c.accountId!==ACCOUNT)return null;
   // Group chats and opaque LIDs cannot be safely matched to supplier phones.
@@ -8,12 +8,13 @@ export function normalizeEvent(event) {
   if(typeof sender!=='string'||/@g\.us$|@lid$/.test(sender)||String(c.conversationId||'').endsWith('@g.us'))return null;
   const number=sender.replace(/@s\.whatsapp\.net$/,'').replace(/^whatsapp:/,'');
   const from=number.startsWith('+')?number:'+'+number;
-  if(!/^\+[1-9]\d{9,14}$/.test(from)||typeof c.messageId!=='string'||!c.messageId||c.messageId.length>300||typeof c.content!=='string'||!c.content.trim()||c.content.length>16000)return null;
+  const content=c.content===undefined&&allowEmptyText?'':c.content;
+  if(!/^\+[1-9]\d{9,14}$/.test(from)||typeof c.messageId!=='string'||!c.messageId||c.messageId.length>300||typeof content!=='string'||(!content.trim()&&!allowEmptyText)||content.length>16000)return null;
   const recipient=String(c.metadata?.to||'').replace(/^whatsapp:/,'').replace(/@s\.whatsapp\.net$/,'');
   if(recipient&&'+'+recipient.replace(/^\+/,'')!==SCHOOL_PHONE)return null;
   const received=new Date(event.timestamp);
   if(!Number.isFinite(received.getTime()))return null;
-  return {messageId:c.messageId,accountId:ACCOUNT,from,to:SCHOOL_PHONE,text:c.content,receivedAt:received.toISOString()};
+  return {messageId:c.messageId,accountId:ACCOUNT,from,to:SCHOOL_PHONE,text:content,receivedAt:received.toISOString()};
 }
 export default async function handler(event) {
   // Deliberately no capture, logging, disk write or forwarding here. Incoming

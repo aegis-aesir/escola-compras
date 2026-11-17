@@ -32,3 +32,18 @@ test('CLI não seleciona anexos implícitos nem aceita conta pessoal',async()=>{
  await assert.rejects(prepareSelectedMessage({...source,accountId:'default'},options));
  await assert.rejects(prepareSelectedMessage(source,{...options,messageId:'other'}));
 });
+
+test('CLI preserva evidências conflitantes e seleção de anexo sem legenda',async()=>{
+ const options={messageId:'fixture',actor:'Operador fixture',reason:'Usuário indicou esta resposta'};
+ const canonical={messageId:'fixture',accountId:'operacional',from:'+5592999990000',to:'+559292017107',receivedAt:'2026-11-17T12:00:00Z',text:'CE-87654321',correlationJobId:'envio-do-pedido-A',replyToMessageId:'receipt-A'};
+ const selected=await prepareSelectedMessage(canonical,options);
+ assert.equal(selected.correlationJobId,canonical.correlationJobId);
+ assert.equal(selected.replyToMessageId,canonical.replyToMessageId);
+ const dir=await mkdtemp(path.join(os.tmpdir(),'selected-captionless-')),file=path.join(dir,'escolhido.pdf');
+ await writeFile(file,'%PDF-1.4\nfixture');
+ const media={...event,context:{...event.context,content:''}};
+ const attachment=await prepareSelectedMessage(media,{...options,attachments:[{file}]});
+ assert.equal(attachment.text,'');assert.equal(attachment.attachments.length,1);
+ assert.deepEqual(attachment.selection.attachmentIds,[attachment.attachments[0].id]);
+ await assert.rejects(prepareSelectedMessage(media,options));
+});

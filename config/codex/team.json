@@ -59,7 +59,7 @@
       "name": "openclaw_integracoes",
       "title": "OpenClaw e Integrações",
       "module": "compras",
-      "scope": "Ponte OpenClaw, pesquisa e retorno de estimativas, filas, polling, idempotência, recebimento de respostas/anexos, adaptadores, monitoramento e diagnóstico. Compartilha a worktree Compras em exclusividade: nunca escrever simultaneamente com compras. coordinator do OpenClaw faz pesquisa; operacional cuida do WhatsApp da conta operacional. Preserve exatamente +559292017107, default desativado/despareado, modelos, credenciais e autorizações de envio. Mudanças fora do repositório e serviços reais são aplicadas pelo coordenador, após revisão. O defeito conhecido do monitor que trata default desativado como falha é pendência, não autorização para iniciar sua correção nesta configuração."
+      "scope": "Ponte OpenClaw, pesquisa e retorno de estimativas, filas, polling, idempotência, recebimento de respostas/anexos, adaptadores, monitoramento e diagnóstico. Compartilha a worktree Compras em exclusividade: nunca escrever simultaneamente com compras. pesquisa-web do OpenClaw faz pesquisa; operacional cuida do WhatsApp da conta operacional. Importar apenas mensagens/anexos explicitamente indicados pelo usuario, sem captura geral de conversas. Preserve exatamente +559292017107, default desativado/despareado, modelos, credenciais e autorizações de envio. Mudanças fora do repositório e serviços reais são aplicadas pelo coordenador, após revisão. O defeito conhecido do monitor que trata default desativado como falha é pendência, não autorização para iniciar sua correção nesta configuração."
     },
     {
       "name": "revisor",
