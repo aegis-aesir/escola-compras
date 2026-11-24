@@ -14,3 +14,9 @@ Antes de retomar, confirme que existe somente uma ponte ativa, que a conta Whats
 A unidade foi instalada no CT 105 e foi validada como `loaded`, `inactive` e `static`. A trava permanece ausente. O gateway respondeu HTTP 200 no loopback após a instalação. O arquivo de ambiente foi criado com proprietário root e permissão `0600`, contendo apenas a URL do Site e o caminho verificado do CLI em `/home/agente/.openclaw/tools/node-v24.22.1/lib/node_modules/openclaw/openclaw.mjs`.
 
 Ainda é necessário provisionar as credenciais de serviço e preparar a conta e os agentes no gateway. Na checagem anterior à instalação, o número institucional aparecia conectado na conta de canal `default`. Esse identificador é diferente do agente antigo `coordinator`. Nenhum vínculo de WhatsApp ou agente foi alterado na instalação da unidade.
+
+## Roteamento preparado
+
+Em 24/11/2026, o fragmento `/etc/ceea-compras/routing-proposed.json` foi validado em um perfil isolado pelo OpenClaw 2026.11.6 e guardado no CT como root com permissão `0600`. Ele usa `agents.entries` e mantém `main` como agente padrão. Registra `pesquisa-web` com a ferramenta de mensagens bloqueada e vincula a conta `operacional` do WhatsApp ao agente do mesmo nome. A conta institucional proposta aponta para o diretório de sessão existente e preserva o modo de conversa consigo mesmo. Nenhuma credencial foi incluída no fragmento.
+
+Aplicar o fragmento como mesclagem, preservando os modelos, configurações de acesso e demais opções da configuração ativa. Trocar o identificador da conta pode reconectar o WhatsApp. Conferir a política de acesso e a identidade da conta após a aplicação. A validação de esquema não testa a conexão nem o comportamento dos agentes. O fragmento permanece fora da configuração ativa.
