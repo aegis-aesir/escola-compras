@@ -1,3 +1,13 @@
+# Entrega atual — preparação da ponte Linux no CT 105
+
+Branch **codex/compras**, base **ea6c4d3**. Instruções e verificação em [PONTE-LINUX.md](PONTE-LINUX.md). A unidade da ponte guarda estado em diretório privado e exige ativação explícita. O comando bloqueia envio, autorização de teste e leitura de pastas de mensagens.
+
+No CT 105, a unidade foi instalada, validada pelo systemd e confirmada como inativa, de partida manual e sem arquivo de ativação. O gateway permaneceu saudável. O arquivo de ambiente contém apenas valores não secretos. O provisionamento de credenciais e o alinhamento da conta e dos agentes estão pendentes.
+
+Sem migração de banco, mudanças em arquivos compartilhados do aplicativo, alterações no manifesto, publicação ou alteração da conta WhatsApp. A unidade e o guia são os novos arquivos. Validar a unidade com `systemd-analyze verify` e executar `node --test scripts/agent-routing-test.mjs scripts/openclaw-test.mjs` com transporte simulado.
+
+---
+
 # Entrega atual — WhatsApp selecionado, propostas e pesquisa-web — 17/11/2026
 
 Branch **codex/compras**, base **e6a05a5**. SHA final informado ao coordenador após commit. Execução autorizada integralmente; nenhuma ação em runtime/produção, segredo, envio, gateway, tarefa agendada ou publicação nesta worktree. Procedimento completo: [WHATSAPP-SELECIONADO.md](WHATSAPP-SELECIONADO.md).
