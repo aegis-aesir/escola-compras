@@ -3,6 +3,7 @@ import {masterReanalysis} from './master-reanalysis';
 import {budgetTransition,ensureAdministrativeReview} from './budget-workflow';
 import { estimateSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
 import {normalizeQuote,quoteComparable} from './quote-comparison';
+import {parseManagement} from './budget';
 export class FlowError extends Error {constructor(message:string,public status=400){super(message)}}
 export const todayManaus=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
 export function nextBusinessDay(at:string,holidays:string[]=[]){
@@ -43,7 +44,15 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       // Administrative rejection may happen before, during or after the automatic
       // estimate: a rejected request needs neither the research nor the DG decision.
       if(['pending','estimating','admin_review'].includes(old.status)){permit('administrativo');if(old.generalApproval)throw new FlowError('Este pedido já tem aprovação da necessidade.',409);}else{permit('geral');stage('general_review')};
-      data.decision=reason();data.status='rejected';action=(old.status==='general_review'?'Pedido não aprovado: ':old.status==='admin_review'?'Pedido não aprovado na análise administrativa: ':'Pedido não aprovado pela Diretoria Administrativa antes da conclusão da estimativa: ')+data.decision;break;
+      data.decision=reason();
+      if(b.data&&old.status!=='general_review'){
+        // Saves the administrative conference and rejects in one versioned write.
+        const parsed=parseManagement(b.data,old.form?.kind||'monthly',old.originalScope?.items||old.items);
+        data.management={...old.management,...parsed};
+        for(const key of Object.keys(b.data))if(parsed[key]===undefined)delete data.management[key];
+        if(old.management?.referenceMonth)data.management.referenceMonth=old.management.referenceMonth;
+      }
+      data.status='rejected';action=(old.status==='general_review'?'Pedido não aprovado: ':old.status==='admin_review'?'Pedido não aprovado na análise administrativa: ':'Pedido não aprovado pela Diretoria Administrativa antes da conclusão da estimativa: ')+data.decision;break;
     case 'local_contact':{
       permit('administrativo');stage('quoting');if(!old.generalApproval)throw new FlowError('Regularize as aprovações deste pedido do fluxo anterior.');
       const s=suppliers.find(s=>s.id===b.supplierId&&!s.removed&&(s.scope||'local')==='local');if(!s)throw new FlowError('Selecione um fornecedor local.');

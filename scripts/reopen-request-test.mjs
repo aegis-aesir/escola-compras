@@ -53,3 +53,8 @@ test('Diretoria Administrativa rejeita antes ou durante a estimativa sem passar 
  assert.throws(()=>transition({...request(),status:'pending',generalApproval:{actor:'DG',at:now,reason:'Aprovado'}},{action:'reject',reason:'Tentativa após aprovação'},admin,[],settings,now),e=>e.status===409);
  assert.throws(()=>transition({...request(),status:'quoting'},{action:'reject',reason:'Tentativa em cotação'},administrative,[],settings,now));
 });
+test('rejeição grava a conferência administrativa na mesma operação',()=>{
+ const old={...request(),status:'pending',decision:undefined,needDecision:undefined,management:{...request().management,referenceMonth:'2026-11'}};delete old.estimate;
+ const r=transition(old,{action:'reject',reason:'Item já disponível no estoque',data:{recommendation:'Rejeitar',quantityAssessment:'Adequadas'}},administrative,[],settings,now).data;
+ assert.equal(r.status,'rejected');assert.equal(r.management.recommendation,'Rejeitar');assert.equal(r.management.quantityAssessment,'Adequadas');assert.equal(r.management.referenceMonth,'2026-11');
+});
