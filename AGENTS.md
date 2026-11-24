@@ -1,5 +1,9 @@
 # Colégio Estrelas — instruções para continuar o projeto
 
+## WhatsApp selecionado e pesquisa — 17/11/2026
+
+Esta regra substitui as descrições anteriores de captura geral e pesquisa pelo coordinator: pesquisa web/fornecedores/estimativas usam `pesquisa-web`; WhatsApp continua em `operacional`, número exato `+559292017107`, sem reativar `default`. O hook de recebimento não captura conversas. Importar somente mensagens/anexos indicados individualmente pelo usuário, no protocolo `selected-message-v1`, antes de persistir no sistema; nunca liberar um contato inteiro nem reaproveitar backlog legado automaticamente. Vínculo e extração geram proposta preliminar; Master/ADM confere e confirma sob as validações existentes, preservando histórico e idempotência. Consulte `docs/modulos/compras/WHATSAPP-SELECIONADO.md`. O gateway e as tarefas da ponte foram encontrados parados por ordem do usuário em outro chat; a implementação não autoriza reativá-los nem enviar mensagens reais para testes.
+
 ## Equipe coordenada por subagentes — 15/11/2026
 
 O usuário autorizou este chat `01a1b74c-f58c-7bd1-a47b-ea6c53153b36` como coordenador único, com delegação sob demanda para Compras, Estoque, Conhecimento/POPs, Tarefas, Escolar Manager, OpenClaw/Integrações, Revisor e Validação. Ler `config/codex/EQUIPE.md` e `config/codex/team.json` antes de delegar. Usar subagentes em partes independentes quando trouxer ganho; tarefas simples ficam no coordenador. Até três subagentes simultâneos neste ambiente; não iniciar agentes ociosos nem novas funcionalidades como efeito da configuração.

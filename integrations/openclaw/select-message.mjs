@@ -7,10 +7,10 @@ import {normalizeEvent} from './handler.js';
 import {bridgeConfig,callSite} from './client.mjs';
 
 export async function prepareSelectedMessage(input,options) {
- const source=input?.type==='message'?normalizeEvent(input):input;
+ const source=input?.type==='message'?normalizeEvent(input,{allowEmptyText:!!options.attachments?.length}):input;
  if(!source||source.messageId!==options.messageId)throw new Error('O ID indicado deve ser exatamente o da mensagem escolhida.');
  // Do not copy unknown metadata, paths, or attachments from the source event.
- const message={messageId:source.messageId,accountId:source.accountId,from:source.from,to:source.to,text:source.text||'',receivedAt:source.receivedAt,...(source.replyToMessageId?{replyToMessageId:source.replyToMessageId}:{})};
+ const message={messageId:source.messageId,accountId:source.accountId,from:source.from,to:source.to,text:source.text||'',receivedAt:source.receivedAt,...(source.replyToMessageId?{replyToMessageId:source.replyToMessageId}:{}),...(source.correlationJobId?{correlationJobId:source.correlationJobId}:{})};
  const attachments=[];
  let size=0;
  for(const selected of options.attachments||[]) {
