@@ -32,3 +32,7 @@ Do CT, a API recusou uma assinatura inválida (401) e aceitou a nova assinatura 
 A mesclagem foi validada primeiro em modo de simulação sobre a configuração real. Depois de aplicar, o OpenClaw validou o arquivo sem avisos. O gateway manteve o mesmo processo e respondeu HTTP 200. A consulta ao gateway listou `main`, `pesquisa-web` e `operacional`. O WhatsApp informou que `operacional` estava vinculado e conectado ao número institucional e que `default` estava desativado. A sessão existente foi reutilizada.
 
 A unidade de Compras permaneceu inativa e sem arquivo de ativação. A verificação consultou o estado dos agentes e do canal. A fila e o envio de cotações poderão ser avaliados após autorização de retomada.
+
+## Retomada autorizada
+
+Em 24/11/2026, a ponte foi iniciada manualmente no CT 105. O primeiro ciclo autenticado terminou às 14h52 UTC (10h52 em Manaus), com zero tarefas processadas. O processo foi conferido com o envio bloqueado e sem autorização de envio de teste. A unidade segue estática, sem partida automática após reinicialização. Não foram observados processos da ponte na Work. A autorização atual cobre a execução da ponte com o bloqueio de envios.

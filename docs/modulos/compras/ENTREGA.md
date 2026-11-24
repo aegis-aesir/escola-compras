@@ -2,7 +2,7 @@
 
 Branch **codex/compras**, base **ea6c4d3**. Instruções e verificação em [PONTE-LINUX.md](PONTE-LINUX.md). A unidade da ponte guarda estado em diretório privado e exige ativação explícita. O comando bloqueia envio, autorização de teste e leitura de pastas de mensagens.
 
-No CT 105, a unidade foi instalada, validada pelo systemd e confirmada como inativa, de partida manual e sem arquivo de ativação. O gateway permaneceu saudável. O arquivo de ambiente contém apenas valores não secretos. As novas credenciais foram instaladas e a assinatura HMAC foi verificada a partir do CT com uma operação diagnóstica que não percorre a fila. Os agentes foram confirmados no gateway e o WhatsApp institucional está ligado em `operacional`. A ponte continua pausada.
+No CT 105, a unidade foi instalada, validada pelo systemd e confirmada como inativa, de partida manual e sem arquivo de ativação. O gateway permaneceu saudável. O arquivo de ambiente contém apenas valores não secretos. As novas credenciais foram instaladas e a assinatura HMAC foi verificada a partir do CT com uma operação diagnóstica que não percorre a fila. Os agentes foram confirmados no gateway e o WhatsApp institucional está ligado em `operacional`. Após autorização, a ponte foi iniciada manualmente no CT 105 com os envios bloqueados. O primeiro ciclo autenticado concluiu às 14h52 UTC em 24/11/2026, com zero tarefas processadas.
 
 Sem migração de banco, mudanças em arquivos compartilhados do aplicativo, alterações no manifesto, publicação ou alteração da conta WhatsApp. A unidade e o guia são os novos arquivos. Validar a unidade com `systemd-analyze verify` e executar `node --test scripts/agent-routing-test.mjs scripts/openclaw-test.mjs` com transporte simulado.
 
