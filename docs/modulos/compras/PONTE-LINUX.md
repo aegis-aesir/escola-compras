@@ -13,7 +13,7 @@ Antes de retomar, confirme que existe somente uma ponte ativa, que a conta Whats
 
 A unidade foi instalada no CT 105 e foi validada como `loaded`, `inactive` e `static`. A trava permanece ausente. O gateway respondeu HTTP 200 no loopback após a instalação. O arquivo de ambiente foi criado com proprietário root e permissão `0600`, contendo apenas a URL do Site e o caminho verificado do CLI em `/home/agente/.openclaw/tools/node-v24.22.1/lib/node_modules/openclaw/openclaw.mjs`.
 
-Ainda é necessário preparar a conta e os agentes na configuração ativa do gateway. Na checagem anterior à instalação, o número institucional aparecia conectado na conta de canal `default`. Esse identificador é diferente do agente antigo `coordinator`. Nenhum vínculo de WhatsApp ou agente foi alterado na instalação da unidade.
+Na checagem anterior à instalação, o número institucional aparecia conectado na conta de canal `default`. Esse identificador é diferente do agente antigo `coordinator`. Nenhum vínculo de WhatsApp ou agente foi alterado na instalação da unidade.
 
 ## Roteamento preparado
 
@@ -25,4 +25,10 @@ Aplicar o fragmento como mesclagem, preservando os modelos, configurações de a
 
 O token de serviço foi emitido novamente e o segredo HMAC foi trocado no Sites. A versão 70, commit `7c9e242`, foi republicada com a revisão 8 do ambiente, sem alteração no código servido. As três credenciais da ponte ficaram no arquivo privado no CT, com proprietário root e permissão `0600`.
 
-Do CT, a API recusou uma assinatura inválida (401) e aceitou a nova assinatura antes de retornar operação desconhecida (400). O teste não percorreu a fila. A unidade permaneceu inativa, estática e sem trava de ativação criada. O gateway continuou saudável. O fragmento de roteamento ainda não foi aplicado à configuração ativa.
+Do CT, a API recusou uma assinatura inválida (401) e aceitou a nova assinatura antes de retornar operação desconhecida (400). O teste não percorreu a fila. A unidade permaneceu inativa, estática e sem trava de ativação criada. O gateway continuou saudável. O roteamento ativo foi verificado em uma etapa separada, abaixo.
+
+## Roteamento ativo
+
+A mesclagem foi validada primeiro em modo de simulação sobre a configuração real. Depois de aplicar, o OpenClaw validou o arquivo sem avisos. O gateway manteve o mesmo processo e respondeu HTTP 200. A consulta ao gateway listou `main`, `pesquisa-web` e `operacional`. O WhatsApp informou que `operacional` estava vinculado e conectado ao número institucional e que `default` estava desativado. A sessão existente foi reutilizada.
+
+A unidade de Compras permaneceu inativa e sem arquivo de ativação. A verificação consultou o estado dos agentes e do canal. A fila e o envio de cotações poderão ser avaliados após autorização de retomada.
