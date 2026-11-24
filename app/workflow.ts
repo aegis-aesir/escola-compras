@@ -40,7 +40,10 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
     case 'admin_review':permit('administrativo');stage('admin_review');ensureAdministrativeReview(old);if(!old.estimate)throw new FlowError('A estimativa da internet deve estar concluída antes da aprovação administrativa.');data.adminReview=reason();data.status='general_review';action='Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview;break;
     case 'approve':permit('geral');stage('general_review');if(old.form)throw new FlowError('Use a decisão estruturada do formulário.');if(!old.adminReview||!old.estimate)throw new FlowError('A análise administrativa é obrigatória.');data.generalApproval={actor:me.name,at:now,reason:reason()};data.status='quoting';action='Diretoria geral aprovou a necessidade do pedido, sem aprovação de valor: '+data.generalApproval.reason;break;
     case 'reject':
-      if(old.status==='admin_review')permit('administrativo');else{permit('geral');stage('general_review')};data.decision=reason();data.status='rejected';action='Pedido não aprovado: '+data.decision;break;
+      // Administrative rejection may happen before, during or after the automatic
+      // estimate: a rejected request needs neither the research nor the DG decision.
+      if(['pending','estimating','admin_review'].includes(old.status)){permit('administrativo');if(old.generalApproval)throw new FlowError('Este pedido já tem aprovação da necessidade.',409);}else{permit('geral');stage('general_review')};
+      data.decision=reason();data.status='rejected';action=(old.status==='general_review'?'Pedido não aprovado: ':old.status==='admin_review'?'Pedido não aprovado na análise administrativa: ':'Pedido não aprovado pela Diretoria Administrativa antes da conclusão da estimativa: ')+data.decision;break;
     case 'local_contact':{
       permit('administrativo');stage('quoting');if(!old.generalApproval)throw new FlowError('Regularize as aprovações deste pedido do fluxo anterior.');
       const s=suppliers.find(s=>s.id===b.supplierId&&!s.removed&&(s.scope||'local')==='local');if(!s)throw new FlowError('Selecione um fornecedor local.');

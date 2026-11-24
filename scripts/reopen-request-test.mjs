@@ -41,3 +41,15 @@ test('projeções do setor e DG mostram reabertura sem vazar controles internos 
   const view=visibleRequests([r],me)[0],entry=view.reopeningHistory[0];assert.ok(entry.reason);assert.equal(entry.previous.needDecision.reason,request().needDecision.reason);assert.equal(entry.previous.management,undefined);assert.equal(entry.previous.adminReview,undefined);assert.equal(entry.previous.estimate,undefined);
  }
 });
+test('Diretoria Administrativa rejeita antes ou durante a estimativa sem passar pela DG',()=>{
+ for(const status of ['pending','estimating','admin_review'])for(const me of [admin,administrative]){
+  const old={...request(),status,decision:undefined,needDecision:undefined};delete old.estimate;
+  const r=transition(old,{action:'reject',reason:'Necessidade não justificada pelo setor'},me,[],settings,now).data;
+  assert.equal(r.status,'rejected');assert.equal(r.decision,'Necessidade não justificada pelo setor');assert.equal(r.generalApproval,undefined);
+  const reopened=reopen(r).data;assert.equal(reopened.status,'pending');
+ }
+ for(const role of [sector,general])assert.throws(()=>transition({...request(),status:'pending'},{action:'reject',reason:'Tentativa sem permissão'},role,[],settings,now),e=>e.status===403);
+ assert.throws(()=>transition({...request(),status:'pending'},{action:'reject',reason:'x'},admin,[],settings,now));
+ assert.throws(()=>transition({...request(),status:'pending',generalApproval:{actor:'DG',at:now,reason:'Aprovado'}},{action:'reject',reason:'Tentativa após aprovação'},admin,[],settings,now),e=>e.status===409);
+ assert.throws(()=>transition({...request(),status:'quoting'},{action:'reject',reason:'Tentativa em cotação'},administrative,[],settings,now));
+});
