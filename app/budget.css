@@ -45,5 +45,10 @@
 .conference-actions .conference-save{background:var(--surface,#fff);border-color:var(--line);color:var(--ink);box-shadow:none}
 .conference-actions .conference-submit{box-shadow:0 5px 14px color-mix(in srgb,var(--accent-base,var(--purple)) 22%,transparent)}
 .conference-actions .conference-return{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.conference-actions .conference-reject{order:3;margin-left:auto;background:#c2410c;border:1px solid #c2410c;color:#fff;box-shadow:0 5px 14px color-mix(in srgb,#c2410c 22%,transparent)}
+.conference-actions .conference-reject:not(:disabled):hover{background:#9a3412;border-color:#9a3412}
+.conference-reject-box{margin-top:18px;padding:14px 16px;border:1px solid color-mix(in srgb,#c2410c 35%,var(--line));border-left:4px solid #c2410c;border-radius:8px;background:color-mix(in srgb,#c2410c 6%,var(--surface,#fff))}
+.conference-reject-box>b{display:flex;align-items:center;gap:6px;font-size:13px;color:color-mix(in srgb,#c2410c 80%,var(--ink))}
+.conference-reject-box>p{margin:6px 0 10px;font-size:12px;color:var(--muted)}
 .conference-actions .conference-return:not(:disabled):hover{background:color-mix(in srgb,#b7791f 9%,var(--surface,#fff));border-color:color-mix(in srgb,#b7791f 40%,var(--line));color:color-mix(in srgb,#b7791f 78%,var(--ink))}
 @media(max-width:600px){.budget-fields{grid-template-columns:minmax(0,1fr)}.budget-section{padding:13px;margin:16px 0}.budget-item{padding:12px}.budget-details{padding:12px}.budget-form .form-end .button{width:100%}.budget-record .button{white-space:normal;text-align:center}.budget-section legend{font-size:12px}.conference-actions{display:grid;grid-template-columns:1fr;width:100%}.conference-actions .button{width:100%}.conference-actions .conference-submit{grid-row:1}}
