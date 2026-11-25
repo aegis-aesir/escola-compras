@@ -3,6 +3,7 @@ declare namespace Cloudflare {
     DB?: D1Database;
     BUCKET?: R2Bucket;
     INTEGRATION_SECRET?: string;
+    BRIDGE_MONITOR_SECRET?: string;
     WHATSAPP_SEND_ENABLED?: string;
   }
 }

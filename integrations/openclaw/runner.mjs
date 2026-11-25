@@ -6,6 +6,30 @@ import { bridgeConfig, callSite, executeJob } from './client.mjs';
 import {runContactSync} from './contact-sync.mjs';
 import {hasMessageSelection} from './selected-message.mjs';
 
+export function startBridgeHeartbeat(config, {
+  site = body => callSite(config, body),
+  intervalMs = 30000,
+} = {}) {
+  let timer;
+  let stopped = false;
+  let failed = false;
+  async function report() {
+    try {
+      await site({op: 'monitor_heartbeat'});
+      failed = false;
+    } catch {
+      if (!failed) console.error('Sinal de atividade da ponte indisponível.');
+      failed = true;
+    }
+    if (!stopped) timer = setTimeout(report, intervalMs);
+  }
+  void report();
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+  };
+}
+
 export async function runOnce(config,options={}) {
   const site=options.site||((body)=>callSite(config,body));
   const execute=options.execute||((job)=>executeJob(config,job));
@@ -53,12 +77,15 @@ export async function runOnce(config,options={}) {
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
   const loop=process.argv.includes('--loop');
+  let stopHeartbeat;
   try {
     const config=bridgeConfig();
+    if(loop)stopHeartbeat=startBridgeHeartbeat(config);
     do {
       try{const result=await runOnce(config);console.log(`Ciclo concluído: ${result.processed} tarefa(s). Envio ${config.canSend?'habilitado na ponte':'desativado na ponte'}.`)}
       catch{console.error('Ciclo não concluído. Confira configurações e tarefas no painel; detalhes privados não são registrados.');if(!loop)process.exitCode=1}
       if(loop)await new Promise(resolve=>setTimeout(resolve,60000));
     }while(loop);
   }catch{console.error('Ponte não configurada. Consulte INTEGRACOES.md.');process.exitCode=1}
+  finally{stopHeartbeat?.()}
 }

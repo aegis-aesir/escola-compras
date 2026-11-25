@@ -2,6 +2,7 @@ import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 import { bridgeEndpoint } from "../lib/integration-endpoint";
+import { bridgeHealthEndpoint } from "../lib/bridge-health";
 import { authEndpoint } from '../lib/local-auth';
 import { filesEndpoint } from '../lib/budget-files';
 
@@ -10,6 +11,7 @@ const worker = {
     if (/^\/api\/files(?:\/|$)/.test(new URL(request.url).pathname)) return filesEndpoint(request, env);
     if (new URL(request.url).pathname.startsWith('/api/auth/')) return authEndpoint(request, env);
     if (new URL(request.url).pathname === '/api/integrations/bridge') return bridgeEndpoint(request, env);
+    if (new URL(request.url).pathname === '/api/integrations/bridge/health') return bridgeHealthEndpoint(request, env);
     let binding = ctx.props?.CONNECTORS;
     // Local preview emulates the same request-scoped capability. This branch and
     // the auxiliary service binding are absent from production builds.

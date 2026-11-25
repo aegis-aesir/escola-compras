@@ -1,0 +1,14 @@
+[Unit]
+Description=Verifica a atividade da ponte de Compras do CEEA
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=ceea-compras-monitor
+StateDirectoryMode=0700
+UMask=0077
+EnvironmentFile=/etc/ceea-compras-monitor/monitor.env
+ExecStart=/usr/bin/python3 /opt/ceea-compras-monitor/bridge-monitor.py
+TimeoutStartSec=28s

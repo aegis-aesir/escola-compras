@@ -1,0 +1,9 @@
+[Unit]
+Description=Verifica a ponte de Compras a cada 30 segundos
+
+[Timer]
+OnCalendar=*-*-* *:*:00,30
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

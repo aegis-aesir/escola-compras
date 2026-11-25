@@ -3,6 +3,7 @@ import { FlowError } from '../app/workflow';
 import { claimJob, completeJob, receiveMessage, retryJob, row, tick, type IntegrationEnv } from './integrations';
 import { importSuppliers } from './supplier-import';
 import {claimContactSync,completeContactSync} from './contact-sync';
+import {recordBridgeHeartbeat} from './bridge-health';
 
 const encoder=new TextEncoder();
 export async function validSignature(raw:string,timestamp:string,signature:string,secret:string,now:number) {
@@ -32,6 +33,10 @@ export async function bridgeEndpoint(req:Request,env:IntegrationEnv) {
     if(raw.length>64000&&(b.op!=='inbox'||b.message?.protocol!=='selected-message-v1'))return response({error:'Corpo muito grande.'},413);
     if(b.op==='contact_sync_poll')return response({job:await claimContactSync(env.DB,b.protocol,now)});
     if(b.op==='contact_sync_result')return response(await completeContactSync(env.DB,b,now));
+    if(b.op==='monitor_heartbeat') {
+      await recordBridgeHeartbeat(env.DB,now);
+      return response({ok:true});
+    }
     if(b.op==='poll') {
       await tick(env.DB,env,now);
       return response({job:await claimJob(env.DB,env,now,b.canSend===true,b.researchProtocol,b.testSendGrant)});

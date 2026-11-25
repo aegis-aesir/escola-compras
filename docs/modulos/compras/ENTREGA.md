@@ -1,3 +1,13 @@
+# Alerta externo da ponte de Compras — 25/11/2026
+
+Branch **codex/compras**, base **ce73c1d**. O Site recebe um sinal assinado da ponte e expõe apenas o horário do último contato por uma consulta com credencial exclusiva. Um timer Linux fora do CT 105 consulta a cada 30 segundos e envia avisos de queda e recuperação por SMTP. O estado por destinatário evita repetir avisos já aceitos pelo SMTP.
+
+Validação local: testes Node de heartbeat, roteamento e ponte, teste D1 da integração, testes Python com SMTP simulado, tipos, build e validação das unidades systemd. Sem migração, dependências novas ou envio real. Erros de acesso ao Site são registrados no monitor.
+
+A ativação depende da publicação do Site, da atualização do runner no CT e da configuração segura de SMTP e dos destinatários no host do monitor. A ordem e as variáveis estão em [PONTE-LINUX.md](PONTE-LINUX.md).
+
+---
+
 # Entrega atual — preparação da ponte Linux no CT 105
 
 Branch **codex/compras**, base **ea6c4d3**. Instruções e verificação em [PONTE-LINUX.md](PONTE-LINUX.md). A unidade da ponte guarda estado em diretório privado e exige ativação explícita. O comando bloqueia envio, autorização de teste e leitura de pastas de mensagens.
