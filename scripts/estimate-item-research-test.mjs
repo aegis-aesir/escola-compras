@@ -23,7 +23,7 @@ const {default:Panel}=await import('../outputs/estimate-item-research-panel.mjs?
 const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("test")}}',d1Databases:['DB']});
 const later=(at,minutes)=>new Date(Date.parse(at)+minutes*60000).toISOString();
 try{
- const db=await mf.getD1Database('DB'),now='2026-11-26T12:00:00.000Z';
+ const db=await mf.getD1Database('DB'),now=new Date().toISOString(); // a rota HTTP usa o relógio real; um horário fixo deixa a tarefa no futuro
  const sql=await readFile('drizzle/'+(await readdir('drizzle')).find(n=>n.endsWith('.sql')),'utf8');
  for(const s of sql.split('--> statement-breakpoint').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  await db.prepare('INSERT INTO school VALUES (1,?,?)').bind('test',JSON.stringify({minQuotes:1,holidays:[],departments:['Administrativo']})).run();
