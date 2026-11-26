@@ -1,3 +1,13 @@
+# Publicação da estimativa E1 — 26/11/2026
+
+Publicada a versão **2026.11.26.2** do CEEA Manager, SHA `21d0a9c1f319217fa7e001ed57529d9b45b41918`, versão Sites **74**, ambiente **9**, implantação `appgdep_6b082efcb8b0819180c7a8435a21bd5d`. O projeto existente, a audiência pública e os vínculos D1 e R2 foram preservados. Nenhuma migração foi aplicada. O CT 110 recebeu HTTP 200 do endpoint de saúde usando a credencial existente.
+
+Após a publicação, somente `price-evidence.mjs`, `client.mjs` e `agent-estimator.mjs` foram atualizados no CT 105. Os hashes coincidiram com o SHA publicado. A unidade da ponte reiniciou às 13h12min33s UTC em menos de um segundo e concluiu o primeiro ciclo às 13h12min39s UTC, sem tarefas na fila. O protocolo `criteria-v1`, a trava de ativação e `ESTRELAS_ENABLE_SEND=false` foram conferidos. O gateway manteve o mesmo processo e respondeu HTTP 200. O monitor leu um sinal gravado depois do reinício, e não houve registro de aviso.
+
+`handler.js` e `select-message.mjs` têm versões anteriores da importação de mensagem selecionada no CT 105. As diferenças foram informadas à coordenação antes da atualização e esses arquivos foram preservados. A validação de uma solicitação real da estimativa fica para uso da coordenação.
+
+---
+
 # E1 ticket 05 — marca "a conferir" — 26/11/2026
 
 Branch **codex/compras**, base **cdeaf5d** (ticket 04). Sem migração D1: só valores novos em campos JSON existentes (`origin:'to_check'|'accepted'`, `EstimateEdit.action:'accept'`).

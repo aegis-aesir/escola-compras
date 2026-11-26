@@ -57,3 +57,11 @@ O monitor verifica a cada 30 segundos. Após 120 segundos sem contato, ele tenta
 ### Ativação em produção — 26/11/2026
 
 Publicada no Site existente a versão 2026.11.26.1, SHA `47dae9ddef8b1408ed453cbec4e1474ab0b4522f`, versão Sites 73 e ambiente 9. A consulta de saúde retornou HTTP 401 sem credencial e HTTP 200 com credencial. O runner do CT 105 foi atualizado e o CT 110 confirmou um sinal recente. O gateway e a ponte ficaram ativos e o envio de WhatsApp permaneceu bloqueado. O timer do CT 110 está ativo e habilitado, com execução automática bem-sucedida a cada 30 segundos. Foi enviado um único teste real. A caixa de entrada confirmou o recebimento por IMAP, mas o Gmail exibiu o login victor@colegioestrelas.com como remetente, apesar de o monitor ter enviado com o From proxmox@colegioestrelas.com. A habilitação do alias em Enviar e-mail como no Gmail segue pendente. Nenhuma queda foi simulada.
+
+## Publicação da estimativa E1 — 26/11/2026
+
+Publicada a versão **2026.11.26.2** do CEEA Manager, SHA `21d0a9c1f319217fa7e001ed57529d9b45b41918`, versão Sites **74**, ambiente **9**, implantação `appgdep_6b082efcb8b0819180c7a8435a21bd5d`. O projeto existente, a audiência pública e os vínculos D1 e R2 foram preservados. Nenhuma migração foi aplicada. O CT 110 recebeu HTTP 200 do endpoint de saúde usando a credencial existente.
+
+Após a publicação, somente `price-evidence.mjs`, `client.mjs` e `agent-estimator.mjs` foram atualizados no CT 105. Os hashes coincidiram com o SHA publicado. A unidade da ponte reiniciou às 13h12min33s UTC em menos de um segundo e concluiu o primeiro ciclo às 13h12min39s UTC, sem tarefas na fila. O protocolo `criteria-v1`, a trava de ativação e `ESTRELAS_ENABLE_SEND=false` foram conferidos. O gateway manteve o mesmo processo e respondeu HTTP 200. O monitor leu um sinal gravado depois do reinício, e não houve registro de aviso.
+
+`handler.js` e `select-message.mjs` têm versões anteriores da importação de mensagem selecionada no CT 105. As diferenças foram informadas à coordenação antes da atualização e esses arquivos foram preservados. A validação de uma solicitação real da estimativa fica para uso da coordenação.
