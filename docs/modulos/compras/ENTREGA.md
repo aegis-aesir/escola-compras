@@ -1,3 +1,18 @@
+# E1 ticket 01 — estimativa por item com origem — 26/11/2026
+
+Branch **codex/compras**, base **20fd4d6**. Só preparação: nenhum comportamento visível muda e não há migração D1 (a estimativa continua no JSON do registro).
+
+- Novo `app/estimate-lines.ts`: linhas `product`/`freight`/`icms` com `value`, `origin` (`automatic`, `to_check`, `accepted`, `manual`, `not_applicable`, `awaiting_accountant`, `pending`), fonte/link, data da consulta, motivo, autor e data. `readEstimate(request)` é a leitura única; `estimateLinesTotal` soma as linhas; `estimateFreight` soma o frete.
+- Formato novo: `estimate.lines` (campo opcional em `Estimate`, `app/model.ts`). Sem `lines`, o registro é lido como formato antigo, sem regravação: uma linha de produto por referência (origem `automatic` com autor Sistema, ou `manual` sem autor, que não era registrado), uma linha de frete única da solicitação (`pending` quando "frete não apurado") e nenhuma linha de ICMS. O total exibido continua o gravado em `estimate.total`.
+- `app/workflow-panel.tsx` passa a exibir total, frete e fontes por `readEstimate`. A marcação gerada ficou idêntica à da base em 4 formatos antigos × 3 etapas × 4 perfis (comparação pontual, fora do repositório). O formulário manual tudo ou nada, o resumo mensal, a decisão da DG (`budget-workflow`) e a projeção automática ainda gravam e leem o formato antigo.
+- Teste novo: `scripts/estimate-lines-test.mjs` (automática, manual com frete, manual sem frete, registro sem `method`/`freightKnown`, escopo reduzido pela DG e formato novo).
+
+Validação: tipos; `workflow-test`; `estimate-lines-test`; `partial-estimate-ui-test`; `automatic-estimate-test` (D1); `selected-inbox-d1-test` (D1); `estimate-view-test`; `estimate-trigger-test`; `budget-flow-test`; `npm run build`; HTTP na 5185: `estimate-criteria-http-test`, `single-request-http-test`, `master-forward-http-test`. Falhas anteriores a este ticket, iguais na base 20fd4d6: `price-evidence-test` espera o agente `coordinator` e recebe `pesquisa-web`; `smoke-test` recusa (409) o fornecedor fictício de telefone fixo já existente no banco local. Sem publicação, ponte, WhatsApp, credenciais ou mensagens.
+
+Para o ticket 02: gravar `estimate.lines` na projeção e manter `estimate.total` (e, enquanto houver consumidores, `references`/`freight`) coerentes, porque resumo mensal, acesso da DG e redução de escopo ainda leem esses campos.
+
+---
+
 # Estado da ativação — 26/11/2026
 
 Publicada no Site existente a versão 2026.11.26.1, SHA `47dae9ddef8b1408ed453cbec4e1474ab0b4522f`, versão Sites 73 e ambiente 9. A consulta de saúde retornou HTTP 401 sem credencial e HTTP 200 com credencial. O runner do CT 105 foi atualizado e o CT 110 confirmou um sinal recente. O gateway e a ponte ficaram ativos e o envio de WhatsApp permaneceu bloqueado. O timer do CT 110 está ativo e habilitado, com execução automática bem-sucedida a cada 30 segundos. Foi enviado um único teste real. A caixa de entrada confirmou o recebimento por IMAP, mas o Gmail exibiu o login victor@colegioestrelas.com como remetente, apesar de o monitor ter enviado com o From proxmox@colegioestrelas.com. A habilitação do alias em Enviar e-mail como no Gmail segue pendente. Nenhuma queda foi simulada.

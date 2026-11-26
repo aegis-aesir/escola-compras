@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (26/11/2026, codex/compras)
 
-- [ ] Estimativas antigas (automática e manual) são lidas no novo formato sem migração destrutiva e aparecem iguais no painel e para a Diretoria Geral
-- [ ] Total, subtotal e dados enviados à Diretoria Geral permanecem idênticos para registros antigos
-- [ ] Testes de fluxo, estimativa parcial e integração D1 existentes continuam passando
-- [ ] Teste novo cobre a leitura de cada formato antigo
+- [x] Estimativas antigas (automática e manual) são lidas no novo formato sem migração destrutiva e aparecem iguais no painel e para a Diretoria Geral
+- [x] Total, subtotal e dados enviados à Diretoria Geral permanecem idênticos para registros antigos
+- [x] Testes de fluxo, estimativa parcial e integração D1 existentes continuam passando
+- [x] Teste novo cobre a leitura de cada formato antigo
