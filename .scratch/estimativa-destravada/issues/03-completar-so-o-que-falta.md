@@ -4,10 +4,10 @@
 
 **Blocked by:** 02.
 
-**Status:** ready-for-agent
+**Status:** done (26/11/2026, branch codex/compras)
 
-- [ ] Solicitação com 2 comprovados e 1 pendência: a Diretoria Administrativa preenche só o pendente e os 2 automáticos permanecem com origem automático
-- [ ] Preço manual exige fonte/link e fica com origem manual
-- [ ] Envio à Diretoria Geral liberado só com todos os itens valorados; a Diretora Geral vê a origem de cada valor
-- [ ] Controle de versão e mês aberto respeitados; histórico registra cada edição
-- [ ] Teste de transição e de interface no padrão dos testes de estimativa parcial
+- [x] Solicitação com 2 comprovados e 1 pendência: a Diretoria Administrativa preenche só o pendente e os 2 automáticos permanecem com origem automático
+- [x] Preço manual exige fonte/link e fica com origem manual
+- [x] Envio à Diretoria Geral liberado só com todos os itens valorados; a Diretora Geral vê a origem de cada valor
+- [x] Controle de versão e mês aberto respeitados; histórico registra cada edição
+- [x] Teste de transição e de interface no padrão dos testes de estimativa parcial

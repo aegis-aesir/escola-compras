@@ -1,4 +1,4 @@
-import {quoteTotal, type Estimate, type Item, type Purchase} from './model';
+import {quoteTotal, type Estimate, type EstimateEdit, type Item, type Purchase} from './model';
 
 // Estimativa por item (spec 2026-11-26, E1; ADR 0003). Cada valor é uma linha de
 // produto, frete ou ICMS com origem, fonte, autor e data. Os registros gravados antes
@@ -89,4 +89,26 @@ export function reduceEstimate(e:Estimate,indexes:number[],items:Item[],note:str
   }
   const lines=e.lines.flatMap(l=>l.itemIndex===undefined?[l]:indexes.includes(l.itemIndex)?[{...l,itemIndex:indexes.indexOf(l.itemIndex)}]:[]);
   return estimateFromLines(lines,items,{notes:e.notes+note,recordedAt:e.recordedAt,method:e.method});
+}
+
+// Revisão da estimativa (ticket 03): a Diretoria Administrativa informa preço e fonte só
+// nos itens sem valor automático — pendência, valor manual a corrigir ou a conferir
+// (substituição, ticket 05). Linhas automáticas e aceitas permanecem como estão.
+export const estimateEditableOrigins:EstimateOrigin[]=['pending','manual','to_check'];
+export type EstimateItemEntry={itemIndex:number;unitPrice:number;sourceName:string;sourceUrl:string;researchedOn:string};
+export class EstimateEditError extends Error {constructor(message:string,public status=400){super(message)}}
+export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:EstimateItemEntry[],actor:string,now:string):{estimate:Estimate;edits:EstimateEdit[]}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O preenchimento por item vale para estimativas por item. Registre a estimativa completa.',409);
+  const lines=[...e.lines],edits:EstimateEdit[]=[];
+  for(const entry of entries){
+    if(!r.items[entry.itemIndex])throw new EstimateEditError('Item inexistente nesta solicitação.');
+    const at=lines.findIndex(l=>l.kind==='product'&&l.itemIndex===entry.itemIndex),previous=lines[at];
+    if(previous&&!estimateEditableOrigins.includes(previous.origin))throw new EstimateEditError(`O preço automático de ${r.items[entry.itemIndex].name} permanece. Informe preço só nos itens com pendência.`,409);
+    const line:EstimateLine={kind:'product',itemIndex:entry.itemIndex,value:entry.unitPrice,origin:'manual',sourceName:entry.sourceName,sourceUrl:entry.sourceUrl,researchedOn:entry.researchedOn,author:actor,at:now};
+    const before=previous||{kind:'product',itemIndex:entry.itemIndex,value:null,origin:'pending',at:e.recordedAt};
+    if(at<0)lines.push(line);else lines[at]=line;
+    edits.push({itemIndex:entry.itemIndex,actor,at:now,previous:before,line});
+  }
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),edits};
 }

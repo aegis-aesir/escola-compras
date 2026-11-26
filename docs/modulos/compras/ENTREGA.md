@@ -1,3 +1,19 @@
+# E1 ticket 03 — completar só o que falta — 26/11/2026
+
+Branch **codex/compras**, base **8ab0585** (ticket 02). Sem migração D1: o histórico é um campo novo no JSON do registro.
+
+- Ação nova `estimate_item` (`app/workflow.ts`): Master/Diretoria Administrativa, só em `admin_review`, com `entries:[{itemIndex,unitPrice,sourceName,sourceUrl,researchedOn}]` (`estimateItemsSchema` em `app/model.ts`; fonte e link obrigatórios, data não futura). Regra em `fillEstimateItems` (`app/estimate-lines.ts`): só linhas `pending`, `manual` (correção) ou `to_check` (substituição, para o ticket 05) podem receber preço; `automatic`/`accepted` são recusadas com 409. A linha vira `origin:'manual'` com autor e data; a estimativa é recomposta por `estimateFromLines` (total e `references` coerentes; `method`/`recordedAt`/`notes` mantidos). Cada preenchimento entra em `estimateEditHistory` (`itemIndex`, autor, data, linha anterior e nova) e na auditoria com o nome do item.
+- Versão e mês aberto: pela rota genérica (`app/api/data/route.ts`), já existente para todas as transições; testado com versão antiga (409), mês fechado e arquivada.
+- Contrato antigo: `estimate` (formulário tudo ou nada) continua aceito sem estimativa ou com estimativa antiga sem `lines` (assinaturas digitais, histórico); sobre estimativa por item responde 409.
+- Interface (`app/estimate-review.tsx`, usada em `workflow-panel.tsx`): na revisão, formulário só nos itens com pendência ("Informar preço de …"), correção recolhida dos valores manuais, histórico do preenchimento. Fontes mostram a origem de cada valor (Automático, Manual · autor · data etc.), visível também para a Diretoria Geral. O formulário completo some quando a estimativa é por item. Envio à DG continua bloqueado até não restar pendência e fica liberado quando todos os itens têm valor.
+- Teste novo: `scripts/estimate-item-fill-test.mjs` (rota real com D1 Miniflare + transição + interface). AGENTS.md ganhou uma frase na regra "Gatilho e aprovações".
+
+Validação: tipos; build; `estimate-item-fill`, `estimate-lines`, `partial-estimate-exit`, `partial-estimate-ui`, `workflow`, `automatic-estimate` (D1), `selected-inbox-d1` (D1), `estimate-view`, `estimate-trigger`, `budget-flow`, `budget-records`, `estimate-criteria`, `estimate-criteria-ui`, `general-return-ui`, `request-sections`, `master-reanalysis`, `single-request`, `finance-profile`, `request-archive-storage`, `openclaw` + `agent-routing` (17); HTTP na 5185: `estimate-criteria-http`, `single-request-http`, `master-forward-http`, `general-return-deferred-draft-http`. Falha anterior conhecida inalterada: `price-evidence-test` (espera `coordinator`, recebe `pesquisa-web`). Sem publicação, ponte, WhatsApp, credenciais ou mensagens.
+
+Para o ticket 04: refazer a busca de um item em `admin_review` ainda é recusado por `eligible` (`lib/integrations.ts`). Ao refazer, o item deve voltar a "em andamento" sem apagar as outras linhas nem o `estimateEditHistory`; se o item já tiver preço manual, decidir se a nova busca o substitui (sugestão: a linha só é trocada quando o resultado novo chegar, e só se ainda for `pending`/`manual` do item refeito). Para o ticket 05: `fillEstimateItems` já aceita `to_check` como substituível; falta a ação de aceitar (origem `accepted`) e o bloqueio de envio com `to_check` não aceito em `estimatePendingItems`.
+
+---
+
 # E1 ticket 02 — saída parcial da Estimativa — 26/11/2026
 
 Branch **codex/compras**, base **0422368** (ticket 01). Sem migração D1.

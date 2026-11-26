@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import {masterReanalysis} from './master-reanalysis';
 import {budgetTransition,ensureAdministrativeReview} from './budget-workflow';
-import { estimateSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
+import { estimateSchema, estimateItemsSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
 import {normalizeQuote,quoteComparable} from './quote-comparison';
 import {parseManagement} from './budget';
-import {estimatePendingMessage} from './estimate-lines';
+import {estimatePendingMessage,fillEstimateItems,EstimateEditError} from './estimate-lines';
 export class FlowError extends Error {constructor(message:string,public status=400){super(message)}}
 export const todayManaus=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
 export function nextBusinessDay(at:string,holidays:string[]=[]){
@@ -33,11 +33,25 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
   const validQuote=()=>{const q=old.quotes.find(q=>q.id===(b.quoteId||old.selectedQuoteId));if(!q)throw new FlowError('Selecione uma proposta.');if(q.validUntil<todayManaus(now))throw new FlowError('A proposta está vencida. Atualize a cotação.');if(!quoteComparable(q,old)||typeof q.total!=='number'||!Number.isFinite(q.total))throw new FlowError('A proposta precisa atender integralmente ao escopo, ser comparável e ter conversão para reais conferida.');return q};
   switch(b.action){
     case 'estimate':{
-      permit('administrativo');stage('estimating','pending','admin_review');const e=estimateSchema.parse(b.data);
+      permit('administrativo');stage('estimating','pending','admin_review');
+      // Contrato antigo: estimativa manual completa. Não substitui a estimativa por item,
+      // em que os preços automáticos permanecem e só as pendências são completadas.
+      if(Array.isArray(old.estimate?.lines))throw new FlowError('Esta estimativa é por item: informe preço só nos itens com pendência.',409);
+      const e=estimateSchema.parse(b.data);
       if(e.freightKnown===false)e.freight=0;
       if(e.references.length!==old.items.length)throw new FlowError('Informe uma referência para cada item.');
       if(e.references.some(r=>r.researchedOn>todayManaus(now)))throw new FlowError('A data de pesquisa não pode estar no futuro.');
       data.estimate={...e,total:quoteTotal(old.items,e.references.map(r=>r.unitPrice),e.freight),recordedAt:now,method:'manual'};data.status='admin_review';action='Estimativa de referência registrada; encaminhada à diretoria administrativa';break;
+    }
+    case 'estimate_item':{
+      permit('administrativo');stage('admin_review');
+      const entries=estimateItemsSchema.parse(b.entries);
+      if(entries.some(x=>x.researchedOn>todayManaus(now)))throw new FlowError('A data de pesquisa não pode estar no futuro.');
+      try{
+        const filled=fillEstimateItems(old,entries,me.name,now);
+        data.estimate=filled.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),...filled.edits];
+      }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
+      action='Revisão da estimativa: preço informado pela diretoria administrativa para '+entries.map(x=>old.items[x.itemIndex].name).join(', ');break;
     }
     case 'admin_review':permit('administrativo');stage('admin_review');ensureAdministrativeReview(old);if(!old.estimate)throw new FlowError('A estimativa da internet deve estar concluída antes da aprovação administrativa.');{const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);}data.adminReview=reason();data.status='general_review';action='Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview;break;
     case 'approve':permit('geral');stage('general_review');if(old.form)throw new FlowError('Use a decisão estruturada do formulário.');if(!old.adminReview||!old.estimate)throw new FlowError('A análise administrativa é obrigatória.');{const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);}data.generalApproval={actor:me.name,at:now,reason:reason()};data.status='quoting';action='Diretoria geral aprovou a necessidade do pedido, sem aprovação de valor: '+data.generalApproval.reason;break;
