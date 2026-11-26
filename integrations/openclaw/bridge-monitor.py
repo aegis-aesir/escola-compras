@@ -82,7 +82,11 @@ def notify_transition(state, recipients, healthy, send):
 
 def send_email(env, recipient, healthy):
     message = EmailMessage()
-    message["From"] = env["BRIDGE_ALERT_FROM"]
+    smtp_user = env.get("BRIDGE_SMTP_USER")
+    sender = env.get("BRIDGE_ALERT_FROM") or smtp_user
+    if not sender:
+        raise ValueError("Configure o remetente ou o login SMTP.")
+    message["From"] = sender
     message["To"] = recipient
     message["Subject"] = (
         "CEEA Manager: ponte de Compras voltou" if healthy
@@ -105,8 +109,8 @@ def send_email(env, recipient, healthy):
     try:
         if mode == "starttls":
             smtp.starttls(context=context)
-        if env.get("BRIDGE_SMTP_USER"):
-            smtp.login(env["BRIDGE_SMTP_USER"], env["BRIDGE_SMTP_PASSWORD"])
+        if smtp_user:
+            smtp.login(smtp_user, env["BRIDGE_SMTP_PASSWORD"])
         smtp.send_message(message)
     finally:
         smtp.close()
@@ -117,11 +121,11 @@ def main(env):
     recipients = list(dict.fromkeys(
         address.strip() for address in env["BRIDGE_ALERT_TO"].split(",") if address.strip()
     ))
-    if len(recipients) != 2 or any(
+    if not 1 <= len(recipients) <= 2 or any(
         address.count("@") != 1 or any(char.isspace() for char in address)
         for address in recipients
     ):
-        raise ValueError("Configure os dois destinatários autorizados.")
+        raise ValueError("Configure um ou dois destinatários autorizados.")
     with (state_dir / "monitor.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         last_seen = get_heartbeat(
