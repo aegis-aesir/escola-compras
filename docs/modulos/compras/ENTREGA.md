@@ -1,3 +1,7 @@
+# Estado da ativação — 26/11/2026
+
+Publicada no Site existente a versão 2026.11.26.1, SHA `47dae9ddef8b1408ed453cbec4e1474ab0b4522f`, versão Sites 73 e ambiente 9. A consulta de saúde retornou HTTP 401 sem credencial e HTTP 200 com credencial. O runner do CT 105 foi atualizado e o CT 110 confirmou um sinal recente. O gateway e a ponte ficaram ativos e o envio de WhatsApp permaneceu bloqueado. O timer do CT 110 está ativo e habilitado, com execução automática bem-sucedida a cada 30 segundos. Foi enviado um único teste real. A caixa de entrada confirmou o recebimento por IMAP, mas o Gmail exibiu o login victor@colegioestrelas.com como remetente, apesar de o monitor ter enviado com o From proxmox@colegioestrelas.com. A habilitação do alias em Enviar e-mail como no Gmail segue pendente. Nenhuma queda foi simulada.
+
 # Alerta externo da ponte de Compras — 25/11/2026
 
 Branch **codex/compras**, base **ce73c1d**. O Site recebe um sinal assinado da ponte e expõe apenas o horário do último contato por uma consulta com credencial exclusiva. Um timer Linux fora do CT 105 consulta a cada 30 segundos e envia avisos de queda e recuperação por SMTP. O estado por destinatário evita repetir avisos já aceitos pelo SMTP.
