@@ -23,3 +23,4 @@ dialog{position:fixed;inset:0;width:760px;max-width:calc(100% - 32px);max-height
 .page-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-shrink:0}.page-actions>.button{height:40px;margin:0}
 @media(max-width:740px){.page-actions{flex-wrap:wrap;justify-content:flex-start}}
 @media(max-width:520px){.page-actions{width:100%;flex-direction:column;align-items:stretch;gap:10px}.page-actions>.button{width:100%}}
+.estimate-to-check{border-left:4px solid #d9a441!important;background:#fff8e8!important;color:#7a5a17!important}.estimate-to-check h4{margin:0 0 8px}

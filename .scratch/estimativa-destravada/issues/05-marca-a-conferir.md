@@ -4,10 +4,10 @@
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done (26/11/2026, commit local na branch codex/compras)
 
-- [ ] Testes da regra de evidência cobrem comprovado, a conferir e pendência, idênticos na ponte e no Site
-- [ ] Resultado a conferir chega ao Site com motivo e é exibido destacado
-- [ ] Aceitar com um clique registra autoria/data e muda a origem para aceito
-- [ ] Envio à Diretoria Geral recusado com qualquer a conferir não aceito
-- [ ] Instruções do agente de análise atualizadas para devolver a conferir em vez de pendência quando houver preço
+- [x] Testes da regra de evidência cobrem comprovado, a conferir e pendência, idênticos na ponte e no Site
+- [x] Resultado a conferir chega ao Site com motivo e é exibido destacado
+- [x] Aceitar com um clique registra autoria/data e muda a origem para aceito
+- [x] Envio à Diretoria Geral recusado com qualquer a conferir não aceito
+- [x] Instruções do agente de análise atualizadas para devolver a conferir em vez de pendência quando houver preço

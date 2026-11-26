@@ -1,6 +1,6 @@
 import {researchMercadoLivre} from './mercado-browser.mjs';
 import {analyzePages} from './agent-estimator.mjs';
-import {extractReference} from './price-evidence.mjs';
+import {classifyEvidence} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
 import { isGoogleMapsUrl } from './search-utils.mjs';
 import { routeTool } from './agent-routing.mjs';
@@ -113,7 +113,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
       const analysis=await analyze(job,available);
       const selected=available.find(p=>p.url===analysis.sourceUrl);
       const evidence=selected?{...selected,analysis}:undefined;
-      return {...result,outcome:'success',sources,browserResearch,priceEvidence:evidence&&extractReference(job.item,evidence)?evidence:undefined,analysisReason:typeof analysis.reason==='string'&&analysis.reason.trim()?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
+      return {...result,outcome:'success',sources,browserResearch,priceEvidence:evidence&&classifyEvidence(job.item,evidence).outcome!=='pending'?evidence:undefined,analysisReason:typeof analysis.reason==='string'&&analysis.reason.trim()?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
     }
     return {...result,outcome:'success',sources};
   }catch{return {...result,outcome:'error'}}

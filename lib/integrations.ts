@@ -1,6 +1,6 @@
-import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
+import {classifyEvidence} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
-import { type Purchase, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
+import { type Purchase, type Item, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
 import {estimateFromLines,type EstimateLine} from '../app/estimate-lines';
 import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
@@ -290,6 +290,19 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
     await update(db,r,result.data,r.id,'OpenClaw',result.action,now);
   }
 }
+// Desfecho final da busca de um item (tickets 02, 04 e 05), na primeira saída de Estimativa
+// e na nova busca de um item: preço comprovado (automatic), preço a conferir com o motivo
+// (to_check) ou pendência de estimativa (análise sem preço ou tentativas esgotadas). Fila,
+// execução e nova tentativa não são desfecho (null). A marca vem da regra compartilhada.
+function searchOutcomeLine(item:Item,itemIndex:number,j:IntegrationJob,now:string):EstimateLine|null{
+  if(!(j.state==='failed'||j.state==='review'&&(j.analysisReason||j.priceEvidence)))return null;
+  const evidence=j.state==='review'&&j.priceEvidence&&j.researchedAt?classifyEvidence(item,j.priceEvidence):null;
+  if(evidence&&evidence.outcome!=='pending'){
+    const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!));
+    return {kind:'product',itemIndex,value:evidence.unitPrice,origin:evidence.outcome==='verified'?'automatic':'to_check',...(evidence.outcome==='to_check'?{reason:evidence.reason}:{}),sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day,author:'Sistema',at:now};
+  }
+  return {kind:'product',itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now};
+}
 async function projectAutomaticEstimates(db:D1Database,now:string) {
   const jobs=await rows<IntegrationJob>(db,jobKind);
   for(const r of await rows<Purchase>(db,'request')) {
@@ -300,26 +313,23 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     // Cada item precisa de desfecho final da revisão atual: preço comprovado ou pendência
     // de estimativa (análise concluída sem preço, ou tentativas esgotadas). Item ainda na
     // fila, em execução ou em nova tentativa mantém a solicitação em Estimativa.
-    const outcomes:{job:IntegrationJob;reference?:{unitPrice:number}}[]=[];
+    const outcomes:{job:IntegrationJob;line:EstimateLine}[]=[];
     for(const [i,item] of r.items.entries()) {
       const id=await estimateSearchId(r,i);
       const j=jobs.find(j=>j.id===id);
-      const reference=j?.state==='review'&&j.priceEvidence&&j.researchedAt?extractReference(item,j.priceEvidence):null;
-      if(reference){outcomes.push({job:j!,reference});continue;}
-      if(j&&(j.state==='failed'||j.state==='review'&&(j.analysisReason||j.priceEvidence))){outcomes.push({job:j});continue;}
-      break;
+      const line=j&&searchOutcomeLine(item,i,j,now);
+      if(!line)break;
+      outcomes.push({job:j!,line});
     }
     if(!outcomes.length||outcomes.length!==r.items.length)continue;
     const selected=outcomes.map(o=>o.job);
-    const day=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
-    const lines:EstimateLine[]=outcomes.map(({job:j,reference},itemIndex)=>reference
-      ?{kind:'product',itemIndex,value:reference.unitPrice,origin:'automatic',sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day(j.researchedAt!),author:'Sistema',at:now}
-      :{kind:'product',itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now});
+    const lines:EstimateLine[]=outcomes.map(o=>o.line);
     lines.push({kind:'freight',value:null,origin:'pending',reason:'Frete não apurado — não incluído no total',author:'Sistema',at:now});
-    const pending=outcomes.filter(o=>!o.reference).length;
-    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,reference},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${!reference?'pendência de estimativa':j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${(reference?j.analysisReason:lines[i].reason)||''}`).join(' ')).slice(0,2000);
+    const pending=outcomes.filter(o=>o.line.origin==='pending').length,toCheck=outcomes.filter(o=>o.line.origin==='to_check').length;
+    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
+    const summary=[pending&&(pending===1?'1 pendência':pending+' pendências')+' de estimativa',toCheck&&(toCheck===1?'1 valor':toCheck+' valores')+' a conferir'].filter(Boolean).join(' e ');
     const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'})};
-    await update(db,r,data,r.id,'Sistema',pending?`Estimativa automática concluída com ${pending===1?'1 pendência':pending+' pendências'} de estimativa; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
+    await update(db,r,data,r.id,'Sistema',summary?`Estimativa automática concluída com ${summary}; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
   }
 }
 // Ticket 04 (E1): resultado da nova busca de um item na revisão da estimativa. Só a
@@ -329,22 +339,18 @@ async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Pur
   const lines=r.estimate?.lines;
   if(!Array.isArray(lines)||!lines.some(l=>l.searchRevision))return;
   const next=[...lines],selected:IntegrationJob[]=[],edits:NonNullable<Purchase['estimateEditHistory']>=[];
-  const day=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
   for(const [k,l] of lines.entries()){
     if(l.kind!=='product'||!l.searchRevision||l.itemIndex===undefined)continue;
     const item=r.items[l.itemIndex],id=await estimateSearchId(r,l.itemIndex),j=jobs.find(j=>j.id===id);
     if(!item||!j||j.researchCriteria?.revision!==l.searchRevision||!isCurrentEstimateJob(r,j))continue;
-    const reference=j.state==='review'&&j.priceEvidence&&j.researchedAt?extractReference(item,j.priceEvidence):null;
-    if(!reference&&!(j.state==='failed'||j.state==='review'&&(j.analysisReason||j.priceEvidence)))continue;
-    const line:EstimateLine=reference
-      ?{kind:'product',itemIndex:l.itemIndex,value:reference.unitPrice,origin:'automatic',sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day(j.researchedAt!),author:'Sistema',at:now}
-      :{kind:'product',itemIndex:l.itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now};
+    const line=searchOutcomeLine(item,l.itemIndex,j,now);
+    if(!line)continue;
     next[k]=line;selected.push(j);edits.push({itemIndex:l.itemIndex,actor:'Sistema',at:now,previous:l,line,action:'research_result'});
   }
   if(!selected.length)return;
   const e=r.estimate!;
   const data:Purchase={...r,updatedAt:now,estimate:estimateFromLines(next,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),estimateEditHistory:[...(r.estimateEditHistory||[]),...edits]};
-  await update(db,r,data,r.id,'Sistema','Revisão da estimativa: resultado da nova busca de '+edits.map(x=>r.items[x.itemIndex].name).join(', ').slice(0,500)+(edits.some(x=>x.line.value===null)?' (pendência de estimativa)':''),now,selected as Row<IntegrationJob>[]);
+  await update(db,r,data,r.id,'Sistema','Revisão da estimativa: resultado da nova busca de '+edits.map(x=>r.items[x.itemIndex].name).join(', ').slice(0,500)+(edits.some(x=>x.line.value===null)?' (pendência de estimativa)':edits.some(x=>x.line.origin==='to_check')?' (a conferir)':''),now,selected as Row<IntegrationJob>[]);
 }
 export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   const school=await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>();
@@ -411,7 +417,7 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
   return null;
 }
 const sourceSchema=z.object({title:z.string().trim().min(1).max(300),url:z.string().url().max(2000).refine(v=>{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password}),description:z.string().max(2000)});
-const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.literal('verified'),sourceUrl:z.string().url().max(2000),productName:z.string().min(2).max(300),productQuote:z.string().min(3).max(2000),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().min(3).max(2000),packageQuantity:z.number().int().min(1).max(100000),unit:z.string().max(30),unitQuote:z.string().min(3).max(2000),itemMatches:z.literal(true),unitMatches:z.literal(true),reason:z.string().min(10).max(2000)})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
+const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.enum(['verified','to_check']),sourceUrl:z.string().url().max(2000),productName:z.string().max(300).optional(),productQuote:z.string().max(2000).optional(),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().max(2000).optional(),packageQuantity:z.number().optional(),unit:z.string().max(30).optional(),unitQuote:z.string().max(2000).optional(),itemMatches:z.boolean().optional(),unitMatches:z.boolean().optional(),reason:z.string().max(2000).optional()})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
 export async function completeJob(db:D1Database,input:unknown,now:string) {
   const b=resultSchema.parse(input),j=await row<IntegrationJob>(db,b.jobId,jobKind);
   if(!j||j.leaseToken!==b.leaseToken)throw new FlowError('Processamento expirado ou não reconhecido.',409);
@@ -423,7 +429,7 @@ export async function completeJob(db:D1Database,input:unknown,now:string) {
     else next={...next,state:'uncertain',error:'Envio sem confirmação confiável. Conferir no OpenClaw antes de novo contato.'};
   } else if(b.outcome==='success'&&b.sources) {
     next={...next,state:'review',sources:b.sources,researchedAt:now,error:undefined,priceEvidence:undefined,analysisReason:b.analysisReason,browserResearch:b.browserResearch};
-    if(j.type==='estimate_search'&&j.item&&b.priceEvidence&&b.sources.some(s=>s.url===b.priceEvidence!.url)&&extractReference(j.item,b.priceEvidence))next.priceEvidence=b.priceEvidence;
+    if(j.type==='estimate_search'&&j.item&&b.priceEvidence&&b.sources.some(s=>s.url===b.priceEvidence!.url)&&classifyEvidence(j.item,b.priceEvidence).outcome!=='pending')next.priceEvidence=b.priceEvidence;
   } else {
     next={...next,state:j.attempts>=maxAttempts?'failed':'queued',nextAttemptAt:addMs(now,60000*2**j.attempts),error:'Pesquisa indisponível ou resposta incompatível. Confira a configuração do OpenClaw.'};
   }

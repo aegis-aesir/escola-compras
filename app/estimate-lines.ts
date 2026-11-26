@@ -68,9 +68,14 @@ export const estimateFreight=(v:EstimateView)=>cents(v.lines.reduce((s,l)=>l.kin
 export function estimatePendingItems(r:Pick<Purchase,'items'|'estimate'>){
   return (readEstimate(r)?.lines||[]).filter(l=>l.kind==='product'&&l.value===null).map(l=>({itemIndex:l.itemIndex!,reason:l.reason,searching:!!l.searchRevision}));
 }
+// Valores a conferir ainda não aceitos nem substituídos (ticket 05): também impedem o envio.
+export function estimateToCheckItems(r:Pick<Purchase,'items'|'estimate'>){
+  return (readEstimate(r)?.lines||[]).filter(l=>l.kind==='product'&&l.origin==='to_check'&&l.value!==null).map(l=>({itemIndex:l.itemIndex!,reason:l.reason,value:l.value!}));
+}
 export function estimatePendingMessage(r:Pick<Purchase,'items'|'estimate'>){
-  const n=estimatePendingItems(r).length;
-  return n?`Há pendência de estimativa em ${n===1?'1 item':n+' itens'}. Informe o preço antes de enviar à Diretoria Geral.`:undefined;
+  const n=estimatePendingItems(r).length,c=estimateToCheckItems(r).length;
+  const parts=[n&&`Há pendência de estimativa em ${n===1?'1 item':n+' itens'}. Informe o preço`,c&&`Há ${c===1?'1 valor':c+' valores'} a conferir. Aceite ou substitua o valor`];
+  return n||c?parts.filter(Boolean).join('. ')+' antes de enviar à Diretoria Geral.':undefined;
 }
 
 // Monta a estimativa no formato por item mantendo os campos antigos coerentes para os
@@ -100,6 +105,18 @@ export function reduceEstimate(e:Estimate,indexes:number[],items:Item[],note:str
 export const estimateEditableOrigins:EstimateOrigin[]=['pending','manual','to_check'];
 export type EstimateItemEntry={itemIndex:number;unitPrice:number;sourceName:string;sourceUrl:string;researchedOn:string};
 export class EstimateEditError extends Error {constructor(message:string,public status=400){super(message)}}
+// Aceitar um valor a conferir (ticket 05): a linha passa a accepted em nome de quem aceitou,
+// mantendo valor, fonte e motivo. Só linhas to_check podem ser aceitas.
+export function acceptEstimateItem(r:Pick<Purchase,'items'|'estimate'>,itemIndex:number,actor:string,now:string):{estimate:Estimate;edit:EstimateEdit}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O aceite vale para estimativas por item.',409);
+  if(!r.items[itemIndex])throw new EstimateEditError('Item inexistente nesta solicitação.');
+  const lines=[...e.lines],at=lines.findIndex(l=>l.kind==='product'&&l.itemIndex===itemIndex),previous=lines[at];
+  if(!previous||previous.origin!=='to_check'||previous.value===null)throw new EstimateEditError(`${r.items[itemIndex].name} não tem valor a conferir para aceitar.`,409);
+  const line:EstimateLine={...previous,origin:'accepted',author:actor,at:now};
+  lines[at]=line;
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),edit:{itemIndex,actor,at:now,previous,line,action:'accept'}};
+}
 export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:EstimateItemEntry[],actor:string,now:string):{estimate:Estimate;edits:EstimateEdit[]}{
   const e=r.estimate;
   if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O preenchimento por item vale para estimativas por item. Registre a estimativa completa.',409);
