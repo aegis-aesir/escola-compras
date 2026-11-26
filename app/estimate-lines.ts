@@ -1,4 +1,4 @@
-import type {Estimate, Item, Purchase} from './model';
+import {quoteTotal, type Estimate, type Item, type Purchase} from './model';
 
 // Estimativa por item (spec 2026-11-26, E1; ADR 0003). Cada valor é uma linha de
 // produto, frete ou ICMS com origem, fonte, autor e data. Os registros gravados antes
@@ -59,3 +59,34 @@ export function readEstimate(r:Pick<Purchase,'items'|'estimate'>):EstimateView|u
   return {format:'legacy',lines:legacyLines(e),total:e.total,freightKnown:e.freightKnown!==false,method,notes:e.notes,recordedAt:e.recordedAt};
 }
 export const estimateFreight=(v:EstimateView)=>cents(v.lines.reduce((s,l)=>l.kind==='freight'&&l.value!==null?s+l.value:s,0));
+
+// Itens sem preço (pendência de estimativa). Frete não apurado dos registros antigos
+// continua permitido, como antes; frete e ICMS entram nas próximas etapas do E1.
+export function estimatePendingItems(r:Pick<Purchase,'items'|'estimate'>){
+  return (readEstimate(r)?.lines||[]).filter(l=>l.kind==='product'&&l.value===null).map(l=>({itemIndex:l.itemIndex!,reason:l.reason}));
+}
+export function estimatePendingMessage(r:Pick<Purchase,'items'|'estimate'>){
+  const n=estimatePendingItems(r).length;
+  return n?`Há pendência de estimativa em ${n===1?'1 item':n+' itens'}. Informe o preço antes de enviar à Diretoria Geral.`:undefined;
+}
+
+// Monta a estimativa no formato por item mantendo os campos antigos coerentes para os
+// consumidores que ainda os leem (resumo mensal, redução de escopo, formulário manual).
+// references só é preenchido, alinhado aos itens, quando todos os produtos têm valor.
+export function estimateFromLines(lines:EstimateLine[],items:Pick<Item,'quantity'>[],base:{notes:string;recordedAt:string;method:'automatic'|'manual'}):Estimate{
+  const products=items.map((_,i)=>lines.find(l=>l.kind==='product'&&l.itemIndex===i));
+  const complete=products.every(l=>l&&l.value!==null);
+  const freight=lines.filter(l=>l.kind==='freight');
+  return {...base,lines,total:estimateLinesTotal(lines,items),freight:cents(freight.reduce((s,l)=>s+(l.value??0),0)),freightKnown:freight.length>0&&freight.every(l=>l.value!==null),
+    references:complete?products.map(l=>({unitPrice:l!.value!,sourceUrl:l!.sourceUrl||'',sourceName:l!.sourceName||'',researchedOn:l!.researchedOn||base.recordedAt.slice(0,10)})):[]};
+}
+
+// Redução de escopo pela Diretoria Geral: mantém só os itens escolhidos, renumerados.
+export function reduceEstimate(e:Estimate,indexes:number[],items:Item[],note:string):Estimate{
+  if(!Array.isArray(e.lines)){
+    const refs=indexes.map(i=>e.references[i]);
+    return {...e,references:refs,total:quoteTotal(items,refs.map(r=>r.unitPrice),e.freight),notes:e.notes+note};
+  }
+  const lines=e.lines.flatMap(l=>l.itemIndex===undefined?[l]:indexes.includes(l.itemIndex)?[{...l,itemIndex:indexes.indexOf(l.itemIndex)}]:[]);
+  return estimateFromLines(lines,items,{notes:e.notes+note,recordedAt:e.recordedAt,method:e.method});
+}

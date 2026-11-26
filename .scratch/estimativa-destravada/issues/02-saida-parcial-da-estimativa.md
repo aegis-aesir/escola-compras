@@ -4,11 +4,11 @@
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done (26/11/2026, codex/compras)
 
-- [ ] Ponte simulada entrega 1 item comprovado e 1 pendência: a solicitação termina na revisão da estimativa, não em Estimativa
-- [ ] Erro de infraestrutura ainda em nova tentativa não conta como desfecho final
-- [ ] Enviar à Diretoria Geral é recusado (servidor e interface) enquanto houver pendência
-- [ ] Resultados de critérios ou revisões antigas não contam como desfecho
-- [ ] Assinaturas digitais continuam fora da estimativa automática
-- [ ] AGENTS.md e INTEGRACOES.md atualizados onde diziam "todos os itens precisam de preço validado"
+- [x] Ponte simulada entrega 1 item comprovado e 1 pendência: a solicitação termina na revisão da estimativa, não em Estimativa
+- [x] Erro de infraestrutura ainda em nova tentativa não conta como desfecho final
+- [x] Enviar à Diretoria Geral é recusado (servidor e interface) enquanto houver pendência
+- [x] Resultados de critérios ou revisões antigas não contam como desfecho
+- [x] Assinaturas digitais continuam fora da estimativa automática
+- [x] AGENTS.md e INTEGRACOES.md atualizados onde diziam "todos os itens precisam de preço validado"

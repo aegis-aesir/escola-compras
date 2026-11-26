@@ -1,6 +1,7 @@
 import {extractReference} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
 import { type Purchase, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
+import {estimateFromLines,type EstimateLine} from '../app/estimate-lines';
 import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
@@ -265,19 +266,29 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     // The evidence protocol has no verified billing-period field. Digital sources
     // remain available for review; never multiply an ambiguous monthly price as a term total.
     if(r.archived||r.status!=='estimating'||r.estimate||r.form?.kind==='digital')continue;
-    const selected:IntegrationJob[]=[];
+    // Cada item precisa de desfecho final da revisão atual: preço comprovado ou pendência
+    // de estimativa (análise concluída sem preço, ou tentativas esgotadas). Item ainda na
+    // fila, em execução ou em nova tentativa mantém a solicitação em Estimativa.
+    const outcomes:{job:IntegrationJob;reference?:{unitPrice:number}}[]=[];
     for(const [i,item] of r.items.entries()) {
       const id=await estimateSearchId(r,i);
-      const j=jobs.find(j=>j.id===id&&j.state==='review'&&j.priceEvidence&&j.researchedAt);
-      if(!j||!extractReference(item,j.priceEvidence!))break;
-      selected.push(j);
+      const j=jobs.find(j=>j.id===id);
+      const reference=j?.state==='review'&&j.priceEvidence&&j.researchedAt?extractReference(item,j.priceEvidence):null;
+      if(reference){outcomes.push({job:j!,reference});continue;}
+      if(j&&(j.state==='failed'||j.state==='review'&&(j.analysisReason||j.priceEvidence))){outcomes.push({job:j});continue;}
+      break;
     }
-    if(!selected.length||selected.length!==r.items.length)continue;
-    const references=selected.map((j,i)=>({unitPrice:extractReference(r.items[i],j.priceEvidence!)!.unitPrice,sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!))}));
-    const result=transition(r,{action:'estimate',data:{references,freight:0,notes:('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+selected.map((j,i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${j.analysisReason||''}`).join(' ')).slice(0,2000)}},{role:'administrativo',name:'Sistema'},[],{} as Settings,now);
-    result.data.estimate!.method='automatic';
-    result.data.estimate!.freightKnown=false;
-    await update(db,r,result.data,r.id,'Sistema','Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
+    if(!outcomes.length||outcomes.length!==r.items.length)continue;
+    const selected=outcomes.map(o=>o.job);
+    const day=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
+    const lines:EstimateLine[]=outcomes.map(({job:j,reference},itemIndex)=>reference
+      ?{kind:'product',itemIndex,value:reference.unitPrice,origin:'automatic',sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day(j.researchedAt!),author:'Sistema',at:now}
+      :{kind:'product',itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now});
+    lines.push({kind:'freight',value:null,origin:'pending',reason:'Frete não apurado — não incluído no total',author:'Sistema',at:now});
+    const pending=outcomes.filter(o=>!o.reference).length;
+    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,reference},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${!reference?'pendência de estimativa':j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública'}): ${(reference?j.analysisReason:lines[i].reason)||''}`).join(' ')).slice(0,2000);
+    const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'})};
+    await update(db,r,data,r.id,'Sistema',pending?`Estimativa automática concluída com ${pending===1?'1 pendência':pending+' pendências'} de estimativa; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
   }
 }
 export async function tick(db:D1Database,env:IntegrationEnv,now:string) {

@@ -1,3 +1,19 @@
+# E1 ticket 02 — saída parcial da Estimativa — 26/11/2026
+
+Branch **codex/compras**, base **0422368** (ticket 01). Sem migração D1.
+
+- Projeção automática (`lib/integrations.ts`): com desfecho final em todos os itens da revisão atual, a solicitação vai a `admin_review` e grava `estimate.lines`. Desfecho final: preço comprovado (`automatic`), análise concluída sem preço (`pending`, com o `analysisReason`) ou tentativas esgotadas (`failed` → `pending`, com o erro). Fila, execução, nova tentativa e resultado antigo sem análise não contam. Revisões e critérios antigos continuam fora pelo ID da tarefa. Assinaturas continuam fora.
+- `app/estimate-lines.ts`: `estimateFromLines` mantém `total`, `freight`, `freightKnown` e `references` coerentes (`references` só é preenchido, alinhado aos itens, quando todos têm preço; senão fica vazio); `reduceEstimate` (redução de escopo pela DG, também para registros antigos, com o mesmo cálculo de antes); `estimatePendingItems`/`estimatePendingMessage`.
+- Bloqueio no servidor (409) com pendência: `admin_review`, `budget_management` com envio à DG, `approve` e `decide_need`. Interface: botões de envio desabilitados com o aviso; o painel de estimativas lista cada pendência com o motivo. O frete não apurado continua permitido, como antes.
+- Textos atualizados: AGENTS.md (gatilho e aprovações), INTEGRACOES.md (saída parcial) e a descrição da pesquisa no painel.
+- Teste novo: `scripts/partial-estimate-exit-test.mjs` (D1 local com ponte simulada). `estimate-lines-test` ganhou casos de montagem e redução.
+
+Validação: tipos; build; `estimate-lines`, `partial-estimate-exit`, `workflow`, `partial-estimate-ui`, `automatic-estimate` (D1), `selected-inbox-d1` (D1), `estimate-view`, `estimate-trigger`, `budget-flow`, `budget-records`, `estimate-criteria`, `estimate-criteria-ui`, `general-return-ui`, `request-sections`, `master-reanalysis`, `single-request`, `finance-profile`, `openclaw`, `agent-routing`; HTTP na 5185: `estimate-criteria-http`, `single-request-http`, `master-forward-http`, `general-return-deferred-draft-http`. Sem publicação, ponte, WhatsApp, credenciais ou mensagens.
+
+Para o ticket 03: preencher a linha `pending` do item (origem `manual`, fonte/link, autor, data) e regravar com `estimateFromLines`, que recompõe `references` quando não restar pendência. A estimativa manual tudo ou nada ainda substitui `lines` pelo formato antigo. "Refazer pesquisa" de um item em `admin_review` ainda é recusado pela etapa (ticket 04).
+
+---
+
 # E1 ticket 01 — estimativa por item com origem — 26/11/2026
 
 Branch **codex/compras**, base **20fd4d6**. Só preparação: nenhum comportamento visível muda e não há migração D1 (a estimativa continua no JSON do registro).

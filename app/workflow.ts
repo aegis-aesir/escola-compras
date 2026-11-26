@@ -4,6 +4,7 @@ import {budgetTransition,ensureAdministrativeReview} from './budget-workflow';
 import { estimateSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
 import {normalizeQuote,quoteComparable} from './quote-comparison';
 import {parseManagement} from './budget';
+import {estimatePendingMessage} from './estimate-lines';
 export class FlowError extends Error {constructor(message:string,public status=400){super(message)}}
 export const todayManaus=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
 export function nextBusinessDay(at:string,holidays:string[]=[]){
@@ -38,8 +39,8 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       if(e.references.some(r=>r.researchedOn>todayManaus(now)))throw new FlowError('A data de pesquisa não pode estar no futuro.');
       data.estimate={...e,total:quoteTotal(old.items,e.references.map(r=>r.unitPrice),e.freight),recordedAt:now,method:'manual'};data.status='admin_review';action='Estimativa de referência registrada; encaminhada à diretoria administrativa';break;
     }
-    case 'admin_review':permit('administrativo');stage('admin_review');ensureAdministrativeReview(old);if(!old.estimate)throw new FlowError('A estimativa da internet deve estar concluída antes da aprovação administrativa.');data.adminReview=reason();data.status='general_review';action='Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview;break;
-    case 'approve':permit('geral');stage('general_review');if(old.form)throw new FlowError('Use a decisão estruturada do formulário.');if(!old.adminReview||!old.estimate)throw new FlowError('A análise administrativa é obrigatória.');data.generalApproval={actor:me.name,at:now,reason:reason()};data.status='quoting';action='Diretoria geral aprovou a necessidade do pedido, sem aprovação de valor: '+data.generalApproval.reason;break;
+    case 'admin_review':permit('administrativo');stage('admin_review');ensureAdministrativeReview(old);if(!old.estimate)throw new FlowError('A estimativa da internet deve estar concluída antes da aprovação administrativa.');{const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);}data.adminReview=reason();data.status='general_review';action='Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview;break;
+    case 'approve':permit('geral');stage('general_review');if(old.form)throw new FlowError('Use a decisão estruturada do formulário.');if(!old.adminReview||!old.estimate)throw new FlowError('A análise administrativa é obrigatória.');{const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);}data.generalApproval={actor:me.name,at:now,reason:reason()};data.status='quoting';action='Diretoria geral aprovou a necessidade do pedido, sem aprovação de valor: '+data.generalApproval.reason;break;
     case 'reject':
       // Administrative rejection may happen before, during or after the automatic
       // estimate: a rejected request needs neither the research nor the DG decision.

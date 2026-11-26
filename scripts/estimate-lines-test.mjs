@@ -7,7 +7,7 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 await build({entryPoints:['app/estimate-lines.ts'],outfile:'outputs/estimate-lines-test.mjs',bundle:true,platform:'node',format:'esm'});
 await build({entryPoints:['app/workflow-panel.tsx'],outfile:'outputs/estimate-lines-panel.mjs',bundle:true,platform:'node',format:'esm',external:['react','react-dom','lucide-react']});
-const {readEstimate,estimateLinesTotal}=await import('../outputs/estimate-lines-test.mjs?'+Date.now());
+const {readEstimate,estimateLinesTotal,estimateFromLines,reduceEstimate,estimatePendingMessage}=await import('../outputs/estimate-lines-test.mjs?'+Date.now());
 const {default:Panel}=await import('../outputs/estimate-lines-panel.mjs?'+Date.now());
 
 const items=[{name:'Monitor Rhadium',unit:'un.',quantity:5,spec:'19 polegadas'},{name:'Kit CCI20',unit:'kit',quantity:3,spec:'Com fio'}];
@@ -79,4 +79,10 @@ const lines=[
 ];
 const view=readEstimate({id:'new',status:'admin_review',items,quotes:[],estimate:{lines,notes:'Nova estimativa.',recordedAt:now,method:'automatic',total:0}});
 assert.equal(view.format,'items-v1');assert.equal(view.total,2079.5);assert.equal(view.lines.length,6);
+// Redução de escopo no formato novo: só os itens escolhidos, renumerados, com campos antigos coerentes.
+const full=estimateFromLines([lines[0],{...lines[3],value:76.55,origin:'manual',sourceName:'Loja Kit',sourceUrl:'https://example.com/kit',researchedOn:'2026-11-26'},{kind:'freight',value:10,origin:'manual',at:now}],items,{notes:'n',recordedAt:now,method:'automatic'});
+assert.equal(full.total,2294.15);assert.deepEqual(full.references.map(r=>r.unitPrice),[410.9,76.55]);assert.equal(estimatePendingMessage({items,estimate:full}),undefined);
+const cut=reduceEstimate(full,[1],[{...items[1],quantity:2}],' reduzido');
+assert.deepEqual(cut.lines.filter(l=>l.kind==='product').map(l=>[l.itemIndex,l.value]),[[0,76.55]]);assert.equal(cut.total,163.1);assert.deepEqual(cut.references.map(r=>r.unitPrice),[76.55]);
+assert.match(estimatePendingMessage({items,estimate:estimateFromLines(lines,items,{notes:'n',recordedAt:now,method:'automatic'})}),/1 item/);
 console.log('PASS: estimativa por item lê os formatos automático, manual, manual sem frete, antigo e reduzido, com total e exibição iguais.');

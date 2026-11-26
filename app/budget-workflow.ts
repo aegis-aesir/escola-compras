@@ -1,7 +1,7 @@
 import {beginDeferredRevision} from './deferred-request';
 import {z} from 'zod';
 import type {Purchase,Member,Settings} from './model';
-import {quoteTotal} from './model';
+import {reduceEstimate,estimatePendingMessage} from './estimate-lines';
 import {parseManagement} from './budget';
 import {managementSections,canCompareCommercial,commercialFieldKeys} from './budget-fields';
 import {FlowError,todayManaus} from './workflow';
@@ -28,6 +28,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     if(m.executionStatus==='Concluída'&&(m.receiptStatus!=='Recebido e aceito'||!m.financeForwardedAt))throw new FlowError('Para concluir, registre recebimento/aceite e encaminhamento ao financeiro.');
     if(b.submitToGeneral===true){
       if(old.status!=='admin_review'||!old.estimate||!old.form)throw new FlowError('Conclua a estimativa da internet antes de enviar para a Diretoria Geral.');
+      const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);
       ensureAdministrativeReview(data);
       if(old.generalReturn){
         if(typeof b.generalReturnResponse!=='string'||!b.generalReturnResponse.trim())throw new FlowError('Informe a resposta à pendência da Diretoria Geral.');
@@ -94,6 +95,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     return {data,action:'Pedido adiado sem transferência automática de mês: '+reason};
   }
   permit('geral');if(old.status!=='general_review'||!old.adminReview||!old.estimate)throw new FlowError('A decisão exige estimativa e parecer administrativo.');
+  {const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);}
   const choice=z.enum(['approve','partial','provisional','defer','reject']).parse(b.choice);
   if(choice==='provisional'&&old.form?.kind!=='emergency')throw new FlowError('Medida provisória somente para solicitação emergencial.');
   let indexes=choice==='approve'?old.items.map((_,i)=>i):z.array(z.number().int().nonnegative()).max(old.items.length).parse(b.itemIndexes||[]);
@@ -114,8 +116,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     data.needDecision.quantities=quantities;
     if(old.form?.kind==='digital'&&Object.values(quantities).some(q=>!Number.isInteger(q)))throw new FlowError('Licenças exigem quantidade inteira.');
     data.originalScope={items:old.items,form:old.form,estimate:old.estimate};data.items=indexes.map(i=>({...old.items[i],quantity:quantities[String(i)]??old.items[i].quantity}));
-    const refs=indexes.map(i=>old.estimate!.references[i]);
-    data.estimate={...old.estimate,references:refs,total:quoteTotal(data.items,refs.map(r=>r.unitPrice),old.estimate.freight),notes:old.estimate.notes+'\nEscopo reduzido pela decisão da necessidade. Frete de referência sujeito a conferência administrativa.'};
+    data.estimate=reduceEstimate(old.estimate!,indexes,data.items,'\nEscopo reduzido pela decisão da necessidade. Frete de referência sujeito a conferência administrativa.');
     if(old.form)data.form={...old.form,references:old.form.references.filter(r=>indexes.includes(r.itemIndex)).map(r=>({...r,itemIndex:indexes.indexOf(r.itemIndex)}))};
   }
   data.generalApproval={actor:me.name,at:now,reason};data.status='quoting';
