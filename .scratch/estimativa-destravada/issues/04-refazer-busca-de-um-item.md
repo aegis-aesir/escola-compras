@@ -4,8 +4,8 @@
 
 **Blocked by:** 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Refazer um item mantém os demais resultados e a solicitação na revisão da estimativa
-- [ ] Resultado da busca anterior do mesmo item é ignorado depois da nova solicitação de busca
-- [ ] Histórico registra quem refez e quando
+- [x] Refazer um item mantém os demais resultados e a solicitação na revisão da estimativa
+- [x] Resultado da busca anterior do mesmo item é ignorado depois da nova solicitação de busca
+- [x] Histórico registra quem refez e quando

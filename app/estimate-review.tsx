@@ -1,6 +1,7 @@
 'use client';
 import {money,type Purchase} from './model';
 import {estimateEditableOrigins,type EstimateLine,type EstimateView} from './estimate-lines';
+import {defaultEstimateCriteria,savedItemCriteria} from './estimate-criteria';
 
 // Revisão da estimativa por item (E1, ticket 03): origem de cada valor, preenchimento só dos
 // itens sem preço automático e histórico de quem preencheu.
@@ -25,10 +26,16 @@ export function EstimateItemFill({request:r,estimate,busy,send}:{request:Purchas
     <label className="field"><span>Link da fonte</span><input type="url" name={'url'+i} required placeholder="https://…" defaultValue={l.origin==='manual'?l.sourceUrl:undefined}/></label>
     <label className="field"><span>Data da consulta</span><input type="date" name={'date'+i} required max={today} defaultValue={l.origin==='manual'?l.researchedOn:today}/></label>
     <button className="button primary" disabled={busy}>Salvar preço deste item</button></form>};
-  return <section className="note" aria-label="Revisão da estimativa por item"><h3>Revisão da estimativa</h3><p className="muted">Os preços automáticos permanecem. Informe preço, fonte e link só nos itens com pendência.</p>
+  // Ticket 04: refazer só a busca do item, com o critério salvo ou o padrão do pedido.
+  const redo=(i:number)=>{const saved=savedItemCriteria(r,i);const criteria=saved?{searchName:saved.searchName,minimumRequirements:saved.minimumRequirements,allowSimilar:saved.allowSimilar,brandPolicy:saved.brandPolicy,brandModel:saved.brandModel}:defaultEstimateCriteria(r.items[i]);return send('research_item',{itemIndex:i,criteria})};
+  const value=(l:EstimateLine)=>l.searchRevision?'busca em andamento':l.value===null?'pendência':money(l.value);
+  const label=(h:NonNullable<Purchase['estimateEditHistory']>[number])=>h.action==='research'?'nova busca solicitada':h.action==='research_result'?'resultado da nova busca':h.line.sourceName;
+  const products=estimate.lines.filter(l=>l.kind==='product');
+  return <section className="note" aria-label="Revisão da estimativa por item"><h3>Revisão da estimativa</h3><p className="muted">Os preços automáticos permanecem. Informe preço, fonte e link só nos itens com pendência. Refazer a busca de um item mantém os demais resultados.</p>
     {editable.map(l=>{const name=r.items[l.itemIndex!]?.name;return l.origin==='manual'
       ?<details key={l.itemIndex}><summary>Corrigir preço manual de {name}</summary>{form(l)}</details>
-      :<div key={l.itemIndex}><h4>Informar preço de {name}</h4>{l.reason&&<small>{l.reason}</small>}{form(l)}</div>})}
-    {history.length>0&&<details><summary>Histórico do preenchimento ({history.length})</summary>{history.map((h,k)=><div className="source-row" key={k}><strong>{r.items[h.itemIndex]?.name}: {h.previous.value===null?'pendência':money(h.previous.value)} → {money(h.line.value!)}</strong><small>{h.actor} · {when(h.at)} · {h.line.sourceName}</small></div>)}</details>}
+      :<div key={l.itemIndex}><h4>Informar preço de {name}</h4>{l.searchRevision?<small><strong>Busca em andamento.</strong> Se você informar o preço agora, ele prevalece sobre o resultado da busca.</small>:l.reason&&<small>{l.reason}</small>}{form(l)}</div>})}
+    <div className="actions">{products.map(l=>{const i=l.itemIndex!;return <button type="button" key={i} className="button secondary" disabled={busy||!!l.searchRevision} onClick={()=>void redo(i)}>{l.searchRevision?'Busca em andamento: '+r.items[i]?.name:'Refazer busca de '+r.items[i]?.name}</button>})}</div>
+    {history.length>0&&<details><summary>Histórico do preenchimento ({history.length})</summary>{history.map((h,k)=><div className="source-row" key={k}><strong>{r.items[h.itemIndex]?.name}: {value(h.previous)} → {value(h.line)}</strong><small>{h.actor} · {when(h.at)} · {label(h)}</small></div>)}</details>}
   </section>;
 }

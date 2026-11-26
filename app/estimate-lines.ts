@@ -24,6 +24,9 @@ export type EstimateLine={
   // Ausente nas estimativas manuais antigas, que não registravam a autoria no próprio valor.
   author?:string;
   at:string;
+  // Nova busca deste item em andamento na revisão (ticket 04): revisão do critério que a
+  // originou. Só o resultado dessa busca preenche a linha; preço manual retira a marca.
+  searchRevision?:string;
 };
 export type EstimateView={format:'legacy'|'items-v1';lines:EstimateLine[];total:number;freightKnown:boolean;method:'automatic'|'manual';notes:string;recordedAt:string};
 
@@ -63,7 +66,7 @@ export const estimateFreight=(v:EstimateView)=>cents(v.lines.reduce((s,l)=>l.kin
 // Itens sem preço (pendência de estimativa). Frete não apurado dos registros antigos
 // continua permitido, como antes; frete e ICMS entram nas próximas etapas do E1.
 export function estimatePendingItems(r:Pick<Purchase,'items'|'estimate'>){
-  return (readEstimate(r)?.lines||[]).filter(l=>l.kind==='product'&&l.value===null).map(l=>({itemIndex:l.itemIndex!,reason:l.reason}));
+  return (readEstimate(r)?.lines||[]).filter(l=>l.kind==='product'&&l.value===null).map(l=>({itemIndex:l.itemIndex!,reason:l.reason,searching:!!l.searchRevision}));
 }
 export function estimatePendingMessage(r:Pick<Purchase,'items'|'estimate'>){
   const n=estimatePendingItems(r).length;

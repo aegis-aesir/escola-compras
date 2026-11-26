@@ -50,12 +50,20 @@ export async function digest(value:string) {
 }
 function eligible(r:Purchase,j:Pick<IntegrationJob,'type'|'supplierId'|'category'|'estimateRevision'>&Partial<IntegrationJob>,suppliers:Supplier[],contacts:AgendaEntry[]=[]) {
   if(r.archived||j.removed)return false;
-  if(j.type==='estimate_search')return r.status==='estimating'&&('id' in j?isCurrentEstimateJob(r,j as IntegrationJob):(j.estimateRevision||'')===(r.estimateRevision||''));
+  if(j.type==='estimate_search'){
+    if(r.status==='admin_review')return 'id' in j&&isCurrentEstimateJob(r,j as IntegrationJob)&&!!j.researchCriteria&&searchingLine(r,j.itemIndex??0)?.searchRevision===j.researchCriteria.revision;
+    return r.status==='estimating'&&('id' in j?isCurrentEstimateJob(r,j as IntegrationJob):(j.estimateRevision||'')===(r.estimateRevision||''));
+  }
   if(!r.generalApproval)return false;
   if(j.type==='national_search'||j.type==='local_supplier_search')return r.status===(j.type==='national_search'?'national':'quoting')&&!!j.category&&requestSupplierCategories(r).some(c=>categoryKey(c.category)===categoryKey(j.category!));
   if(j.type==='whatsapp_quote'&&j.manualSelection){const recipient=[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId);return !!recipient&&!recipient.removed&&['quoting','national'].includes(r.status)&&normalizeContactPhone(recipient.phone)===j.target&&j.target!==schoolPhone;}
   const s=suppliers.find(s=>s.id===j.supplierId);
   return !!s&&compatibleQuotationSuppliers(r,[s]).length>0;
+}
+// Linha do produto com nova busca em andamento na revisão da estimativa (ticket 04).
+function searchingLine(r:Pick<Purchase,'estimate'>,itemIndex:number){
+  const l=r.estimate?.lines?.find(l=>l.kind==='product'&&l.itemIndex===itemIndex);
+  return l?.searchRevision?l:undefined;
 }
 export async function estimateSearchId(r:Purchase,index:number){
   const criteria=savedItemCriteria(r,index);
@@ -64,11 +72,36 @@ export async function estimateSearchId(r:Purchase,index:number){
 export async function configureEstimateResearch(db:D1Database,r:Purchase,input:unknown,itemIndex:number|undefined,actor:string,now:string){
   if(r.archived||r.generalApproval||!['pending','estimating','admin_review'].includes(r.status))throw new FlowError('Os critérios só podem ser alterados antes do encaminhamento à Diretoria Geral.',409);
   const entries=itemIndex===undefined?z.array(estimateCriteriaSchema).length(r.items.length).parse(input).map((criteria,index)=>({index,criteria})):[{index:z.number().int().min(0).max(r.items.length-1).parse(itemIndex),criteria:estimateCriteriaSchema.parse(input)}];
+  // Revisão da estimativa por item: refazer um item mantém a revisão e as demais linhas.
+  if(itemIndex!==undefined&&r.status==='admin_review'&&Array.isArray(r.estimate?.lines))return researchEstimateItem(db,r,entries[0],actor,now);
   const next:Purchase={...r,status:'estimating',updatedAt:now,estimateCriteria:{...r.estimateCriteria},estimateCriteriaHistory:[...(r.estimateCriteriaHistory||[])]};
   for(const {index,criteria} of entries){const saved={...criteria,revision:crypto.randomUUID(),actor,at:now,sourceItem:r.items[index]};next.estimateCriteria![index]=saved;next.estimateCriteriaHistory!.push({itemIndex:index,actor,at:now,criteria:saved,previous:savedItemCriteria(r,index),...(r.estimate?{previousEstimate:r.estimate}:{})});}
   delete next.estimate;delete next.adminReview;
   if(!await update(db,r,next,r.id,actor,'Critérios de estimativa autorizados; pesquisa iniciada para '+entries.map(e=>r.items[e.index].name).join(', ').slice(0,500),now))throw new FlowError('Solicitação atualizada ou mês fechado. Recarregue.',409);
   await enqueueSearch(db,{...next,version:r.version+1},actor,now);
+}
+// Ticket 04 (E1): nova busca de um item na revisão da estimativa. A solicitação fica em
+// admin_review; a linha do item passa a pendência em andamento ligada à nova revisão do
+// critério, e só a tarefa desse item é enfileirada. Tarefas anteriores do item têm outro
+// id (a revisão do critério entra no id) e deixam de ser elegíveis.
+async function researchEstimateItem(db:D1Database,r:Purchase,{index,criteria}:{index:number;criteria:z.infer<typeof estimateCriteriaSchema>},actor:string,now:string){
+  const e=r.estimate!,lines=[...e.lines!];
+  const saved={...criteria,revision:crypto.randomUUID(),actor,at:now,sourceItem:r.items[index]};
+  const at=lines.findIndex(l=>l.kind==='product'&&l.itemIndex===index),previous=lines[at]||{kind:'product' as const,itemIndex:index,value:null,origin:'pending' as const,at:e.recordedAt};
+  const line:EstimateLine={kind:'product',itemIndex:index,value:null,origin:'pending',reason:'Nova busca em andamento',searchRevision:saved.revision,author:actor,at:now};
+  if(at<0)lines.push(line);else lines[at]=line;
+  const next:Purchase={...r,updatedAt:now,estimateCriteria:{...r.estimateCriteria,[index]:saved},
+    estimateCriteriaHistory:[...(r.estimateCriteriaHistory||[]),{itemIndex:index,actor,at:now,criteria:saved,previous:savedItemCriteria(r,index),previousEstimate:e}],
+    estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),
+    estimateEditHistory:[...(r.estimateEditHistory||[]),{itemIndex:index,actor,at:now,previous,line,action:'research'}]};
+  if(!await update(db,r,next,r.id,actor,'Revisão da estimativa: nova busca solicitada para '+r.items[index].name.slice(0,300),now))throw new FlowError('Solicitação atualizada ou mês fechado. Recarregue.',409);
+  const job=await estimateJob({...next,version:r.version+1},index,'estimate_search',now);
+  await insert(db,job.id,jobKind,job,r.id,actor,`Pesquisa enfileirada: ${r.items[index].name}`,now);
+}
+async function estimateJob(r:Purchase,itemIndex:number,type:IntegrationJob['type'],now:string):Promise<Omit<IntegrationJob,'version'>>{
+  const item=r.items[itemIndex],criteria=savedItemCriteria(r,itemIndex),researchItem=itemResearchTarget(item,criteria);
+  const query=`${criteria?.searchName||item.name} ${researchItem.spec} ${item.unit} preço comprar Brasil`.slice(0,3000);
+  return {id:await estimateSearchId(r,itemIndex),requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,...(criteria?{researchCriteria:criteria,researchItem}:{}),query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
 }
 export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:string) {
   if(['quoting','national'].includes(r.status))return enqueueSupplierSearch(db,r,actor,now);
@@ -76,10 +109,7 @@ export async function enqueueSearch(db:D1Database,r:Purchase,actor:string,now:st
   if(!eligible(r,{type,estimateRevision:r.estimateRevision},[]))throw new FlowError('Pesquisa indisponível nesta etapa.');
   let created=0;
   for(const [itemIndex,item] of r.items.entries()) {
-    const criteria=savedItemCriteria(r,itemIndex),researchItem=itemResearchTarget(item,criteria);
-    const query=`${criteria?.searchName||item.name} ${researchItem.spec} ${item.unit} preço comprar Brasil`.slice(0,3000);
-    const id=await estimateSearchId(r,itemIndex);
-    const data:Omit<IntegrationJob,'version'>={id,requestId:r.id,type,estimateRevision:r.estimateRevision,itemIndex,item,...(criteria?{researchCriteria:criteria,researchItem}:{}),query,state:'queued',createdAt:now,updatedAt:now,attempts:0,nextAttemptAt:now};
+    const data=await estimateJob(r,itemIndex,type,now),id=data.id;
     const existing=await row<IntegrationJob>(db,id,jobKind);
     if(existing?.state==='review'&&existing.item&&!existing.analysisReason&&!existing.priceEvidence) {
       if(await update(db,existing,{...data,createdAt:existing.createdAt},r.id,actor,'Pesquisa anterior sem análise estruturada reenfileirada',now))created++;
@@ -263,6 +293,7 @@ async function projectSentContacts(db:D1Database,settings:Settings,now:string) {
 async function projectAutomaticEstimates(db:D1Database,now:string) {
   const jobs=await rows<IntegrationJob>(db,jobKind);
   for(const r of await rows<Purchase>(db,'request')) {
+    if(!r.archived&&r.status==='admin_review'&&!r.generalApproval){await projectItemResearch(db,jobs,r,now);continue;}
     // The evidence protocol has no verified billing-period field. Digital sources
     // remain available for review; never multiply an ambiguous monthly price as a term total.
     if(r.archived||r.status!=='estimating'||r.estimate||r.form?.kind==='digital')continue;
@@ -290,6 +321,30 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'})};
     await update(db,r,data,r.id,'Sistema',pending?`Estimativa automática concluída com ${pending===1?'1 pendência':pending+' pendências'} de estimativa; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
   }
+}
+// Ticket 04 (E1): resultado da nova busca de um item na revisão da estimativa. Só a
+// tarefa da revisão de critério gravada na linha (searchRevision) preenche o item; a linha
+// que deixou de estar em andamento (preço manual informado) não é substituída.
+async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Purchase>,now:string){
+  const lines=r.estimate?.lines;
+  if(!Array.isArray(lines)||!lines.some(l=>l.searchRevision))return;
+  const next=[...lines],selected:IntegrationJob[]=[],edits:NonNullable<Purchase['estimateEditHistory']>=[];
+  const day=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
+  for(const [k,l] of lines.entries()){
+    if(l.kind!=='product'||!l.searchRevision||l.itemIndex===undefined)continue;
+    const item=r.items[l.itemIndex],id=await estimateSearchId(r,l.itemIndex),j=jobs.find(j=>j.id===id);
+    if(!item||!j||j.researchCriteria?.revision!==l.searchRevision||!isCurrentEstimateJob(r,j))continue;
+    const reference=j.state==='review'&&j.priceEvidence&&j.researchedAt?extractReference(item,j.priceEvidence):null;
+    if(!reference&&!(j.state==='failed'||j.state==='review'&&(j.analysisReason||j.priceEvidence)))continue;
+    const line:EstimateLine=reference
+      ?{kind:'product',itemIndex:l.itemIndex,value:reference.unitPrice,origin:'automatic',sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day(j.researchedAt!),author:'Sistema',at:now}
+      :{kind:'product',itemIndex:l.itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now};
+    next[k]=line;selected.push(j);edits.push({itemIndex:l.itemIndex,actor:'Sistema',at:now,previous:l,line,action:'research_result'});
+  }
+  if(!selected.length)return;
+  const e=r.estimate!;
+  const data:Purchase={...r,updatedAt:now,estimate:estimateFromLines(next,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),estimateEditHistory:[...(r.estimateEditHistory||[]),...edits]};
+  await update(db,r,data,r.id,'Sistema','Revisão da estimativa: resultado da nova busca de '+edits.map(x=>r.items[x.itemIndex].name).join(', ').slice(0,500)+(edits.some(x=>x.line.value===null)?' (pendência de estimativa)':''),now,selected as Row<IntegrationJob>[]);
 }
 export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
   const school=await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>();

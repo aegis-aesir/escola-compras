@@ -1,3 +1,20 @@
+# E1 ticket 04 — refazer a busca de um item na revisão — 26/11/2026
+
+Branch **codex/compras**, base **466cf1d** (ticket 03). Sem migração D1: campos novos opcionais no JSON (`EstimateLine.searchRevision`, `EstimateEdit.action`).
+
+- `research_item` em `admin_review` com estimativa por item (`lines`) segue caminho novo `researchEstimateItem` (`lib/integrations.ts`): a solicitação **continua em `admin_review`**; `adminReview`, as outras linhas e o frete ficam intactos; o item recebe nova revisão de critério (`estimateCriteria` + `estimateCriteriaHistory` com autor/data e `previousEstimate`), a linha vira `pending` com `reason:'Nova busca em andamento'` e `searchRevision` = revisão do critério, e entra em `estimateEditHistory` (`action:'research'`, autor, data, linha anterior). Só a tarefa desse item é enfileirada (montagem extraída para `estimateJob`, também usada por `enqueueSearch`). Sem `lines` (pending/estimating/formato antigo) o comportamento anterior continua: volta a `estimating` e apaga estimativa/parecer.
+- Elegibilidade (`eligible`): `estimate_search` em `admin_review` só quando a tarefa é da revisão atual (`isCurrentEstimateJob`) **e** a linha do item ainda tem o mesmo `searchRevision`. Busca anterior do item tem outro id (a revisão do critério entra em `estimateSearchId`): na fila é cancelada no `claimJob`; já em execução, o resultado é gravado na tarefa mas ignorado na revisão.
+- Projeção (`projectItemResearch`, chamada por `projectAutomaticEstimates` em `tick`/`completeJob`): para cada linha com `searchRevision`, com desfecho final da tarefa atual (mesma regra do ticket 02), troca a linha por `automatic` (autor Sistema) ou `pending` com o motivo, sem `searchRevision`; recompõe com `estimateFromLines`, guarda de versão das tarefas, `estimateEditHistory` com `action:'research_result'` e auditoria.
+- Preço manual durante a busca (`estimate_item`): a linha vira `manual` sem `searchRevision`, então o resultado da busca não a substitui e a tarefa pendente é cancelada ao ser pega pela ponte.
+- Interface (`app/estimate-review.tsx`, `workflow-panel.tsx`): item com "Busca em andamento" (na lista de pendências e no formulário, avisando que o preço manual prevalece); botão "Refazer busca de …" por item na revisão (critério salvo ou o padrão do pedido); histórico mostra "nova busca solicitada" / "resultado da nova busca" e linhas sem valor. O botão do painel de critérios ("Salvar critérios e refazer este item") usa o mesmo caminho. Envio à DG continua bloqueado enquanto o item não tem valor.
+- Teste novo: `scripts/estimate-item-research-test.mjs` (rota real + ponte simulada no D1 Miniflare + interface). AGENTS.md ganhou uma frase na regra "Gatilho e aprovações".
+
+Validação: tipos; build; `estimate-item-research`, `estimate-item-fill`, `estimate-lines`, `partial-estimate-exit`, `partial-estimate-ui`, `workflow`, `automatic-estimate`, `selected-inbox-d1`, `estimate-view`, `estimate-trigger`, `budget-flow`, `budget-records`, `estimate-criteria`, `estimate-criteria-ui`, `general-return-ui`, `request-sections`, `master-reanalysis`, `single-request`, `finance-profile`, `request-archive-storage`, `openclaw` + `agent-routing` (17); HTTP na 5185: `estimate-criteria-http`, `single-request-http`, `master-forward-http`, `general-return-deferred-draft-http`. Falha anterior conhecida inalterada: `price-evidence-test` (espera `coordinator`, recebe `pesquisa-web`). Sem publicação, ponte, WhatsApp, credenciais ou mensagens.
+
+Para o ticket 05: `projectItemResearch` (resultado de busca refeita) e `projectAutomaticEstimates` (primeira saída) usam a mesma regra de desfecho duplicada — ao introduzir `to_check`, alterar as duas (ou extrair uma função comum). Refazer um item `to_check` já funciona (linha vira busca em andamento). `estimatePendingItems` agora devolve `searching`; o bloqueio de envio por `to_check` não aceito deve conviver com esse campo.
+
+---
+
 # E1 ticket 03 — completar só o que falta — 26/11/2026
 
 Branch **codex/compras**, base **8ab0585** (ticket 02). Sem migração D1: o histórico é um campo novo no JSON do registro.
