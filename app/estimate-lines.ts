@@ -31,6 +31,9 @@ export type EstimateLine={
   // cálculo. Quando o produto muda, a linha é recalculada e volta a ser a conferir.
   freightPercent?:number;
   freightBasis?:number;
+  // Frete da loja (ticket 07): frete exibido pela mesma página do preço do produto, simulado
+  // até o CEP comercial da escola. Vale enquanto o produto mantém essa fonte.
+  freightSource?:'store';
 };
 export type EstimateView={format:'legacy'|'items-v1';lines:EstimateLine[];total:number;freightKnown:boolean;method:'automatic'|'manual';notes:string;recordedAt:string};
 
@@ -138,8 +141,10 @@ export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:Es
   return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edits};
 }
 
-// Frete estimado por percentual (E1, ticket 06; ADR 0003). Cada item ganha uma linha de
-// frete = percentual padrão do Master sobre o subtotal do produto, marcada a conferir.
+// Frete estimado (E1, tickets 06 e 07; ADR 0003). O frete de cada item vem da loja onde o
+// preço foi encontrado (linha freightSource 'store', gravada pela pesquisa); ela permanece
+// enquanto o produto mantém essa fonte. Sem frete da loja, o plano B é o percentual padrão
+// do Master sobre o subtotal do produto, marcado a conferir.
 // Assinaturas digitais: não se aplica. Sem percentual configurado ou sem preço do produto,
 // a linha fica pendente com o motivo. Frete manual permanece; frete aceito permanece
 // enquanto o produto não muda. A linha única "frete não apurado" das estimativas por item
@@ -148,6 +153,7 @@ export type FreightPolicy={percent?:number|null;digital?:boolean};
 export const freightPolicy=(r:Pick<Purchase,'form'>,settings:Pick<Settings,'freightPercent'>|undefined):FreightPolicy=>({percent:settings?.freightPercent,digital:r.form?.kind==='digital'});
 export const freightPercentLabel=(p:number)=>p.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
 export const freightNoPercentReason='Percentual padrão de frete não configurado pelo Master. Informe o frete manualmente ou peça ao Master para configurar.';
+const percentReason=(product:EstimateLine,percent:number)=>`Frete por percentual — ${product.origin==='manual'?'preço do produto informado manualmente':'loja não exibiu frete'} (${freightPercentLabel(percent)} sobre o valor do produto).`;
 export function withFreightLines(lines:EstimateLine[],items:Pick<Item,'quantity'|'subscription'>[],policy:FreightPolicy):EstimateLine[]{
   if(lines.some(l=>l.kind==='freight'&&l.itemIndex===undefined&&l.value!==null))return lines;
   const at=lines.reduce((m,l)=>l.at>m?l.at:m,'');
@@ -160,10 +166,11 @@ export function withFreightLines(lines:EstimateLine[],items:Pick<Item,'quantity'
     let next:EstimateLine;
     if(policy.digital||item.subscription)next={kind:'freight',itemIndex:i,value:null,origin:'not_applicable',reason:'Assinatura digital: frete não se aplica.',author:'Sistema',at};
     else if(current?.origin==='manual')return;
+    else if(current?.freightSource==='store'&&product&&product.value!==null&&current.sourceUrl===product.sourceUrl)return;
     else if(current&&basis!==undefined&&current.freightBasis===basis&&(current.origin==='accepted'||current.origin==='to_check'&&current.freightPercent===percent))return;
     else if(basis===undefined)next={kind:'freight',itemIndex:i,value:null,origin:'pending',reason:'Frete aguardando o preço do produto.',author:'Sistema',at};
-    else if(percent===undefined)next={kind:'freight',itemIndex:i,value:null,origin:'pending',reason:freightNoPercentReason,author:'Sistema',at};
-    else next={kind:'freight',itemIndex:i,value:cents(basis*percent/100),origin:'to_check',reason:`Frete por percentual (${freightPercentLabel(percent)} sobre o valor do produto).`,sourceName:'Percentual padrão de frete',freightPercent:percent,freightBasis:basis,author:'Sistema',at};
+    else if(percent===undefined)next={kind:'freight',itemIndex:i,value:null,origin:'pending',reason:'Loja não exibiu frete. '+freightNoPercentReason,author:'Sistema',at};
+    else next={kind:'freight',itemIndex:i,value:cents(basis*percent/100),origin:'to_check',reason:percentReason(product!,percent),sourceName:'Percentual padrão de frete',freightPercent:percent,freightBasis:basis,author:'Sistema',at};
     if(current&&JSON.stringify({...current,at:''})===JSON.stringify({...next,at:''}))return;
     if(k<0)out.push(next);else out[k]=next;
   });

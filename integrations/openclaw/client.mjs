@@ -78,6 +78,11 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
     }catch{return {...result,outcome:'uncertain'}}
   }
   if(!['estimate_search','local_supplier_search','national_search'].includes(job.type)||typeof job.query!=='string')throw new Error('Tipo de tarefa inválido.');
+  // Ticket 07: destino comercial da escola e quantidade pedida, enviados pelo Site. Só um
+  // CEP válido e uma quantidade inteira seguem ao navegador e ao agente; Site antigo não envia.
+  const f=job.freightSimulation;
+  const freightSimulation=f&&/^\d{5}-\d{3}$/.test(String(f.cep||''))&&Number.isInteger(f.quantity)&&f.quantity>0&&f.quantity<=100000?{cep:f.cep,...(typeof f.city==='string'?{city:f.city.slice(0,80)}:{}),...(typeof f.state==='string'?{state:f.state.slice(0,2)}:{}),quantity:f.quantity}:undefined;
+  job={...job,freightSimulation};
   try {
     if(job.type==='local_supplier_search') {
       try {
@@ -88,7 +93,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
     }
     let browserPages=[],browserSources=[],browserResearch;
     if(job.type==='estimate_search'&&job.item&&config.browserResearch) {
-      const browsing=await researchMercadoLivre(job.researchItem||job.item,async args=>structured(await invokeJob({tool:'browser',args})));
+      const browsing=await researchMercadoLivre(job.researchItem||job.item,async args=>structured(await invokeJob({tool:'browser',args})),freightSimulation);
       browserPages=browsing.pages;browserSources=browsing.sources;
       browserResearch={state:browsing.state,detail:browsing.detail,profile:'compras',checkedAt:new Date().toISOString()};
     }

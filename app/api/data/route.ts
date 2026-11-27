@@ -167,16 +167,17 @@ export async function POST(req:Request){try{
   }else if(b.action==='member'){
     throw new AppError('Use Pessoas e acessos para administrar os usuários locais.',400);
   }else if(b.action==='estimate_settings'){
-    // Ticket 06: CEP comercial da escola e percentual padrão de frete, somente pelo Master,
-    // com autoria e data em estimateSettingsHistory. Campo ausente remove o valor.
+    // Ticket 06: percentual padrão de frete, somente pelo Master, com autoria e data em
+    // estimateSettingsHistory; campo ausente remove o valor. O CEP comercial é constante do
+    // sistema (ticket 07): CEP enviado é ignorado e o schoolCep salvo antes fica preservado.
     permit(['admin']);const input=estimateSettingsSchema.parse(b.data);
     const raw=(await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>())!.data,settings=JSON.parse(raw) as Settings;
-    const previous={...(settings.schoolCep?{schoolCep:settings.schoolCep}:{}),...(typeof settings.freightPercent==='number'?{freightPercent:settings.freightPercent}:{})};
-    const next={...(input.schoolCep?{schoolCep:input.schoolCep}:{}),...(typeof input.freightPercent==='number'?{freightPercent:input.freightPercent}:{})};
+    const previous=typeof settings.freightPercent==='number'?{freightPercent:settings.freightPercent}:{};
+    const next=typeof input.freightPercent==='number'?{freightPercent:input.freightPercent}:{};
     if(JSON.stringify(previous)===JSON.stringify(next))return Response.json({ok:true});
-    const {schoolCep:_cep,freightPercent:_percent,...rest}=settings;
+    const {freightPercent:_percent,...rest}=settings;
     const saved:Settings={...rest,...next,estimateSettingsHistory:[...(settings.estimateSettingsHistory||[]),{actor:me.name,at:now,previous,next}]};
-    const describe=(v:typeof next)=>`CEP ${v.schoolCep||'não informado'}; frete ${typeof v.freightPercent==='number'?v.freightPercent+'%':'não configurado'}`;
+    const describe=(v:typeof next)=>`frete ${typeof v.freightPercent==='number'?v.freightPercent+'%':'não configurado'}`;
     const result=await db.batch([db.prepare('UPDATE school SET data=? WHERE id=1 AND data=?').bind(JSON.stringify(saved),raw),db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(id,'school',me.name,'Configuração da estimativa atualizada: '+describe(previous)+' → '+describe(next),now)]);
     if(result[0].meta.changes!==1)throw new AppError('As configurações foram atualizadas em outra aba. Recarregue a página.',409);
     return Response.json({ok:true});

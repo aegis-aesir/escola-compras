@@ -1,5 +1,5 @@
-// Ticket 06 (E1): frete estimado por percentual. O Master (somente ele) configura o CEP
-// comercial e o percentual padrão, com histórico; cada item da estimativa ganha a linha de
+// Ticket 06 (E1): frete estimado por percentual. O Master (somente ele) configura o
+// percentual padrão, com histórico (o CEP comercial é constante do sistema desde o ticket 07); cada item da estimativa ganha a linha de
 // frete calculada pelo percentual, a conferir; a Diretoria Administrativa aceita ou informa
 // valor manual; total = produtos + frete (uma vez); envio à DG exige frete resolvido;
 // assinaturas: não se aplica; estimativas antigas continuam lidas. Rota real + ponte
@@ -62,36 +62,35 @@ try{
  assert.throws(()=>send(saved),/frete pendente em 2 itens/i,'envio bloqueado sem frete');
  assert.equal(api.estimatePendingMessage(saved),undefined,'decisão da DG não depende do frete');
 
- // 2. Configuração: somente o Master, CEP validado, histórico com autoria e data.
+ // 2. Configuração: somente o Master, histórico com autoria e data. CEP enviado é ignorado (ticket 07).
  for(const u of [adm,dg]){as(u);assert.equal((await post({action:'estimate_settings',data:{schoolCep:'69086-665',freightPercent:10}})).status,403,u.role+' não configura')}
  as(master);
- assert.equal((await post({action:'estimate_settings',data:{schoolCep:'6908',freightPercent:10}})).status,400,'CEP inválido');
  assert.equal((await post({action:'estimate_settings',data:{freightPercent:-1}})).status,400,'percentual negativo');
  assert.equal((await post({action:'estimate_settings',data:{freightPercent:10.123}})).status,400,'mais de duas casas');
  let response=await post({action:'estimate_settings',data:{schoolCep:'69086665',freightPercent:10}});
  assert.equal(response.status,200,await response.clone().text());
  let s=await school();
- assert.deepEqual([s.schoolCep,s.freightPercent,s.minQuotes,s.departments],['69086-665',10,1,['Administrativo']],'CEP normalizado; demais ajustes preservados');
+ assert.deepEqual([s.schoolCep,s.freightPercent,s.minQuotes,s.departments],[undefined,10,1,['Administrativo']],'CEP não é gravado; demais ajustes preservados');
  assert.equal(s.estimateSettingsHistory.length,1);
- assert.deepEqual([s.estimateSettingsHistory[0].actor,s.estimateSettingsHistory[0].previous,s.estimateSettingsHistory[0].next],['TESTE Master',{},{schoolCep:'69086-665',freightPercent:10}]);
+ assert.deepEqual([s.estimateSettingsHistory[0].actor,s.estimateSettingsHistory[0].previous,s.estimateSettingsHistory[0].next],['TESTE Master',{},{freightPercent:10}]);
  assert.match(s.estimateSettingsHistory[0].at,/^\d{4}-\d{2}-\d{2}T/);
  const audit=await db.prepare("SELECT actor,action FROM audit WHERE entity='school'").all();
- assert.ok(audit.results.some(a=>a.actor==='TESTE Master'&&/Configuração da estimativa[\s\S]*69086-665[\s\S]*10%/.test(a.action)),'auditoria');
+ assert.ok(audit.results.some(a=>a.actor==='TESTE Master'&&/Configuração da estimativa[\s\S]*10%/.test(a.action)),'auditoria');
  response=await post({action:'estimate_settings',data:{schoolCep:'69086-665',freightPercent:10}});
  assert.equal((await school()).estimateSettingsHistory.length,1,'sem mudança não gera histórico');
  // Regras e setores continuam preservando a configuração da estimativa.
  response=await post({action:'settings',data:{minQuotes:2,departments:['Administrativo'],holidays:[]}});
  assert.equal(response.status,200,await response.clone().text());
- s=await school();assert.deepEqual([s.minQuotes,s.freightPercent,s.schoolCep,s.estimateSettingsHistory.length],[2,10,'69086-665',1]);
- // Histórico só para o Master na leitura; os demais recebem CEP e percentual.
+ s=await school();assert.deepEqual([s.minQuotes,s.freightPercent,s.schoolCep,s.estimateSettingsHistory.length],[2,10,undefined,1]);
+ // Histórico só para o Master na leitura; os demais recebem o percentual.
  as(dg);let snapshot=await (await route.GET(new Request('https://example.com/api/data'))).json();
- assert.deepEqual([snapshot.settings.freightPercent,snapshot.settings.schoolCep,snapshot.settings.estimateSettingsHistory],[10,'69086-665',undefined]);
+ assert.deepEqual([snapshot.settings.freightPercent,snapshot.settings.schoolCep,snapshot.settings.estimateSettingsHistory],[10,undefined,undefined]);
  as(master);snapshot=await (await route.GET(new Request('https://example.com/api/data'))).json();
  assert.equal(snapshot.settings.estimateSettingsHistory.length,1);
  // Tela do Master.
  const data=(role,settings=s)=>({me:{id:role,name:role,email:'',role,department:'Administrativo'},integrations:{jobs:[]},suppliers:[],requests:[],members:[],activity:[],settings});
  let html=renderToStaticMarkup(createElement(SettingsPanel,{data:data('admin'),busy:false,onSave:async()=>true}));
- assert.match(html,/CEP comercial da escola[\s\S]*value="69086-665"/);assert.match(html,/Percentual padrão de frete[\s\S]*value="10"/);
+ assert.match(html,/CEP comercial da escola[\s\S]*69086-665 \(Manaus\/AM\)/);assert.doesNotMatch(html,/name="schoolCep"/);assert.match(html,/Percentual padrão de frete[\s\S]*value="10"/);
  assert.match(html,/Histórico da configuração \(1\)/);assert.match(html,/TESTE Master/);
  assert.equal(renderToStaticMarkup(createElement(SettingsPanel,{data:data('administrativo'),busy:false,onSave:async()=>true})),'','só o Master vê a configuração');
 
@@ -109,7 +108,7 @@ try{
  saved=await estimateRequest('pct');
  freight=saved.estimate.lines.filter(l=>l.kind==='freight');
  assert.deepEqual(freight.map(l=>[l.itemIndex,l.origin,l.value,l.freightPercent,l.freightBasis]),[[0,'to_check',64.95,10,649.5],[1,'to_check',25.98,10,259.8]]);
- assert.match(freight[0].reason,/Frete por percentual \(10% sobre o valor do produto\)/);
+ assert.match(freight[0].reason,/Frete por percentual — loja não exibiu frete \(10% sobre o valor do produto\)/);
  assert.equal(saved.estimate.lines.some(l=>l.kind==='freight'&&l.itemIndex===undefined),false,'sem frete único da solicitação');
  // Total = produtos + frete, frete somado uma vez.
  assert.equal(saved.estimate.total,1000.23,'909,30 + 90,93');assert.equal(saved.estimate.freight,90.93);
@@ -161,7 +160,7 @@ try{
  html=renderToStaticMarkup(createElement(Panel,{request:saved,data:data('administrativo'),busy:false,onSave:async()=>true,onDecision:()=>{}}));
  assert.match(html,/Frete a conferir: Assento sanitário Alfa/);assert.match(html,/Aceitar frete de Assento sanitário Alfa/);assert.match(html,/Substituir frete por valor manual/);
  assert.match(html,/Corrigir frete manual de Torneira Beta/);
- assert.match(html,/Percentual padrão configurado pelo Master: 10%/);
+ assert.match(html,/percentual padrão configurado pelo Master, 10%/);assert.match(html,/CEP 69086-665 \(Manaus\/AM\)/);
  html=renderToStaticMarkup(createElement(Panel,{request:{...saved,status:'general_review'},data:data('geral'),busy:false,onSave:async()=>true,onDecision:()=>{}}));
  assert.match(html,/Composição da estimativa/);
  assert.match(html,new RegExp('<th>Produtos</th><td>'+brl(600).replace(/[$]/,'\\$').replace(/\s/,'.')+'</td>'),'linha de produtos');

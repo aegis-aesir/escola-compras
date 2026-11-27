@@ -2,6 +2,7 @@
 import {money,type Purchase} from './model';
 import {estimateEditableOrigins,estimateFreight,freightPercentLabel,type EstimateLine,type EstimateView} from './estimate-lines';
 import {defaultEstimateCriteria,savedItemCriteria} from './estimate-criteria';
+import {schoolFreightDestinationLabel} from './school-destination';
 
 // Revisão da estimativa por item (E1, ticket 03): origem de cada valor, preenchimento só dos
 // itens sem preço automático e histórico de quem preencheu.
@@ -29,7 +30,7 @@ export function EstimateItemFill({request:r,estimate,busy,send,freightPercent}:{
   // Ticket 04: refazer só a busca do item, com o critério salvo ou o padrão do pedido.
   const redo=(i:number)=>{const saved=savedItemCriteria(r,i);const criteria=saved?{searchName:saved.searchName,minimumRequirements:saved.minimumRequirements,allowSimilar:saved.allowSimilar,brandPolicy:saved.brandPolicy,brandModel:saved.brandModel}:defaultEstimateCriteria(r.items[i]);return send('research_item',{itemIndex:i,criteria})};
   const value=(l:EstimateLine)=>l.searchRevision?'busca em andamento':l.origin==='not_applicable'?'não se aplica':l.value===null?'pendência':money(l.value);
-  const label=(h:NonNullable<Purchase['estimateEditHistory']>[number])=>h.kind==='freight'?(h.action==='accept'?'frete a conferir aceito':h.action==='freight_percent'?'frete calculado pelo percentual':'frete informado · '+h.line.sourceName):h.action==='research'?'nova busca solicitada':h.action==='research_result'?'resultado da nova busca':h.action==='accept'?'valor a conferir aceito':h.line.sourceName;
+  const label=(h:NonNullable<Purchase['estimateEditHistory']>[number])=>h.kind==='freight'?(h.action==='accept'?'frete a conferir aceito':h.action==='freight_percent'?'frete calculado pelo percentual':h.action==='research_result'?'frete da loja na nova busca':'frete informado · '+h.line.sourceName):h.action==='research'?'nova busca solicitada':h.action==='research_result'?'resultado da nova busca':h.action==='accept'?'valor a conferir aceito':h.line.sourceName;
   const products=estimate.lines.filter(l=>l.kind==='product');
   return <section className="note" aria-label="Revisão da estimativa por item"><h3>Revisão da estimativa</h3><p className="muted">Os preços automáticos permanecem. Informe preço, fonte e link só nos itens com pendência. Valores e fretes a conferir precisam ser aceitos ou substituídos antes do envio à Diretoria Geral. Refazer a busca de um item mantém os demais resultados.</p>
     {editable.map(l=>{const name=r.items[l.itemIndex!]?.name,item=r.items[l.itemIndex!];return l.origin==='manual'
@@ -43,23 +44,26 @@ export function EstimateItemFill({request:r,estimate,busy,send,freightPercent}:{
   </section>;
 }
 
-// Frete estimado por item (ticket 06): aceitar o frete por percentual com um clique,
-// informar frete manual (pendente ou substituição) ou recalcular pelo percentual atual.
+// Frete estimado por item (tickets 06 e 07): o frete da loja comprovado fica só para
+// leitura; o a conferir (da loja ou por percentual) é aceito com um clique ou substituído
+// por valor manual; o percentual atual recalcula só os fretes que não vieram da loja.
 function EstimateFreightFill({request:r,estimate,busy,send,freightPercent}:{request:Purchase;estimate:EstimateView;busy:boolean;send:(action:string,extra?:object)=>Promise<boolean>;freightPercent?:number}){
   if(r.form?.kind==='digital')return null;
   const lines=r.items.map((_,i)=>estimate.lines.find(l=>l.kind==='freight'&&l.itemIndex===i));
   const priced=(i:number)=>estimate.lines.find(p=>p.kind==='product'&&p.itemIndex===i)?.value!=null;
-  const recalc=typeof freightPercent==='number'&&r.items.some((item,i)=>{const l=lines[i];return !item.subscription&&priced(i)&&(!l||l.origin==='pending'||l.origin==='to_check'&&l.freightPercent!==freightPercent)});
+  const recalc=typeof freightPercent==='number'&&r.items.some((item,i)=>{const l=lines[i];return !item.subscription&&priced(i)&&(!l||l.origin==='pending'||l.origin==='to_check'&&l.freightSource!=='store'&&l.freightPercent!==freightPercent)});
   const form=(i:number,l?:EstimateLine)=><form className="decision-box" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const url=String(f.get('freightUrl'+i)||'');await send('estimate_freight',{entries:[{itemIndex:i,value:Number(f.get('freight'+i)),sourceName:String(f.get('freightSource'+i)||''),...(url?{sourceUrl:url}:{})}]})}}>
     <label className="field"><span>Frete estimado do item (R$)</span><input name={'freight'+i} required type="number" min="0" step="0.01" defaultValue={l?.value??undefined}/></label>
     <label className="field"><span>Fonte ou justificativa do frete</span><input name={'freightSource'+i} required minLength={2} defaultValue={l?.origin==='manual'?l.sourceName:undefined}/></label>
     <label className="field"><span>Link da fonte (opcional)</span><input type="url" name={'freightUrl'+i} placeholder="https://…" defaultValue={l?.origin==='manual'?l.sourceUrl:undefined}/></label>
     <button className="button primary" disabled={busy}>Salvar frete deste item</button></form>;
-  return <div aria-label="Frete estimado por item"><h4>Frete estimado</h4><p className="muted">{typeof freightPercent==='number'?`Percentual padrão configurado pelo Master: ${freightPercentLabel(freightPercent)} sobre o valor do produto.`:'Percentual padrão de frete ainda não configurado pelo Master. Informe o frete manualmente ou peça a configuração.'}</p>
+  return <div aria-label="Frete estimado por item"><h4>Frete estimado</h4><p className="muted">Frete simulado na loja do preço até o {schoolFreightDestinationLabel}, com a quantidade pedida. {typeof freightPercent==='number'?`Sem frete da loja: percentual padrão configurado pelo Master, ${freightPercentLabel(freightPercent)} sobre o valor do produto.`:'Sem frete da loja: percentual padrão de frete ainda não configurado pelo Master. Informe o frete manualmente ou peça a configuração.'}</p>
     {recalc&&<div className="actions"><button type="button" className="button secondary" disabled={busy} onClick={()=>void send('estimate_freight_percent')}>Calcular frete pelo percentual ({freightPercentLabel(freightPercent!)})</button></div>}
     {r.items.map((item,i)=>{const l=lines[i];
       if(l?.origin==='not_applicable'||item.subscription)return null;
-      if(l?.origin==='to_check')return <div key={i} className="decision-box estimate-to-check" role="group" aria-label={'Frete a conferir de '+item.name}><h5>Frete a conferir: {item.name} — {money(l.value!)}</h5>{l.reason&&<p>{l.reason}</p>}<div className="actions"><button type="button" className="button primary" disabled={busy} onClick={()=>void send('accept_estimate_item',{itemIndex:i,kind:'freight'})}>Aceitar frete de {item.name}</button></div><details><summary>Substituir frete por valor manual</summary>{form(i,l)}</details></div>;
+      const source=l?.freightSource==='store'&&l.sourceUrl?<a href={l.sourceUrl} target="_blank" rel="noopener noreferrer">{l.sourceName||l.sourceUrl} ↗</a>:null;
+      if(l?.origin==='automatic')return <div key={i} className="source-row" role="group" aria-label={'Frete da loja de '+item.name}><strong>Frete da loja: {item.name} — {money(l.value!)}</strong>{source}{l.reason&&<small>{l.reason}</small>}</div>;
+      if(l?.origin==='to_check')return <div key={i} className="decision-box estimate-to-check" role="group" aria-label={'Frete a conferir de '+item.name}><h5>Frete a conferir: {item.name} — {money(l.value!)}</h5>{l.reason&&<p>{l.reason}</p>}{source}<div className="actions"><button type="button" className="button primary" disabled={busy} onClick={()=>void send('accept_estimate_item',{itemIndex:i,kind:'freight'})}>Aceitar frete de {item.name}</button></div><details><summary>Substituir frete por valor manual</summary>{form(i,l)}</details></div>;
       if(l?.origin==='manual')return <details key={i}><summary>Corrigir frete manual de {item.name}</summary>{form(i,l)}</details>;
       if(l?.origin==='accepted')return null;
       return <div key={i}><h5>Informar frete de {item.name}</h5><small>{l?.reason||'Frete ainda não calculado para este item.'}</small>{form(i,l)}</div>})}

@@ -1,4 +1,5 @@
-import {classifyEvidence} from '../integrations/openclaw/price-evidence.mjs';
+import {classifyEvidence,classifyFreight} from '../integrations/openclaw/price-evidence.mjs';
+import {schoolFreightDestination} from '../app/school-destination';
 import { z } from 'zod';
 import { type Purchase, type Item, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
 import {estimateFromLines,freightPolicy,type EstimateLine} from '../app/estimate-lines';
@@ -308,6 +309,16 @@ function searchOutcomeLine(item:Item,itemIndex:number,j:IntegrationJob,now:strin
   }
   return {kind:'product',itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now};
 }
+// Ticket 07 (E1): frete da loja onde o preço foi encontrado, simulado até o CEP comercial
+// da escola com a quantidade pedida, pela regra compartilhada com a ponte. Só existe com
+// preço do produto vindo da mesma página; sem frete da loja (ou ponte antiga), null e o
+// Site usa o percentual padrão (withFreightLines) ou deixa pendente.
+function searchOutcomeFreight(item:Item,itemIndex:number,j:IntegrationJob,product:EstimateLine,now:string):EstimateLine|null{
+  if(item.subscription||product.value===null||!j.priceEvidence||product.sourceUrl!==j.priceEvidence.url)return null;
+  const freight=classifyFreight(item,j.priceEvidence,schoolFreightDestination);
+  if(!freight)return null;
+  return {kind:'freight',itemIndex,value:freight.value,origin:freight.outcome==='verified'?'automatic':'to_check',reason:freight.reason,sourceUrl:product.sourceUrl,sourceName:product.sourceName,researchedOn:product.researchedOn,freightSource:'store',author:'Sistema',at:now};
+}
 async function projectAutomaticEstimates(db:D1Database,now:string) {
   const jobs=await rows<IntegrationJob>(db,jobKind),settings=await schoolSettings(db);
   for(const r of await rows<Purchase>(db,'request')) {
@@ -318,20 +329,21 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     // Cada item precisa de desfecho final da revisão atual: preço comprovado ou pendência
     // de estimativa (análise concluída sem preço, ou tentativas esgotadas). Item ainda na
     // fila, em execução ou em nova tentativa mantém a solicitação em Estimativa.
-    const outcomes:{job:IntegrationJob;line:EstimateLine}[]=[];
+    const outcomes:{job:IntegrationJob;line:EstimateLine;freight:EstimateLine|null}[]=[];
     for(const [i,item] of r.items.entries()) {
       const id=await estimateSearchId(r,i);
       const j=jobs.find(j=>j.id===id);
       const line=j&&searchOutcomeLine(item,i,j,now);
       if(!line)break;
-      outcomes.push({job:j!,line});
+      outcomes.push({job:j!,line,freight:searchOutcomeFreight(item,i,j!,line,now)});
     }
     if(!outcomes.length||outcomes.length!==r.items.length)continue;
     const selected=outcomes.map(o=>o.job);
-    const lines:EstimateLine[]=outcomes.map(o=>o.line);
-    // Ticket 06: o frete de cada item é calculado no Site pelo percentual padrão (a conferir).
+    // Ticket 07: frete da loja do preço quando a pesquisa o trouxe; nos demais itens, o Site
+    // calcula pelo percentual padrão (a conferir) ou deixa pendente (ticket 06).
+    const lines:EstimateLine[]=outcomes.flatMap(o=>o.freight?[o.line,o.freight]:[o.line]);
     const pending=outcomes.filter(o=>o.line.origin==='pending').length,toCheck=outcomes.filter(o=>o.line.origin==='to_check').length;
-    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. '+(typeof settings?.freightPercent==='number'?`Frete estimado por percentual padrão (${settings.freightPercent}% sobre o valor do produto), a conferir. `:'Frete pendente: percentual padrão não configurado. ')+'Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
+    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. '+`Frete da loja simulado até o CEP ${schoolFreightDestination.cep} quando a página o exibe; `+(typeof settings?.freightPercent==='number'?`sem frete da loja, percentual padrão (${settings.freightPercent}% sobre o valor do produto), a conferir. `:'sem frete da loja, pendente: percentual padrão não configurado. ')+'Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
     const summary=[pending&&(pending===1?'1 pendência':pending+' pendências')+' de estimativa',toCheck&&(toCheck===1?'1 valor':toCheck+' valores')+' a conferir'].filter(Boolean).join(' e ');
     const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'},freightPolicy(r,settings))};
     await update(db,r,data,r.id,'Sistema',summary?`Estimativa automática concluída com ${summary}; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
@@ -351,6 +363,12 @@ async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Pur
     const line=searchOutcomeLine(item,l.itemIndex,j,now);
     if(!line)continue;
     next[k]=line;selected.push(j);edits.push({itemIndex:l.itemIndex,actor:'Sistema',at:now,previous:l,line,action:'research_result'});
+    // Ticket 07: a nova busca traz o frete da loja para o item; frete manual permanece.
+    const freight=searchOutcomeFreight(item,l.itemIndex,j,line,now),f=next.findIndex(x=>x.kind==='freight'&&x.itemIndex===l.itemIndex);
+    if(freight&&next[f]?.origin!=='manual'){
+      edits.push({itemIndex:l.itemIndex,actor:'Sistema',at:now,previous:next[f]||{kind:'freight',itemIndex:l.itemIndex,value:null,origin:'pending',at:now},line:freight,kind:'freight',action:'research_result'});
+      if(f<0)next.push(freight);else next[f]=freight;
+    }
   }
   if(!selected.length)return;
   const e=r.estimate!;
@@ -416,13 +434,19 @@ export async function claimJob(db:D1Database,env:IntegrationEnv,now:string,canSe
       next.testSend={version:grant!.version,issuedAt:grant!.issuedAt,expiresAt:grant!.expiresAt};
     }
     const guards=[r,...(j.type==='whatsapp_quote'?[j.manualSelection?[...suppliers,...contacts].find(c=>c.id===j.manualSelection!.recipientId)!:suppliers.find(s=>s.id===j.supplierId)!]:[])];
-    if(await update(db,j,next,j.requestId,'Ponte OpenClaw',test?'Teste único autorizado por tarefa, versão, destino e prazo; modelo revisado com histórico':'Processamento da integração iniciado',now,guards,j.manualSelection||test?r.id:j.id)){trace('claimed');return {...next,version:j.version+1};}
+    // Ticket 07: a pesquisa de estimativa leva o CEP comercial da escola e a quantidade pedida
+    // para a simulação do frete. Não é gravado na tarefa; ponte antiga ignora o campo.
+    const freightSimulation=j.type==='estimate_search'&&j.item&&!j.item.subscription&&r.form?.kind!=='digital'?{...schoolFreightDestination,quantity:j.item.quantity}:undefined;
+    if(await update(db,j,next,j.requestId,'Ponte OpenClaw',test?'Teste único autorizado por tarefa, versão, destino e prazo; modelo revisado com histórico':'Processamento da integração iniciado',now,guards,j.manualSelection||test?r.id:j.id)){trace('claimed');return {...next,version:j.version+1,...(freightSimulation?{freightSimulation}:{})};}
     trace('cas_not_matched');
   }
   return null;
 }
 const sourceSchema=z.object({title:z.string().trim().min(1).max(300),url:z.string().url().max(2000).refine(v=>{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password}),description:z.string().max(2000)});
-const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.enum(['verified','to_check']),sourceUrl:z.string().url().max(2000),productName:z.string().max(300).optional(),productQuote:z.string().max(2000).optional(),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().max(2000).optional(),packageQuantity:z.number().optional(),unit:z.string().max(30).optional(),unitQuote:z.string().max(2000).optional(),itemMatches:z.boolean().optional(),unitMatches:z.boolean().optional(),reason:z.string().max(2000).optional()})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
+// Ticket 07: frete da loja na evidência do item. Fora do formato, é descartado sem recusar o
+// resultado (o Site cai para o percentual); a regra classifyFreight decide o valor.
+const freightSchema=z.object({status:z.enum(['quoted','free','not_shown']),amount:z.number().nonnegative().max(1000000).optional(),quote:z.string().max(2000).optional(),cep:z.string().max(20).optional(),quantity:z.number().int().positive().max(100000).optional(),approximate:z.boolean().optional(),reason:z.string().max(2000).optional()}).optional().catch(undefined);
+const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.enum(['verified','to_check']),sourceUrl:z.string().url().max(2000),productName:z.string().max(300).optional(),productQuote:z.string().max(2000).optional(),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().max(2000).optional(),packageQuantity:z.number().optional(),unit:z.string().max(30).optional(),unitQuote:z.string().max(2000).optional(),itemMatches:z.boolean().optional(),unitMatches:z.boolean().optional(),reason:z.string().max(2000).optional(),freight:freightSchema})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
 export async function completeJob(db:D1Database,input:unknown,now:string) {
   const b=resultSchema.parse(input),j=await row<IntegrationJob>(db,b.jobId,jobKind);
   if(!j||j.leaseToken!==b.leaseToken)throw new FlowError('Processamento expirado ou não reconhecido.',409);
