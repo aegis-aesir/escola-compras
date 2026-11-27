@@ -18,7 +18,7 @@ export function bridgeConfig(env=process.env) {
   const gateway=new URL(env.OPENCLAW_GATEWAY_URL||'http://127.0.0.1:18789');
   if(!['http:','https:'].includes(gateway.protocol)||!['127.0.0.1','localhost','[::1]'].includes(gateway.hostname)||gateway.username||gateway.password||gateway.pathname!=='/'||gateway.search||gateway.hash)throw new Error('O gateway deve permanecer no loopback da máquina OpenClaw.');
   const scoped=!!env.ESTRELAS_TEST_SEND_GRANT;
-  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
+  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,checkoutFreight:env.ESTRELAS_BROWSER_CHECKOUT_FREIGHT==='true'&&env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
 }
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());
@@ -93,7 +93,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
     }
     let browserPages=[],browserSources=[],browserResearch;
     if(job.type==='estimate_search'&&job.item&&config.browserResearch) {
-      const browsing=await researchMercadoLivre(job.researchItem||job.item,async args=>structured(await invokeJob({tool:'browser',args})),freightSimulation);
+      const browsing=await researchMercadoLivre(job.researchItem||job.item,async args=>structured(await invokeJob({tool:'browser',args})),freightSimulation,{checkoutFreight:config.checkoutFreight===true});
       browserPages=browsing.pages;browserSources=browsing.sources;
       browserResearch={state:browsing.state,detail:browsing.detail,profile:'compras',checkedAt:new Date().toISOString()};
     }

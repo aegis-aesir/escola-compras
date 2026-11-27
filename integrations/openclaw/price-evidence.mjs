@@ -53,6 +53,8 @@ export function classifyEvidence(item,page) {
  * verified: valor (ou "grátis") literal na página, simulado até o CEP da escola com a
  * quantidade pedida. to_check: valor literal, mas aproximado/deduzido, sem destino
  * confirmado no CEP da escola ou com outra quantidade; vai com o motivo.
+ * Linha "conferido no checkout, sem concluir compra" (navegador compras) = conferido no
+ * checkout; "a conferir"/"ambíguo" no trecho = a conferir.
  * null: a loja não exibiu frete utilizável (o Site usa o percentual ou deixa pendente).
  * Valor que não aparece na página nunca vira frete.
  * @param {{quantity:number,unit:string}} item
@@ -77,7 +79,8 @@ export function classifyFreight(item,page,destination) {
  if(Number.isInteger(f.quantity)&&f.quantity!==item.quantity)issues.push(`quantidade simulada (${f.quantity}) diferente da pedida (${item.quantity})`);
  else if(f.quantity!==item.quantity||!new RegExp('(?<!\\d)'+item.quantity+'(?!\\d)').test(withoutMoney))issues.push('quantidade da simulação não confirmada');
  if(f.approximate===true)issues.push('valor aproximado ou deduzido pela análise');
+ if(/a conferir|amb[ií]guo/i.test(quote))issues.push('valor do checkout ambíguo ou a conferir');
  const said=typeof f.reason==='string'&&f.reason.trim().length>=10?' '+compact(f.reason):'';
- if(!issues.length)return {outcome:'verified',value,reason:`Frete da loja simulado até o CEP ${label} para ${item.quantity} ${item.unit}.`};
+ if(!issues.length)return {outcome:'verified',value,reason:/conferido no checkout, sem concluir compra/i.test(quote)?`Frete conferido no checkout da loja até o CEP ${label} para ${item.quantity} ${item.unit}, sem concluir compra.`:`Frete da loja simulado até o CEP ${label} para ${item.quantity} ${item.unit}.`};
  return {outcome:'to_check',value,reason:('Frete da loja a conferir: '+issues.join('; ')+'.'+said).slice(0,800)};
 }

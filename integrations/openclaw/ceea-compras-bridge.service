@@ -13,7 +13,7 @@ StateDirectory=ceea-compras
 StateDirectoryMode=0700
 UMask=0077
 EnvironmentFile=/etc/ceea-compras/bridge.env
-ExecStart=/usr/bin/env -u ESTRELAS_TEST_SEND_GRANT -u ESTRELAS_INBOX_DIR ESTRELAS_ENABLE_SEND=false ESTRELAS_LOCAL_TEST=false ESTRELAS_BROWSER_RESEARCH=false ESTRELAS_STATE_DIR=/var/lib/ceea-compras OPENCLAW_GATEWAY_URL=http://127.0.0.1:18789 /home/agente/.openclaw/tools/node-v24.22.1/bin/node /opt/ceea-compras/bridge/runner.mjs --loop
+ExecStart=/usr/bin/env -u ESTRELAS_TEST_SEND_GRANT -u ESTRELAS_INBOX_DIR ESTRELAS_ENABLE_SEND=false ESTRELAS_LOCAL_TEST=false ESTRELAS_BROWSER_RESEARCH=false ESTRELAS_BROWSER_CHECKOUT_FREIGHT=false ESTRELAS_STATE_DIR=/var/lib/ceea-compras OPENCLAW_GATEWAY_URL=http://127.0.0.1:18789 /home/agente/.openclaw/tools/node-v24.22.1/bin/node /opt/ceea-compras/bridge/runner.mjs --loop
 Restart=on-failure
 RestartSec=30s
 NoNewPrivileges=true
