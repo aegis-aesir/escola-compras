@@ -5,7 +5,7 @@ import { CalendarClock, CircleX, ClipboardCheck, ClipboardList, Download, FileCh
 import { money, type Purchase, type Snapshot } from './model';
 import { managementSections, requestSections, canCompareCommercial } from './budget-fields';
 import { requestedTotal, subscriptionTotal } from './budget';
-import { estimatePendingMessage } from './estimate-lines';
+import { estimateSendBlockMessage } from './estimate-lines';
 import { BudgetField, BudgetFields, budgetKindLabels } from './budget-request-form';
 
 const date=(value:string)=>value?new Date(value).toLocaleString('pt-BR',{timeZone:'America/Manaus'}):'Não informado';
@@ -45,7 +45,7 @@ export function BudgetRecordPanel(props:PanelProps){return <BudgetRecordContent 
 function BudgetRecordContent({request:r,data,busy,onSave,onEdit,estimates,quotations}:PanelProps){
  const [management,setManagement]=useState<Record<string,string|number|boolean>>(()=>({...r.management,...(!r.archived&&['admin','administrativo'].includes(data.me.role)?{validatedPriority:r.management?.validatedPriority||r.priority}:{})}));
  const [notice,setNotice]=useState(''),[localError,setLocalError]=useState('');
- const estimatePending=estimatePendingMessage(r);
+ const estimatePending=estimateSendBlockMessage(r);
  const [generalReturnResponse,setGeneralReturnResponse]=useState('');
  const [choice,setChoice]=useState('approve'),[itemIndexes,setItemIndexes]=useState<number[]>([]),[quantities,setQuantities]=useState<Record<number,number>>({});
  const admin=!r.archived&&['admin','administrativo'].includes(data.me.role),general=!r.archived&&['admin','geral'].includes(data.me.role),financial=data.me.role==='financeiro'||!!r.archived;

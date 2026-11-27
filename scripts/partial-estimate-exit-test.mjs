@@ -65,8 +65,8 @@ try {
  html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:form,data,busy:false,onSave:async()=>true,estimates:null}));
  assert.match(html,/<button[^>]*value="send_general"[^>]*disabled=""[^>]*>.*?Salvar e enviar para Diretoria Geral/s,'envio à DG bloqueado no formulário');
  assert.match(html,/pendência de estimativa/i);
- html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:{...form,estimate:{...form.estimate,lines:form.estimate.lines.map(l=>l.value===null&&l.kind==='product'?{...l,value:50,origin:'manual'}:l)}},data,busy:false,onSave:async()=>true,estimates:null}));
- assert.doesNotMatch(html,/<button[^>]*value="send_general"[^>]*disabled=""/,'sem pendência o envio volta a ficar disponível');
+ html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:{...form,estimate:{...form.estimate,lines:form.estimate.lines.map(l=>l.value===null&&l.kind==='product'?{...l,value:50,origin:'manual'}:l.kind==='freight'?{...l,value:0,origin:'manual'}:l)}},data,busy:false,onSave:async()=>true,estimates:null}));
+ assert.doesNotMatch(html,/<button[^>]*value="send_general"[^>]*disabled=""/,'sem pendência (frete informado, ticket 06) o envio volta a ficar disponível');
 
  // Erro de infraestrutura em nova tentativa não é desfecho; esgotadas as tentativas, vira pendência.
  await insert({id:'retry',status:'estimating',version:1,items:[found,missing],quotes:[]});
@@ -115,6 +115,8 @@ try {
  saved=await request('complete');
  assert.equal(saved.status,'admin_review');assert.equal(saved.estimate.total,649.5);assert.equal(saved.estimate.freightKnown,false);assert.equal(saved.estimate.freight,0);
  assert.deepEqual(saved.estimate.references.map(r=>r.unitPrice),[129.9],'campos antigos continuam preenchidos para os consumidores atuais');
- assert.doesNotThrow(()=>api.transition(saved,{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now));
+ // Ticket 06: sem percentual configurado o frete fica pendente e impede o envio até ser informado.
+ assert.throws(()=>api.transition(saved,{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now),/frete pendente/i);
+ assert.doesNotThrow(()=>api.transition({...saved,estimate:{...saved.estimate,lines:saved.estimate.lines.map(l=>l.kind==='freight'?{...l,value:0,origin:'manual'}:l)}},{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now));
  console.log('PASS: saída parcial da Estimativa, pendências com motivo, novas tentativas, revisões antigas, assinaturas e envio à DG bloqueado.');
 }finally{await mf.dispose();}

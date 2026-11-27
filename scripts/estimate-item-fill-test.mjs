@@ -101,7 +101,9 @@ try{
  // Envio à DG: bloqueado com pendência, liberado depois do preenchimento; contrato antigo aceito sem linhas.
  const me={role:'administrativo',name:'TESTE ADM'};
  assert.throws(()=>transition({...base,form:undefined},{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now),/pendência de estimativa/i);
- assert.doesNotThrow(()=>transition({...saved,form:undefined},{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now));
+ assert.throws(()=>transition({...saved,form:undefined},{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now),/frete pendente/i,'ticket 06: frete também é exigido');
+ const freightDone=r=>({...r,estimate:{...r.estimate,lines:r.estimate.lines.map(l=>l.kind==='freight'?{...l,value:0,origin:'manual'}:l)}});
+ assert.doesNotThrow(()=>transition(freightDone({...saved,form:undefined}),{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now));
  const legacy=transition({...base,estimate:undefined,status:'estimating'},legacyBody,me,[],{},now);
  assert.equal(legacy.data.estimate.method,'manual');assert.equal(legacy.data.estimate.lines,undefined,'estimativa manual completa continua no formato antigo');
 
@@ -114,8 +116,8 @@ try{
  assert.match(html,/name="url2"[^>]*required|required[^>]*name="url2"/,'link obrigatório');
  html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:base,data:data('administrativo'),busy:false,onSave:async()=>true,estimates:null}));
  assert.match(html,/<button[^>]*value="send_general"[^>]*disabled=""/,'envio bloqueado com pendência');
- html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:saved,data:data('administrativo'),busy:false,onSave:async()=>true,estimates:null}));
- assert.doesNotMatch(html,/<button[^>]*value="send_general"[^>]*disabled=""/,'envio liberado com todos os itens valorados');
+ html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:freightDone(saved),data:data('administrativo'),busy:false,onSave:async()=>true,estimates:null}));
+ assert.doesNotMatch(html,/<button[^>]*value="send_general"[^>]*disabled=""/,'envio liberado com todos os itens valorados (e frete informado, ticket 06)');
  html=renderToStaticMarkup(createElement(Panel,{request:saved,data:data('administrativo'),busy:false,onSave:async()=>true,onDecision:()=>{}}));
  assert.match(html,/Corrigir preço manual de Peça rara Ômega/,'valor manual pode ser corrigido');
  assert.match(html,/Histórico do preenchimento/);assert.match(html,/TESTE ADM/);

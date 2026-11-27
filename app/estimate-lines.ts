@@ -1,4 +1,4 @@
-import {quoteTotal, type Estimate, type EstimateEdit, type Item, type Purchase} from './model';
+import {quoteTotal, type Estimate, type EstimateEdit, type Item, type Purchase, type Settings} from './model';
 
 // Estimativa por item (spec 2026-11-26, E1; ADR 0003). Cada valor é uma linha de
 // produto, frete ou ICMS com origem, fonte, autor e data. Os registros gravados antes
@@ -27,6 +27,10 @@ export type EstimateLine={
   // Nova busca deste item em andamento na revisão (ticket 04): revisão do critério que a
   // originou. Só o resultado dessa busca preenche a linha; preço manual retira a marca.
   searchRevision?:string;
+  // Frete por percentual (ticket 06): percentual aplicado e subtotal do produto usado no
+  // cálculo. Quando o produto muda, a linha é recalculada e volta a ser a conferir.
+  freightPercent?:number;
+  freightBasis?:number;
 };
 export type EstimateView={format:'legacy'|'items-v1';lines:EstimateLine[];total:number;freightKnown:boolean;method:'automatic'|'manual';notes:string;recordedAt:string};
 
@@ -55,7 +59,7 @@ export function readEstimate(r:Pick<Purchase,'items'|'estimate'>):EstimateView|u
   const method=e.method==='automatic'?'automatic':'manual';
   if(Array.isArray(e.lines)){
     const freight=e.lines.filter(l=>l.kind==='freight');
-    return {format:'items-v1',lines:e.lines,total:estimateLinesTotal(e.lines,r.items),freightKnown:freight.length>0&&freight.every(l=>l.value!==null),method,notes:e.notes,recordedAt:e.recordedAt};
+    return {format:'items-v1',lines:e.lines,total:estimateLinesTotal(e.lines,r.items),freightKnown:freight.length>0&&freight.every(l=>l.value!==null||l.origin==='not_applicable'),method,notes:e.notes,recordedAt:e.recordedAt};
   }
   // O total antigo é o gravado no registro: é o que o painel, o resumo mensal e a
   // Diretoria Geral sempre mostraram.
@@ -81,11 +85,12 @@ export function estimatePendingMessage(r:Pick<Purchase,'items'|'estimate'>){
 // Monta a estimativa no formato por item mantendo os campos antigos coerentes para os
 // consumidores que ainda os leem (resumo mensal, redução de escopo, formulário manual).
 // references só é preenchido, alinhado aos itens, quando todos os produtos têm valor.
-export function estimateFromLines(lines:EstimateLine[],items:Pick<Item,'quantity'>[],base:{notes:string;recordedAt:string;method:'automatic'|'manual'}):Estimate{
+export function estimateFromLines(lines:EstimateLine[],items:Pick<Item,'quantity'|'subscription'>[],base:{notes:string;recordedAt:string;method:'automatic'|'manual'},policy?:FreightPolicy):Estimate{
+  if(policy)lines=withFreightLines(lines,items,policy);
   const products=items.map((_,i)=>lines.find(l=>l.kind==='product'&&l.itemIndex===i));
   const complete=products.every(l=>l&&l.value!==null);
   const freight=lines.filter(l=>l.kind==='freight');
-  return {...base,lines,total:estimateLinesTotal(lines,items),freight:cents(freight.reduce((s,l)=>s+(l.value??0),0)),freightKnown:freight.length>0&&freight.every(l=>l.value!==null),
+  return {...base,lines,total:estimateLinesTotal(lines,items),freight:cents(freight.reduce((s,l)=>s+(l.value??0),0)),freightKnown:freight.length>0&&freight.every(l=>l.value!==null||l.origin==='not_applicable'),
     references:complete?products.map(l=>({unitPrice:l!.value!,sourceUrl:l!.sourceUrl||'',sourceName:l!.sourceName||'',researchedOn:l!.researchedOn||base.recordedAt.slice(0,10)})):[]};
 }
 
@@ -107,7 +112,7 @@ export type EstimateItemEntry={itemIndex:number;unitPrice:number;sourceName:stri
 export class EstimateEditError extends Error {constructor(message:string,public status=400){super(message)}}
 // Aceitar um valor a conferir (ticket 05): a linha passa a accepted em nome de quem aceitou,
 // mantendo valor, fonte e motivo. Só linhas to_check podem ser aceitas.
-export function acceptEstimateItem(r:Pick<Purchase,'items'|'estimate'>,itemIndex:number,actor:string,now:string):{estimate:Estimate;edit:EstimateEdit}{
+export function acceptEstimateItem(r:Pick<Purchase,'items'|'estimate'>,itemIndex:number,actor:string,now:string,policy?:FreightPolicy):{estimate:Estimate;edit:EstimateEdit}{
   const e=r.estimate;
   if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O aceite vale para estimativas por item.',409);
   if(!r.items[itemIndex])throw new EstimateEditError('Item inexistente nesta solicitação.');
@@ -115,9 +120,9 @@ export function acceptEstimateItem(r:Pick<Purchase,'items'|'estimate'>,itemIndex
   if(!previous||previous.origin!=='to_check'||previous.value===null)throw new EstimateEditError(`${r.items[itemIndex].name} não tem valor a conferir para aceitar.`,409);
   const line:EstimateLine={...previous,origin:'accepted',author:actor,at:now};
   lines[at]=line;
-  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),edit:{itemIndex,actor,at:now,previous,line,action:'accept'}};
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edit:{itemIndex,actor,at:now,previous,line,action:'accept'}};
 }
-export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:EstimateItemEntry[],actor:string,now:string):{estimate:Estimate;edits:EstimateEdit[]}{
+export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:EstimateItemEntry[],actor:string,now:string,policy?:FreightPolicy):{estimate:Estimate;edits:EstimateEdit[]}{
   const e=r.estimate;
   if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O preenchimento por item vale para estimativas por item. Registre a estimativa completa.',409);
   const lines=[...e.lines],edits:EstimateEdit[]=[];
@@ -130,5 +135,112 @@ export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:Es
     if(at<0)lines.push(line);else lines[at]=line;
     edits.push({itemIndex:entry.itemIndex,actor,at:now,previous:before,line});
   }
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edits};
+}
+
+// Frete estimado por percentual (E1, ticket 06; ADR 0003). Cada item ganha uma linha de
+// frete = percentual padrão do Master sobre o subtotal do produto, marcada a conferir.
+// Assinaturas digitais: não se aplica. Sem percentual configurado ou sem preço do produto,
+// a linha fica pendente com o motivo. Frete manual permanece; frete aceito permanece
+// enquanto o produto não muda. A linha única "frete não apurado" das estimativas por item
+// gravadas antes deste ticket é substituída pelas linhas por item.
+export type FreightPolicy={percent?:number|null;digital?:boolean};
+export const freightPolicy=(r:Pick<Purchase,'form'>,settings:Pick<Settings,'freightPercent'>|undefined):FreightPolicy=>({percent:settings?.freightPercent,digital:r.form?.kind==='digital'});
+export const freightPercentLabel=(p:number)=>p.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
+export const freightNoPercentReason='Percentual padrão de frete não configurado pelo Master. Informe o frete manualmente ou peça ao Master para configurar.';
+export function withFreightLines(lines:EstimateLine[],items:Pick<Item,'quantity'|'subscription'>[],policy:FreightPolicy):EstimateLine[]{
+  if(lines.some(l=>l.kind==='freight'&&l.itemIndex===undefined&&l.value!==null))return lines;
+  const at=lines.reduce((m,l)=>l.at>m?l.at:m,'');
+  const out=lines.filter(l=>!(l.kind==='freight'&&(l.itemIndex===undefined||!items[l.itemIndex])));
+  const percent=typeof policy.percent==='number'&&Number.isFinite(policy.percent)?policy.percent:undefined;
+  items.forEach((item,i)=>{
+    const product=out.find(l=>l.kind==='product'&&l.itemIndex===i);
+    const k=out.findIndex(l=>l.kind==='freight'&&l.itemIndex===i),current=k<0?undefined:out[k];
+    const basis=product&&product.value!==null?cents(item.quantity*product.value):undefined;
+    let next:EstimateLine;
+    if(policy.digital||item.subscription)next={kind:'freight',itemIndex:i,value:null,origin:'not_applicable',reason:'Assinatura digital: frete não se aplica.',author:'Sistema',at};
+    else if(current?.origin==='manual')return;
+    else if(current&&basis!==undefined&&current.freightBasis===basis&&(current.origin==='accepted'||current.origin==='to_check'&&current.freightPercent===percent))return;
+    else if(basis===undefined)next={kind:'freight',itemIndex:i,value:null,origin:'pending',reason:'Frete aguardando o preço do produto.',author:'Sistema',at};
+    else if(percent===undefined)next={kind:'freight',itemIndex:i,value:null,origin:'pending',reason:freightNoPercentReason,author:'Sistema',at};
+    else next={kind:'freight',itemIndex:i,value:cents(basis*percent/100),origin:'to_check',reason:`Frete por percentual (${freightPercentLabel(percent)} sobre o valor do produto).`,sourceName:'Percentual padrão de frete',freightPercent:percent,freightBasis:basis,author:'Sistema',at};
+    if(current&&JSON.stringify({...current,at:''})===JSON.stringify({...next,at:''}))return;
+    if(k<0)out.push(next);else out[k]=next;
+  });
+  return out;
+}
+
+// Envio à Diretoria Geral (ticket 06): além das pendências de produto e dos a conferir,
+// todo item precisa de frete aceito, manual ou não se aplica. Estimativas por item sem
+// linha de frete do item (gravadas antes do ticket 06) contam como frete pendente; no
+// formato antigo vale o frete único: "frete não apurado" impede o envio. Não vale para
+// pedidos já enviados à Diretoria Geral (a decisão da DG usa estimatePendingMessage).
+export function estimateFreightIssues(r:Pick<Purchase,'items'|'estimate'|'form'>):{pending:{itemIndex?:number;reason?:string}[];toCheck:{itemIndex:number;reason?:string;value:number}[]}{
+  const view=readEstimate(r);
+  if(!view||r.form?.kind==='digital')return {pending:[],toCheck:[]};
+  const freight=view.lines.filter(l=>l.kind==='freight');
+  if(view.format==='legacy')return {pending:freight.filter(l=>l.value===null&&l.origin==='pending').map(l=>({reason:l.reason})),toCheck:[]};
+  const pending:{itemIndex?:number;reason?:string}[]=[],toCheck:{itemIndex:number;reason?:string;value:number}[]=[];
+  r.items.forEach((item,i)=>{
+    const l=freight.find(l=>l.itemIndex===i);
+    if(!l){if(!item.subscription)pending.push({itemIndex:i,reason:'Frete ainda não calculado para este item.'});return}
+    if(l.origin==='to_check'&&l.value!==null)toCheck.push({itemIndex:i,reason:l.reason,value:l.value});
+    else if(l.value===null&&l.origin==='pending')pending.push({itemIndex:i,reason:l.reason});
+  });
+  return {pending,toCheck};
+}
+export function estimateSendBlockMessage(r:Pick<Purchase,'items'|'estimate'|'form'>){
+  const base=estimatePendingMessage(r)?.replace(/ antes de enviar à Diretoria Geral\.$/,'');
+  const {pending,toCheck}=estimateFreightIssues(r);
+  const n=pending.length,c=toCheck.length;
+  const parts=[base,n&&`Há frete pendente em ${n===1?'1 item':n+' itens'}. Informe o frete`,c&&`Há ${c===1?'1 frete':c+' fretes'} a conferir. Aceite ou substitua o frete`].filter(Boolean);
+  return parts.length?parts.join('. ')+' antes de enviar à Diretoria Geral.':undefined;
+}
+// Composição da estimativa para a Diretoria Administrativa e a Diretoria Geral (ticket 06):
+// produtos, frete e total geral separados. O total geral é o da estimativa (produtos + frete),
+// e o frete é somado uma única vez.
+export function estimateComposition(r:Pick<Purchase,'items'|'estimate'>){
+  const view=readEstimate(r);
+  if(!view)return undefined;
+  const freight=estimateFreight(view);
+  return {products:cents(view.total-freight),freight,total:view.total};
+}
+
+// Frete manual na revisão (ticket 06): valor da linha de frete do item, com fonte ou
+// justificativa. Vale para frete pendente, a conferir ou manual a corrigir.
+export type EstimateFreightEntry={itemIndex:number;value:number;sourceName:string;sourceUrl?:string};
+export function fillEstimateFreight(r:Pick<Purchase,'items'|'estimate'|'form'>,entries:EstimateFreightEntry[],actor:string,now:string,policy:FreightPolicy):{estimate:Estimate;edits:EstimateEdit[]}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O frete por item vale para estimativas por item. Registre a estimativa completa.',409);
+  let lines=withFreightLines(e.lines,r.items,policy);const edits:EstimateEdit[]=[];
+  for(const entry of entries){
+    const item=r.items[entry.itemIndex];
+    if(!item)throw new EstimateEditError('Item inexistente nesta solicitação.');
+    const at=lines.findIndex(l=>l.kind==='freight'&&l.itemIndex===entry.itemIndex),previous=lines[at];
+    if(!previous||!estimateEditableOrigins.includes(previous.origin))throw new EstimateEditError(previous?.origin==='not_applicable'?`Frete não se aplica a ${item.name}.`:`O frete de ${item.name} já foi aceito e permanece.`,409);
+    const line:EstimateLine={kind:'freight',itemIndex:entry.itemIndex,value:cents(entry.value),origin:'manual',sourceName:entry.sourceName,...(entry.sourceUrl?{sourceUrl:entry.sourceUrl}:{}),author:actor,at:now};
+    lines=[...lines];lines[at]=line;
+    edits.push({itemIndex:entry.itemIndex,actor,at:now,previous,line,kind:'freight',action:'fill'});
+  }
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edits};
+}
+export function acceptEstimateFreight(r:Pick<Purchase,'items'|'estimate'|'form'>,itemIndex:number,actor:string,now:string,policy:FreightPolicy):{estimate:Estimate;edit:EstimateEdit}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O aceite vale para estimativas por item.',409);
+  if(!r.items[itemIndex])throw new EstimateEditError('Item inexistente nesta solicitação.');
+  const lines=withFreightLines(e.lines,r.items,policy),at=lines.findIndex(l=>l.kind==='freight'&&l.itemIndex===itemIndex),previous=lines[at];
+  if(!previous||previous.origin!=='to_check'||previous.value===null)throw new EstimateEditError(`${r.items[itemIndex].name} não tem frete a conferir para aceitar.`,409);
+  const line:EstimateLine={...previous,origin:'accepted',author:actor,at:now};
+  lines[at]=line;
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edit:{itemIndex,actor,at:now,previous,line,kind:'freight',action:'accept'}};
+}
+// Recalcula as linhas de frete pelo percentual atual (frete manual e aceito permanecem).
+export function applyFreightPercent(r:Pick<Purchase,'items'|'estimate'|'form'>,actor:string,now:string,policy:FreightPolicy):{estimate:Estimate;edits:EstimateEdit[]}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O frete por percentual vale para estimativas por item. Informe o frete na estimativa completa.',409);
+  if(typeof policy.percent!=='number'&&!policy.digital)throw new EstimateEditError(freightNoPercentReason,409);
+  const lines=withFreightLines(e.lines,r.items,policy).map(l=>l.kind==='freight'&&l.author==='Sistema'&&!e.lines!.includes(l)?{...l,at:now}:l);
+  const edits:EstimateEdit[]=lines.filter(l=>l.kind==='freight'&&!e.lines!.includes(l)&&l.itemIndex!==undefined).map(l=>({itemIndex:l.itemIndex!,actor,at:now,previous:e.lines!.find(p=>p.kind==='freight'&&p.itemIndex===l.itemIndex)||{kind:'freight',itemIndex:l.itemIndex,value:null,origin:'pending',at:e.recordedAt},line:l,kind:'freight',action:'freight_percent'}));
+  if(!edits.length)throw new EstimateEditError('O frete já está calculado pelo percentual atual.',409);
   return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),edits};
 }

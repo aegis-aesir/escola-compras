@@ -1,7 +1,7 @@
 import {classifyEvidence} from '../integrations/openclaw/price-evidence.mjs';
 import { z } from 'zod';
 import { type Purchase, type Item, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
-import {estimateFromLines,type EstimateLine} from '../app/estimate-lines';
+import {estimateFromLines,freightPolicy,type EstimateLine} from '../app/estimate-lines';
 import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
@@ -65,6 +65,11 @@ function searchingLine(r:Pick<Purchase,'estimate'>,itemIndex:number){
   const l=r.estimate?.lines?.find(l=>l.kind==='product'&&l.itemIndex===itemIndex);
   return l?.searchRevision?l:undefined;
 }
+// Configuração da estimativa do Master (ticket 06): percentual padrão de frete.
+async function schoolSettings(db:D1Database):Promise<Settings|undefined>{
+  const school=await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>();
+  return school?JSON.parse(school.data):undefined;
+}
 export async function estimateSearchId(r:Purchase,index:number){
   const criteria=savedItemCriteria(r,index);
   return 'search:'+await digest(JSON.stringify(['prices-agent-v1',r.id,'estimate_search',index,r.items[index],...(r.estimateRevision?[r.estimateRevision]:[]),...(criteria?['criteria-v1',criteria.revision]:[])]));
@@ -92,7 +97,7 @@ async function researchEstimateItem(db:D1Database,r:Purchase,{index,criteria}:{i
   if(at<0)lines.push(line);else lines[at]=line;
   const next:Purchase={...r,updatedAt:now,estimateCriteria:{...r.estimateCriteria,[index]:saved},
     estimateCriteriaHistory:[...(r.estimateCriteriaHistory||[]),{itemIndex:index,actor,at:now,criteria:saved,previous:savedItemCriteria(r,index),previousEstimate:e}],
-    estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),
+    estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},freightPolicy(r,await schoolSettings(db))),
     estimateEditHistory:[...(r.estimateEditHistory||[]),{itemIndex:index,actor,at:now,previous,line,action:'research'}]};
   if(!await update(db,r,next,r.id,actor,'Revisão da estimativa: nova busca solicitada para '+r.items[index].name.slice(0,300),now))throw new FlowError('Solicitação atualizada ou mês fechado. Recarregue.',409);
   const job=await estimateJob({...next,version:r.version+1},index,'estimate_search',now);
@@ -304,9 +309,9 @@ function searchOutcomeLine(item:Item,itemIndex:number,j:IntegrationJob,now:strin
   return {kind:'product',itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now};
 }
 async function projectAutomaticEstimates(db:D1Database,now:string) {
-  const jobs=await rows<IntegrationJob>(db,jobKind);
+  const jobs=await rows<IntegrationJob>(db,jobKind),settings=await schoolSettings(db);
   for(const r of await rows<Purchase>(db,'request')) {
-    if(!r.archived&&r.status==='admin_review'&&!r.generalApproval){await projectItemResearch(db,jobs,r,now);continue;}
+    if(!r.archived&&r.status==='admin_review'&&!r.generalApproval){await projectItemResearch(db,jobs,r,now,settings);continue;}
     // The evidence protocol has no verified billing-period field. Digital sources
     // remain available for review; never multiply an ambiguous monthly price as a term total.
     if(r.archived||r.status!=='estimating'||r.estimate||r.form?.kind==='digital')continue;
@@ -324,18 +329,18 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     if(!outcomes.length||outcomes.length!==r.items.length)continue;
     const selected=outcomes.map(o=>o.job);
     const lines:EstimateLine[]=outcomes.map(o=>o.line);
-    lines.push({kind:'freight',value:null,origin:'pending',reason:'Frete não apurado — não incluído no total',author:'Sistema',at:now});
+    // Ticket 06: o frete de cada item é calculado no Site pelo percentual padrão (a conferir).
     const pending=outcomes.filter(o=>o.line.origin==='pending').length,toCheck=outcomes.filter(o=>o.line.origin==='to_check').length;
-    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. Frete não apurado e não incluído no total. Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
+    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. '+(typeof settings?.freightPercent==='number'?`Frete estimado por percentual padrão (${settings.freightPercent}% sobre o valor do produto), a conferir. `:'Frete pendente: percentual padrão não configurado. ')+'Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
     const summary=[pending&&(pending===1?'1 pendência':pending+' pendências')+' de estimativa',toCheck&&(toCheck===1?'1 valor':toCheck+' valores')+' a conferir'].filter(Boolean).join(' e ');
-    const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'})};
+    const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'},freightPolicy(r,settings))};
     await update(db,r,data,r.id,'Sistema',summary?`Estimativa automática concluída com ${summary}; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
   }
 }
 // Ticket 04 (E1): resultado da nova busca de um item na revisão da estimativa. Só a
 // tarefa da revisão de critério gravada na linha (searchRevision) preenche o item; a linha
 // que deixou de estar em andamento (preço manual informado) não é substituída.
-async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Purchase>,now:string){
+async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Purchase>,now:string,settings?:Settings){
   const lines=r.estimate?.lines;
   if(!Array.isArray(lines)||!lines.some(l=>l.searchRevision))return;
   const next=[...lines],selected:IntegrationJob[]=[],edits:NonNullable<Purchase['estimateEditHistory']>=[];
@@ -349,7 +354,7 @@ async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Pur
   }
   if(!selected.length)return;
   const e=r.estimate!;
-  const data:Purchase={...r,updatedAt:now,estimate:estimateFromLines(next,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),estimateEditHistory:[...(r.estimateEditHistory||[]),...edits]};
+  const data:Purchase={...r,updatedAt:now,estimate:estimateFromLines(next,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},freightPolicy(r,settings)),estimateEditHistory:[...(r.estimateEditHistory||[]),...edits]};
   await update(db,r,data,r.id,'Sistema','Revisão da estimativa: resultado da nova busca de '+edits.map(x=>r.items[x.itemIndex].name).join(', ').slice(0,500)+(edits.some(x=>x.line.value===null)?' (pendência de estimativa)':edits.some(x=>x.line.origin==='to_check')?' (a conferir)':''),now,selected as Row<IntegrationJob>[]);
 }
 export async function tick(db:D1Database,env:IntegrationEnv,now:string) {

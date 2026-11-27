@@ -4,11 +4,11 @@
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Somente Master altera CEP e percentual; alterações ficam no histórico
-- [ ] Linha de frete por percentual criada para cada item, origem a conferir
-- [ ] Total geral soma produtos e frete, sem contar frete duas vezes
-- [ ] Envio à Diretoria Geral exige frete aceito ou manual em todos os itens (exceto não se aplica)
-- [ ] Diretoria Geral vê produtos, frete e total separados
-- [ ] Regras do AGENTS.md/INTEGRACOES.md sobre "frete fora do total" atualizadas
+- [x] Somente Master altera CEP e percentual; alterações ficam no histórico
+- [x] Linha de frete por percentual criada para cada item, origem a conferir
+- [x] Total geral soma produtos e frete, sem contar frete duas vezes
+- [x] Envio à Diretoria Geral exige frete aceito ou manual em todos os itens (exceto não se aplica)
+- [x] Diretoria Geral vê produtos, frete e total separados
+- [x] Regras do AGENTS.md/INTEGRACOES.md sobre "frete fora do total" atualizadas

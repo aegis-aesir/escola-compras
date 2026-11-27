@@ -12,13 +12,19 @@ import {canSubmitDeferredDraft} from '../../deferred-draft';
 import {budgetRecordsAction,readBudgetRecords,closedBudgetMonth} from '../../../lib/budget-records';
 import { listLocalUsers } from '../../../lib/local-auth';
 import { visibleRequests, canCreateRequest, canFinanceReadRequest, canReadBudgetRecords } from '../../access';
-import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, type Purchase, type Supplier, type Settings } from '../../model';
+import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, estimateSettingsSchema, type Purchase, type Supplier, type Settings } from '../../model';
 import type {BudgetClosing,BudgetRecord} from '../../budget-month';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
 import { advanceDeadlines, enqueueSearch, enqueueQuotation, enqueueQuotations, integrationSnapshot, retryJob, reviewMessage, setSupplierCategories, registerDiscoveredSupplier, startEstimateSearch, configureEstimateResearch, cancelQuotationJobs, digest } from '../../../lib/integrations';
 export const dynamic = 'force-dynamic';
 const initial:Settings = {name:'Colégio Estrelas',legalName:'Centro Educacional Estrelas do Amanhã LTDA',minQuotes:3,departments:sectors};
+// O histórico da configuração da estimativa (ticket 06) fica só com o Master.
+function publicSettings(settings:Settings,me:{role:string;department:string}):Settings{
+  const {estimateSettingsHistory,...rest}=settings;
+  if(me.role==='admin')return settings;
+  return me.role==='solicitante'?{...rest,departments:[me.department]}:rest;
+}
 class AppError extends Error {constructor(message:string,public status=400){super(message)}}
 function financeClosing(c:BudgetClosing,requestIds:Set<string>):BudgetClosing{
   const {snapshot,...data}=c;
@@ -64,7 +70,7 @@ export async function GET(req:Request){try{
   const budgetRecords=me.role==='financeiro'&&allBudgetRecords?financeRecords(allBudgetRecords,requests):allBudgetRecords;
   const activity=await db.prepare('SELECT * FROM audit ORDER BY at DESC LIMIT 200').all();
   const management=['admin','administrativo'].includes(me.role);
-  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:me.role==='solicitante'?{...settings,departments:[me.department]}:settings,me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:['financeiro','geral'].includes(me.role)?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({requests,budgetRecords,suppliers:management?all.filter(r=>r.kind==='supplier'):[],members:me.role==='admin'?await listLocalUsers(db):[],settings:publicSettings(settings,me),me,integrations:management?await integrationSnapshot(db,env):undefined,activity:management?activity.results:['financeiro','geral'].includes(me.role)?activity.results.filter(a=>requests.some(r=>r.id===a.entity)||budgetRecords?.some(r=>r.id===a.entity)):[]},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return fail(e)}}
 export async function POST(req:Request){try{
   if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)throw new AppError('Origem inválida.',403);
@@ -160,6 +166,20 @@ export async function POST(req:Request){try{
     return Response.json({ok:true,...await saveAgendaContact(db,{classification:'supplier',data:input},me.name,now)});
   }else if(b.action==='member'){
     throw new AppError('Use Pessoas e acessos para administrar os usuários locais.',400);
+  }else if(b.action==='estimate_settings'){
+    // Ticket 06: CEP comercial da escola e percentual padrão de frete, somente pelo Master,
+    // com autoria e data em estimateSettingsHistory. Campo ausente remove o valor.
+    permit(['admin']);const input=estimateSettingsSchema.parse(b.data);
+    const raw=(await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>())!.data,settings=JSON.parse(raw) as Settings;
+    const previous={...(settings.schoolCep?{schoolCep:settings.schoolCep}:{}),...(typeof settings.freightPercent==='number'?{freightPercent:settings.freightPercent}:{})};
+    const next={...(input.schoolCep?{schoolCep:input.schoolCep}:{}),...(typeof input.freightPercent==='number'?{freightPercent:input.freightPercent}:{})};
+    if(JSON.stringify(previous)===JSON.stringify(next))return Response.json({ok:true});
+    const {schoolCep:_cep,freightPercent:_percent,...rest}=settings;
+    const saved:Settings={...rest,...next,estimateSettingsHistory:[...(settings.estimateSettingsHistory||[]),{actor:me.name,at:now,previous,next}]};
+    const describe=(v:typeof next)=>`CEP ${v.schoolCep||'não informado'}; frete ${typeof v.freightPercent==='number'?v.freightPercent+'%':'não configurado'}`;
+    const result=await db.batch([db.prepare('UPDATE school SET data=? WHERE id=1 AND data=?').bind(JSON.stringify(saved),raw),db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(id,'school',me.name,'Configuração da estimativa atualizada: '+describe(previous)+' → '+describe(next),now)]);
+    if(result[0].meta.changes!==1)throw new AppError('As configurações foram atualizadas em outra aba. Recarregue a página.',409);
+    return Response.json({ok:true});
   }else if(b.action==='settings'){
     permit(['admin']);const input=z.object({minQuotes:z.number().int().min(1).max(10),departments:z.array(z.string().trim().min(2).max(80)).min(1).max(50),holidays:z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(100).default([])}).parse(b.data);
     if((await listLocalUsers(db)).some(r=>!input.departments.includes(r.department)))throw new AppError('Há usuários vinculados a um setor que seria removido. Atualize seus acessos primeiro.');

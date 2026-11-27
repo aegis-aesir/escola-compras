@@ -8,6 +8,21 @@ Após a publicação, somente `price-evidence.mjs`, `client.mjs` e `agent-estima
 
 ---
 
+# E1 ticket 06 — frete estimado por percentual — 27/11/2026
+
+Branch **codex/compras**, base **ee85986**. **Sem migração D1**: a configuração fica no JSON dos ajustes da escola (`school.data`: `schoolCep`, `freightPercent`, `estimateSettingsHistory`) e o frete em `estimate.lines` (campos novos `freightPercent`/`freightBasis`; `EstimateEdit.kind:'freight'` e `action:'freight_percent'`). **Ponte não muda** (nenhum arquivo do CT 105): o frete é calculado no Site.
+
+- Configuração (`app/api/data/route.ts`, ação `estimate_settings`, `estimateSettingsSchema` em `app/model.ts`): só Master; CEP `00000-000` (aceita sem hífen), percentual 0–100 com até 2 casas; campo vazio remove o valor; cada mudança entra em `estimateSettingsHistory` (autor, data, antes/depois) e na auditoria; gravação protegida contra alteração concorrente. A ação `settings` existente preserva esses campos. Na leitura, o histórico só vai ao Master. Tela: `app/estimate-settings-panel.tsx` em Configurações. Nenhum CEP/percentual padrão no código; o percentual ainda não foi definido pelo usuário e o CEP 69086-665 só foi usado nos testes locais.
+- Regra (`app/estimate-lines.ts`): `withFreightLines` cria/atualiza uma linha de frete por item (percentual × subtotal do produto, `to_check`, motivo "Frete por percentual (X% sobre o valor do produto)"); sem percentual ou sem preço do produto → `pending` com motivo; assinatura digital → `not_applicable`; manual permanece; aceito permanece enquanto o subtotal não muda. `estimateFromLines` aplica a regra quando recebe a política (`freightPolicy`), o que acontece na saída da Estimativa, no resultado de busca refeita, em `research_item` e nas ações `estimate_item`/`accept_estimate_item`. Ações novas: `accept_estimate_item` com `kind:'freight'`, `estimate_freight` (valor ≥ 0, fonte ou justificativa obrigatória, link opcional) e `estimate_freight_percent` (recalcula pelo percentual atual; 409 sem percentual ou sem mudança). Todas Master/ADM, só em `admin_review`, com histórico e auditoria.
+- Total: produtos + frete, cada frete uma vez (`estimateLinesTotal`; `estimate.freight` = soma das linhas). `estimateComposition` e a tabela **Composição da estimativa** (`EstimateComposition` em `app/estimate-review.tsx`) mostram produtos, frete por item com origem e total geral para DA, DG e Financeiro.
+- Envio à DG: `estimateSendBlockMessage` (pendências e a conferir de produto + frete pendente/a conferir) em `admin_review`, `budget_management` com envio e nos botões; a decisão da DG (`approve`/`decide_need`) continua com `estimatePendingMessage`, sem frete, para não travar pedidos já enviados.
+- Compatibilidade: estimativa por item anterior (frete único "não apurado") é lida sem mudança; antes do envio exige frete — o botão **Calcular frete pelo percentual** ou o frete manual converte para linhas por item. Formato antigo sem `lines`: frete único; com frete informado conta como manual; "não apurado" passa a bloquear o envio (refazer a estimativa completa com o frete). Assinaturas nos dois formatos não exigem frete.
+- Testes: novo `scripts/estimate-freight-percent-test.mjs` (D1 Miniflare + rota real + interface). Ajustados ao novo bloqueio (o envio agora também exige frete): `estimate-to-check-test`, `estimate-item-fill-test`, `partial-estimate-exit-test`.
+
+**Para o coordenador:** publicar o Site; depois o Master cadastra CEP e percentual em Configurações. Até lá, toda estimativa nova sai com frete pendente por item e a DA precisa informar o frete manualmente antes de enviar à DG (decisão consciente: sem percentual, o frete não é inventado). Pedidos hoje em `admin_review` com estimativa por item vão exigir o frete antes do envio.
+
+---
+
 # E1 ticket 05 — marca "a conferir" — 26/11/2026
 
 Branch **codex/compras**, base **cdeaf5d** (ticket 04). Sem migração D1: só valores novos em campos JSON existentes (`origin:'to_check'|'accepted'`, `EstimateEdit.action:'accept'`).

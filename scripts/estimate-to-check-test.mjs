@@ -126,10 +126,12 @@ try{
  assert.equal((await post({action:'accept_estimate_item',id:'check',version:saved.version,itemIndex:1})).status,409,'aceito não é aceito de novo');
  // Aceito permanece: não é substituído pelo preenchimento manual.
  assert.equal((await post({action:'estimate_item',id:'check',version:saved.version,entries:[{itemIndex:1,unitPrice:10,sourceName:'Loja',sourceUrl:'https://example.com/x',researchedOn:'2026-11-26'}]})).status,409);
- // Sem a conferir: envio liberado.
- assert.doesNotThrow(()=>api.transition({...saved,form:undefined},{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now));
- assert.throws(()=>api.transition(saved,{action:'budget_management',submitToGeneral:true,data:{}},me,[],{},now),e=>!/a conferir|pendência de estimativa/i.test(e.message),'só a conferência de quantidades resta no formulário');
- html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:saved,data:data('administrativo'),busy:false,onSave:async()=>true,estimates:null}));
+ // Sem a conferir: resta só o frete (ticket 06, sem percentual configurado); informado, o envio é liberado.
+ assert.throws(()=>api.transition({...saved,form:undefined},{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now),/frete pendente/i);
+ const freightDone=r=>({...r,estimate:{...r.estimate,lines:r.estimate.lines.map(l=>l.kind==='freight'?{...l,value:0,origin:'manual'}:l)}});
+ assert.doesNotThrow(()=>api.transition(freightDone({...saved,form:undefined}),{action:'admin_review',reason:'Encaminho para decisão.'},me,[],{},now));
+ assert.throws(()=>api.transition(freightDone(saved),{action:'budget_management',submitToGeneral:true,data:{}},me,[],{},now),e=>!/a conferir|pendência de estimativa|frete/i.test(e.message),'só a conferência de quantidades resta no formulário');
+ html=renderToStaticMarkup(createElement(BudgetRecordPanel,{request:freightDone(saved),data:data('administrativo'),busy:false,onSave:async()=>true,estimates:null}));
  assert.doesNotMatch(html,/<button[^>]*value="send_general"[^>]*disabled=""/,'envio liberado após aceitar');
  html=renderToStaticMarkup(createElement(Panel,{request:saved,data:data('administrativo'),busy:false,onSave:async()=>true,onDecision:()=>{}}));
  assert.match(html,/valor a conferir aceito/,'histórico mostra o aceite');
