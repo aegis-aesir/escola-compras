@@ -28,7 +28,7 @@ export function budgetTransition(old:Purchase,b:any,me:{role:Member['role'];name
     if(m.executionStatus==='Concluída'&&(m.receiptStatus!=='Recebido e aceito'||!m.financeForwardedAt))throw new FlowError('Para concluir, registre recebimento/aceite e encaminhamento ao financeiro.');
     if(b.submitToGeneral===true){
       if(old.status!=='admin_review'||!old.estimate||!old.form)throw new FlowError('Conclua a estimativa da internet antes de enviar para a Diretoria Geral.');
-      const pending=estimateSendBlockMessage(old);if(pending)throw new FlowError(pending,409);
+      const pending=estimateSendBlockMessage(old,settings?.icmsEnabled===true);if(pending)throw new FlowError(pending,409);
       ensureAdministrativeReview(data);
       if(old.generalReturn){
         if(typeof b.generalReturnResponse!=='string'||!b.generalReturnResponse.trim())throw new FlowError('Informe a resposta à pendência da Diretoria Geral.');

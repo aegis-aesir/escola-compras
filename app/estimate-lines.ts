@@ -1,4 +1,5 @@
 import {quoteTotal, type Estimate, type EstimateEdit, type Item, type Purchase, type Settings} from './model';
+import {currentIcmsTable,icmsRateLabel,isUf,brazilStates,type IcmsTable,type Uf} from './estimate-icms';
 
 // Estimativa por item (spec 2026-11-26, E1; ADR 0003). Cada valor é uma linha de
 // produto, frete ou ICMS com origem, fonte, autor e data. Os registros gravados antes
@@ -34,6 +35,18 @@ export type EstimateLine={
   // Frete da loja (ticket 07): frete exibido pela mesma página do preço do produto, simulado
   // até o CEP comercial da escola. Vale enquanto o produto mantém essa fonte.
   freightSource?:'store';
+  // ICMS (ticket 08). Produto: UF de origem da loja trazida pela pesquisa (verified quando o
+  // trecho da página a comprova). Linha de ICMS: UF usada e de onde veio, exceção escolhida,
+  // alíquotas, base (produto + frete) e a vigência da tabela que valeu no cálculo.
+  originState?:Uf;
+  originStateVerified?:boolean;
+  originStateSource?:'research'|'manual';
+  icmsException?:string;
+  icmsInternalRate?:number;
+  icmsInterstateRate?:number;
+  icmsRate?:number;
+  icmsBasis?:number;
+  icmsTableFrom?:string;
 };
 export type EstimateView={format:'legacy'|'items-v1';lines:EstimateLine[];total:number;freightKnown:boolean;method:'automatic'|'manual';notes:string;recordedAt:string};
 
@@ -89,7 +102,7 @@ export function estimatePendingMessage(r:Pick<Purchase,'items'|'estimate'>){
 // consumidores que ainda os leem (resumo mensal, redução de escopo, formulário manual).
 // references só é preenchido, alinhado aos itens, quando todos os produtos têm valor.
 export function estimateFromLines(lines:EstimateLine[],items:Pick<Item,'quantity'|'subscription'>[],base:{notes:string;recordedAt:string;method:'automatic'|'manual'},policy?:FreightPolicy):Estimate{
-  if(policy)lines=withFreightLines(lines,items,policy);
+  if(policy)lines=withIcmsLines(withFreightLines(lines,items,policy),items,policy);
   const products=items.map((_,i)=>lines.find(l=>l.kind==='product'&&l.itemIndex===i));
   const complete=products.every(l=>l&&l.value!==null);
   const freight=lines.filter(l=>l.kind==='freight');
@@ -149,8 +162,12 @@ export function fillEstimateItems(r:Pick<Purchase,'items'|'estimate'>,entries:Es
 // a linha fica pendente com o motivo. Frete manual permanece; frete aceito permanece
 // enquanto o produto não muda. A linha única "frete não apurado" das estimativas por item
 // gravadas antes deste ticket é substituída pelas linhas por item.
-export type FreightPolicy={percent?:number|null;digital?:boolean};
-export const freightPolicy=(r:Pick<Purchase,'form'>,settings:Pick<Settings,'freightPercent'>|undefined):FreightPolicy=>({percent:settings?.freightPercent,digital:r.form?.kind==='digital'});
+// icms (ticket 08): chave do Master e tabela vigente na data do cálculo (Manaus). Sem icms
+// (chamadas que não conhecem a configuração), as linhas de ICMS ficam como estão.
+export type IcmsPolicy={enabled:boolean;table?:IcmsTable};
+export type FreightPolicy={percent?:number|null;digital?:boolean;icms?:IcmsPolicy};
+const manausDay=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
+export const freightPolicy=(r:Pick<Purchase,'form'>,settings:Pick<Settings,'freightPercent'|'icmsEnabled'|'icmsTables'>|undefined,now:string=new Date().toISOString()):FreightPolicy=>({percent:settings?.freightPercent,digital:r.form?.kind==='digital',icms:{enabled:settings?.icmsEnabled===true,table:currentIcmsTable(settings?.icmsTables,manausDay(now))}});
 export const freightPercentLabel=(p:number)=>p.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
 export const freightNoPercentReason='Percentual padrão de frete não configurado pelo Master. Informe o frete manualmente ou peça ao Master para configurar.';
 const percentReason=(product:EstimateLine,percent:number)=>`Frete por percentual — ${product.origin==='manual'?'preço do produto informado manualmente':'loja não exibiu frete'} (${freightPercentLabel(percent)} sobre o valor do produto).`;
@@ -196,21 +213,24 @@ export function estimateFreightIssues(r:Pick<Purchase,'items'|'estimate'|'form'>
   });
   return {pending,toCheck};
 }
-export function estimateSendBlockMessage(r:Pick<Purchase,'items'|'estimate'|'form'>){
+// icmsEnabled (ticket 08): com a chave do ICMS ligada, o ICMS também precisa estar resolvido.
+export function estimateSendBlockMessage(r:Pick<Purchase,'items'|'estimate'|'form'>,icmsEnabled=false){
   const base=estimatePendingMessage(r)?.replace(/ antes de enviar à Diretoria Geral\.$/,'');
-  const {pending,toCheck}=estimateFreightIssues(r);
-  const n=pending.length,c=toCheck.length;
-  const parts=[base,n&&`Há frete pendente em ${n===1?'1 item':n+' itens'}. Informe o frete`,c&&`Há ${c===1?'1 frete':c+' fretes'} a conferir. Aceite ou substitua o frete`].filter(Boolean);
+  const {pending,toCheck}=estimateFreightIssues(r),icms=estimateIcmsIssues(r,icmsEnabled);
+  const n=pending.length,c=toCheck.length,ni=icms.pending.length,ci=icms.toCheck.length;
+  const parts=[base,n&&`Há frete pendente em ${n===1?'1 item':n+' itens'}. Informe o frete`,c&&`Há ${c===1?'1 frete':c+' fretes'} a conferir. Aceite ou substitua o frete`,
+    ni&&`Há ICMS pendente em ${ni===1?'1 item':ni+' itens'}. Informe a UF de origem ou o valor do ICMS`,ci&&`Há ${ci===1?'1 ICMS':ci+' ICMS'} a conferir. Aceite ou substitua o ICMS`].filter(Boolean);
   return parts.length?parts.join('. ')+' antes de enviar à Diretoria Geral.':undefined;
 }
 // Composição da estimativa para a Diretoria Administrativa e a Diretoria Geral (ticket 06):
 // produtos, frete e total geral separados. O total geral é o da estimativa (produtos + frete),
 // e o frete é somado uma única vez.
+// Ticket 08: o ICMS estimado entra como terceira parcela, também somada uma vez.
 export function estimateComposition(r:Pick<Purchase,'items'|'estimate'>){
   const view=readEstimate(r);
   if(!view)return undefined;
-  const freight=estimateFreight(view);
-  return {products:cents(view.total-freight),freight,total:view.total};
+  const freight=estimateFreight(view),icms=estimateIcms(view);
+  return {products:cents(view.total-freight-icms),freight,icms,total:view.total};
 }
 
 // Frete manual na revisão (ticket 06): valor da linha de frete do item, com fonte ou
@@ -249,5 +269,136 @@ export function applyFreightPercent(r:Pick<Purchase,'items'|'estimate'|'form'>,a
   const lines=withFreightLines(e.lines,r.items,policy).map(l=>l.kind==='freight'&&l.author==='Sistema'&&!e.lines!.includes(l)?{...l,at:now}:l);
   const edits:EstimateEdit[]=lines.filter(l=>l.kind==='freight'&&!e.lines!.includes(l)&&l.itemIndex!==undefined).map(l=>({itemIndex:l.itemIndex!,actor,at:now,previous:e.lines!.find(p=>p.kind==='freight'&&p.itemIndex===l.itemIndex)||{kind:'freight',itemIndex:l.itemIndex,value:null,origin:'pending',at:e.recordedAt},line:l,kind:'freight',action:'freight_percent'}));
   if(!edits.length)throw new EstimateEditError('O frete já está calculado pelo percentual atual.',409);
+  return {estimate:estimateFromLines(withIcmsLines(lines,r.items,policy),r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),edits};
+}
+
+// ICMS estimado (E1, ticket 08; ADR 0003). Premissa do usuário: a escola paga a diferença de
+// alíquota (DIFAL) nas compras de outro estado. Por item: (interna AM − interestadual da UF de
+// origem, ou da exceção escolhida) × (subtotal do produto + frete do item), pela tabela
+// vigente do Master; nunca negativo. Loja do AM: não se aplica (ICMS já no preço). Assinatura
+// digital: não se aplica (serviço digital, sem DIFAL de mercadoria). Chave desligada: linha
+// aguardando contador, que não bloqueia o envio. Origem não identificada ou alíquota da UF
+// ausente: a conferir sem valor (a Diretoria Administrativa informa a UF ou o valor). UF
+// comprovada pela página: automático; UF da pesquisa sem trecho: a conferir com valor.
+// ICMS manual (valor) permanece; UF manual e aceite permanecem enquanto produto, frete,
+// tabela e alíquota não mudam — se mudarem, a linha é recalculada e volta a ser a conferir.
+export const icmsDisabledReason='Cálculo do ICMS desligado pelo Master até a confirmação do contador.';
+export const icmsNoOriginReason='Estado de origem da loja não identificado pela pesquisa. Informe a UF de origem ou o valor do ICMS.';
+export const estimateIcms=(v:EstimateView)=>cents(v.lines.reduce((s,l)=>l.kind==='icms'&&l.value!==null?s+l.value:s,0));
+type IcmsCalc={line?:EstimateLine;error?:string};
+function icmsCalc(i:number,item:Pick<Item,'quantity'>,lines:EstimateLine[],table:IcmsTable|undefined,uf:Uf,source:'research'|'manual',exception?:string):IcmsCalc{
+  const product=lines.find(l=>l.kind==='product'&&l.itemIndex===i),freight=lines.find(l=>l.kind==='freight'&&l.itemIndex===i);
+  const base={kind:'icms' as const,itemIndex:i,originState:uf,originStateSource:source};
+  if(!table)return {error:'Tabela de ICMS vigente não cadastrada pelo Master.'};
+  if(!product||product.value===null)return {error:'ICMS aguardando o preço do produto.'};
+  if(freight&&freight.value===null&&freight.origin!=='not_applicable')return {error:'ICMS aguardando o frete do item.'};
+  if(uf==='AM')return {line:{...base,value:null,origin:'not_applicable',reason:'Loja do Amazonas: ICMS já incluído no preço.',icmsTableFrom:table.validFrom,at:''}};
+  const ex=exception?table.exceptions?.find(x=>x.label===exception):undefined;
+  if(exception&&!ex)return {error:`Exceção "${exception}" não cadastrada na tabela de ICMS vigente.`};
+  const inter=ex?ex.rate:table.interstate[uf];
+  if(typeof inter!=='number')return {error:`Alíquota interestadual de ${uf} não cadastrada na tabela de ICMS vigente.`};
+  const rate=Math.max(0,Math.round((table.internalRate-inter)*100)/100),basis=cents(item.quantity*product.value+(freight?.value??0));
+  return {line:{...base,value:cents(basis*rate/100),origin:'automatic',...(ex?{icmsException:ex.label}:{}),icmsInternalRate:table.internalRate,icmsInterstateRate:inter,icmsRate:rate,icmsBasis:basis,icmsTableFrom:table.validFrom,sourceName:'Tabela de ICMS do Master',
+    reason:`DIFAL estimado: ${icmsRateLabel(table.internalRate)} (interna AM) − ${icmsRateLabel(inter)} (${ex?ex.label:'interestadual '+uf}) = ${icmsRateLabel(rate)} sobre produto + frete; tabela vigente desde ${table.validFrom.split('-').reverse().join('/')}.`,at:''}};
+}
+const sameIcms=(a:EstimateLine,b:EstimateLine)=>['value','originState','icmsException','icmsRate','icmsBasis','icmsTableFrom','icmsInternalRate','icmsInterstateRate'].every(k=>(a as Record<string,unknown>)[k]===(b as Record<string,unknown>)[k]);
+export function withIcmsLines(lines:EstimateLine[],items:Pick<Item,'quantity'|'subscription'>[],policy:FreightPolicy):EstimateLine[]{
+  const icms=policy.icms;
+  if(!icms)return lines;
+  const at=lines.reduce((m,l)=>l.at>m?l.at:m,'');
+  const out=lines.filter(l=>!(l.kind==='icms'&&(l.itemIndex===undefined||!items[l.itemIndex])));
+  items.forEach((item,i)=>{
+    const k=out.findIndex(l=>l.kind==='icms'&&l.itemIndex===i),current=k<0?undefined:out[k];
+    const product=out.find(l=>l.kind==='product'&&l.itemIndex===i);
+    const manualUf=current?.originStateSource==='manual'&&isUf(current.originState)?current.originState:undefined;
+    const uf=manualUf||(product?.value!=null&&isUf(product.originState)?product.originState:undefined);
+    const carry:Partial<EstimateLine>=manualUf?{originState:manualUf,originStateSource:'manual',...(current?.icmsException?{icmsException:current.icmsException}:{})}:{};
+    let next:EstimateLine;
+    if(policy.digital||item.subscription)next={kind:'icms',itemIndex:i,value:null,origin:'not_applicable',reason:'Assinatura digital: serviço digital, sem DIFAL de mercadoria — ICMS não se aplica.',author:'Sistema',at};
+    else if(current?.origin==='manual'&&current.icmsRate===undefined&&current.value!==null)return;
+    else if(!icms.enabled)next={kind:'icms',itemIndex:i,value:null,origin:'awaiting_accountant',reason:icmsDisabledReason,...carry,author:'Sistema',at};
+    else if(!uf)next={kind:'icms',itemIndex:i,value:null,origin:icms.table&&product?.value!=null?'to_check':'pending',reason:icms.table?(product?.value!=null?icmsNoOriginReason:'ICMS aguardando o preço do produto.'):'Tabela de ICMS vigente não cadastrada pelo Master.',author:'Sistema',at};
+    else{
+      const source=manualUf?'manual':'research',calc=icmsCalc(i,item,out,icms.table,uf,source,manualUf?current?.icmsException:undefined);
+      if(!calc.line)next={kind:'icms',itemIndex:i,value:null,origin:/não cadastrada/.test(calc.error!)&&icms.table?'to_check':'pending',reason:calc.error,originState:uf,originStateSource:source,...(manualUf&&current?.icmsException?{icmsException:current.icmsException}:{}),author:'Sistema',at};
+      else{
+        const computed={...calc.line,author:'Sistema',at};
+        // UF manual, aceite e comprovado permanecem enquanto o cálculo é o mesmo.
+        if(current&&current.originState===uf&&sameIcms(current,computed)&&(['manual','accepted'].includes(current.origin)||manualUf&&current.origin==='to_check'||current.origin==='not_applicable'&&uf==='AM'))return;
+        if(computed.origin==='not_applicable')next=computed;
+        else if(manualUf)next={...computed,origin:'to_check',reason:`Recalculado após mudança no produto, no frete ou na tabela de ICMS (UF ${uf} informada${current?.author&&current.author!=='Sistema'?' por '+current.author:''}). `+computed.reason};
+        else if(product?.originStateVerified)next={...computed,reason:`Origem ${uf} (${brazilStates[uf]}) comprovada pela página. `+computed.reason};
+        else next={...computed,origin:'to_check',reason:`Origem ${uf} identificada pela pesquisa, sem trecho da página que a comprove. `+computed.reason};
+      }
+    }
+    if(current&&JSON.stringify({...current,at:''})===JSON.stringify({...next,at:''}))return;
+    if(k<0)out.push(next);else out[k]=next;
+  });
+  return out;
+}
+// Envio à Diretoria Geral (ticket 08): só com a chave ligada, todo item (exceto assinatura)
+// precisa de ICMS automático, aceito, manual ou não se aplica. Estimativa por item sem linha
+// de ICMS do item conta como pendente; o formato antigo (sem linhas) não tem ICMS por item e
+// não passa a exigi-lo. A decisão da DG em pedidos já enviados não usa esta regra.
+export function estimateIcmsIssues(r:Pick<Purchase,'items'|'estimate'|'form'>,icmsEnabled:boolean):{pending:{itemIndex:number;reason?:string}[];toCheck:{itemIndex:number;reason?:string;value:number}[]}{
+  const view=readEstimate(r);
+  if(!icmsEnabled||!view||view.format==='legacy'||r.form?.kind==='digital')return {pending:[],toCheck:[]};
+  const pending:{itemIndex:number;reason?:string}[]=[],toCheck:{itemIndex:number;reason?:string;value:number}[]=[];
+  r.items.forEach((item,i)=>{
+    if(item.subscription)return;
+    const l=view.lines.find(l=>l.kind==='icms'&&l.itemIndex===i);
+    if(!l)pending.push({itemIndex:i,reason:'ICMS ainda não calculado para este item. Calcule pela tabela vigente.'});
+    else if(l.origin==='awaiting_accountant')pending.push({itemIndex:i,reason:'ICMS registrado com o cálculo desligado. Calcule pela tabela vigente.'});
+    else if(l.origin==='to_check'&&l.value!==null)toCheck.push({itemIndex:i,reason:l.reason,value:l.value});
+    else if(l.value===null&&l.origin!=='not_applicable')pending.push({itemIndex:i,reason:l.reason});
+  });
+  return {pending,toCheck};
+}
+// ICMS na revisão: UF de origem informada (o Site aplica a tabela vigente; AM = não se aplica)
+// ou valor manual com justificativa. Vale para ICMS pendente, a conferir, manual ou de loja do
+// AM a corrigir; o ICMS comprovado e o aceito permanecem. Exige a chave ligada.
+export type EstimateIcmsEntry={itemIndex:number;uf:string;exception?:string}|{itemIndex:number;value:number;sourceName:string};
+const icmsEditable=(l:EstimateLine)=>estimateEditableOrigins.includes(l.origin)||l.origin==='not_applicable'&&!!l.originState;
+export function fillEstimateIcms(r:Pick<Purchase,'items'|'estimate'|'form'>,entries:EstimateIcmsEntry[],actor:string,now:string,policy:FreightPolicy):{estimate:Estimate;edits:EstimateEdit[]}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O ICMS por item vale para estimativas por item.',409);
+  if(!policy.icms?.enabled)throw new EstimateEditError(icmsDisabledReason,409);
+  let lines=estimateFromLines(e.lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy).lines!;const edits:EstimateEdit[]=[];
+  for(const entry of entries){
+    const item=r.items[entry.itemIndex];
+    if(!item)throw new EstimateEditError('Item inexistente nesta solicitação.');
+    const at=lines.findIndex(l=>l.kind==='icms'&&l.itemIndex===entry.itemIndex),previous=lines[at];
+    if(!previous||!icmsEditable(previous))throw new EstimateEditError(previous?.origin==='not_applicable'?`ICMS não se aplica a ${item.name}.`:`O ICMS de ${item.name} já foi aceito ou comprovado e permanece.`,409);
+    let line:EstimateLine;
+    if('uf' in entry){
+      if(!isUf(entry.uf))throw new EstimateEditError('UF de origem inválida.');
+      const calc=icmsCalc(entry.itemIndex,item,lines,policy.icms.table,entry.uf,'manual',entry.exception||undefined);
+      if(!calc.line)throw new EstimateEditError(calc.error!,409);
+      line={...calc.line,origin:calc.line.origin==='not_applicable'?'not_applicable':'manual',author:actor,at:now};
+    }else line={kind:'icms',itemIndex:entry.itemIndex,value:cents(entry.value),origin:'manual',sourceName:entry.sourceName,reason:'ICMS informado manualmente.',author:actor,at:now};
+    lines=[...lines];lines[at]=line;
+    edits.push({itemIndex:entry.itemIndex,actor,at:now,previous,line,kind:'icms',action:'fill'});
+  }
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edits};
+}
+export function acceptEstimateIcms(r:Pick<Purchase,'items'|'estimate'|'form'>,itemIndex:number,actor:string,now:string,policy:FreightPolicy):{estimate:Estimate;edit:EstimateEdit}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O aceite vale para estimativas por item.',409);
+  if(!r.items[itemIndex])throw new EstimateEditError('Item inexistente nesta solicitação.');
+  const lines=estimateFromLines(e.lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy).lines!,at=lines.findIndex(l=>l.kind==='icms'&&l.itemIndex===itemIndex),previous=lines[at];
+  if(!previous||previous.origin!=='to_check'||previous.value===null)throw new EstimateEditError(`${r.items[itemIndex].name} não tem ICMS a conferir para aceitar.`,409);
+  const line:EstimateLine={...previous,origin:'accepted',author:actor,at:now};
+  lines[at]=line;
+  return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},policy),edit:{itemIndex,actor,at:now,previous,line,kind:'icms',action:'accept'}};
+}
+// Recalcula as linhas de ICMS pela chave e pela tabela vigente (usada quando a chave foi
+// ligada ou a tabela mudou depois da estimativa). ICMS manual permanece.
+export function applyIcmsTable(r:Pick<Purchase,'items'|'estimate'|'form'>,actor:string,now:string,policy:FreightPolicy):{estimate:Estimate;edits:EstimateEdit[]}{
+  const e=r.estimate;
+  if(!e||!Array.isArray(e.lines))throw new EstimateEditError('O ICMS por item vale para estimativas por item.',409);
+  if(!policy.icms?.enabled)throw new EstimateEditError(icmsDisabledReason,409);
+  const lines=withIcmsLines(e.lines,r.items,policy).map(l=>l.kind==='icms'&&!e.lines!.includes(l)?{...l,at:now}:l);
+  const edits:EstimateEdit[]=lines.filter(l=>l.kind==='icms'&&!e.lines!.includes(l)&&l.itemIndex!==undefined).map(l=>({itemIndex:l.itemIndex!,actor,at:now,previous:e.lines!.find(p=>p.kind==='icms'&&p.itemIndex===l.itemIndex)||{kind:'icms',itemIndex:l.itemIndex,value:null,origin:'pending',at:e.recordedAt},line:l,kind:'icms',action:'icms_table'}));
+  if(!edits.length)throw new EstimateEditError('O ICMS já está calculado pela tabela vigente.',409);
   return {estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method}),edits};
 }

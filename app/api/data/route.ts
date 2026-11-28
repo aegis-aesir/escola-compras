@@ -12,7 +12,8 @@ import {canSubmitDeferredDraft} from '../../deferred-draft';
 import {budgetRecordsAction,readBudgetRecords,closedBudgetMonth} from '../../../lib/budget-records';
 import { listLocalUsers } from '../../../lib/local-auth';
 import { visibleRequests, canCreateRequest, canFinanceReadRequest, canReadBudgetRecords } from '../../access';
-import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, estimateSettingsSchema, type Purchase, type Supplier, type Settings } from '../../model';
+import { requestSchema, supplierSchema, quoteSchema, quoteTotal, sectors, estimateSettingsSchema, type Purchase, type Supplier, type Settings, type EstimateSettingsValue } from '../../model';
+import {icmsSettingsSchema,currentIcmsTable,icmsTableLabel,type IcmsTable} from '../../estimate-icms';
 import type {BudgetClosing,BudgetRecord} from '../../budget-month';
 import { z } from 'zod';
 import { transition, FlowError, localExpired } from '../../workflow';
@@ -179,6 +180,32 @@ export async function POST(req:Request){try{
     const saved:Settings={...rest,...next,estimateSettingsHistory:[...(settings.estimateSettingsHistory||[]),{actor:me.name,at:now,previous,next}]};
     const describe=(v:typeof next)=>`frete ${typeof v.freightPercent==='number'?v.freightPercent+'%':'não configurado'}`;
     const result=await db.batch([db.prepare('UPDATE school SET data=? WHERE id=1 AND data=?').bind(JSON.stringify(saved),raw),db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(id,'school',me.name,'Configuração da estimativa atualizada: '+describe(previous)+' → '+describe(next),now)]);
+    if(result[0].meta.changes!==1)throw new AppError('As configurações foram atualizadas em outra aba. Recarregue a página.',409);
+    return Response.json({ok:true});
+  }else if(b.action==='icms_settings'){
+    // Ticket 08: chave do cálculo do ICMS (padrão desligada) e tabela de alíquotas por vigência,
+    // somente pelo Master, com autoria e data em estimateSettingsHistory. A tabela da mesma data
+    // inicial é substituída (a anterior fica no histórico); as demais vigências permanecem.
+    // Ligar exige tabela vigente hoje (Manaus).
+    permit(['admin']);const input=icmsSettingsSchema.parse(b.data);
+    const raw=(await db.prepare('SELECT data FROM school WHERE id=1').first<{data:string}>())!.data,settings=JSON.parse(raw) as Settings;
+    let tables=[...(settings.icmsTables||[])];
+    const previous:EstimateSettingsValue={icmsEnabled:settings.icmsEnabled===true},next:EstimateSettingsValue={icmsEnabled:input.enabled};
+    if(input.table){
+      const interstate=Object.fromEntries(Object.entries(input.table.interstate).sort(([a],[b])=>a.localeCompare(b)));
+      const table:IcmsTable={validFrom:input.table.validFrom,internalRate:input.table.internalRate,interstate,exceptions:input.table.exceptions,savedBy:me.name,savedAt:now};
+      const before=tables.find(t=>t.validFrom===table.validFrom),plain=(t?:IcmsTable)=>t&&JSON.stringify({validFrom:t.validFrom,internalRate:t.internalRate,interstate:t.interstate,exceptions:t.exceptions||[]});
+      if(plain(before)!==plain(table)){
+        if(before)previous.icmsTable=before;
+        next.icmsTable=table;
+        tables=[...tables.filter(t=>t.validFrom!==table.validFrom),table].sort((a,b)=>a.validFrom.localeCompare(b.validFrom));
+      }
+    }
+    if(input.enabled&&!currentIcmsTable(tables,new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(now))))throw new AppError('Cadastre a tabela de ICMS vigente antes de ligar o cálculo.',400);
+    if(previous.icmsEnabled===next.icmsEnabled&&!next.icmsTable)return Response.json({ok:true});
+    const saved:Settings={...settings,icmsEnabled:input.enabled,icmsTables:tables,estimateSettingsHistory:[...(settings.estimateSettingsHistory||[]),{actor:me.name,at:now,previous,next}]};
+    const summary='Configuração do ICMS atualizada: cálculo '+(previous.icmsEnabled?'ligado':'desligado')+' → '+(next.icmsEnabled?'ligado':'desligado')+(next.icmsTable?'; '+icmsTableLabel(next.icmsTable):'');
+    const result=await db.batch([db.prepare('UPDATE school SET data=? WHERE id=1 AND data=?').bind(JSON.stringify(saved),raw),db.prepare('INSERT INTO audit (id,entity,actor,action,at) SELECT ?,?,?,?,? WHERE changes()=1').bind(id,'school',me.name,summary,now)]);
     if(result[0].meta.changes!==1)throw new AppError('As configurações foram atualizadas em outra aba. Recarregue a página.',409);
     return Response.json({ok:true});
   }else if(b.action==='settings'){

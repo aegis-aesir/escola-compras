@@ -3,6 +3,7 @@ import {schoolFreightDestination} from '../app/school-destination';
 import { z } from 'zod';
 import { type Purchase, type Item, type Supplier, type Settings, quotationMessage, quotationMessageTemplate, categorySchema, supplierSchema } from '../app/model';
 import {estimateFromLines,freightPolicy,type EstimateLine} from '../app/estimate-lines';
+import {researchOriginState} from '../app/estimate-icms';
 import {estimateCriteriaSchema,savedItemCriteria,itemResearchTarget,isCurrentEstimateJob} from '../app/estimate-criteria';
 import { categoryKey, compatibleQuotationSuppliers, matchingSuppliers, requestSupplierCategories, supplierSearchTerms } from '../app/supplier-discovery';
 import { FlowError, localExpired, nextBusinessDay, transition } from '../app/workflow';
@@ -98,7 +99,7 @@ async function researchEstimateItem(db:D1Database,r:Purchase,{index,criteria}:{i
   if(at<0)lines.push(line);else lines[at]=line;
   const next:Purchase={...r,updatedAt:now,estimateCriteria:{...r.estimateCriteria,[index]:saved},
     estimateCriteriaHistory:[...(r.estimateCriteriaHistory||[]),{itemIndex:index,actor,at:now,criteria:saved,previous:savedItemCriteria(r,index),previousEstimate:e}],
-    estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},freightPolicy(r,await schoolSettings(db))),
+    estimate:estimateFromLines(lines,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},freightPolicy(r,await schoolSettings(db),now)),
     estimateEditHistory:[...(r.estimateEditHistory||[]),{itemIndex:index,actor,at:now,previous,line,action:'research'}]};
   if(!await update(db,r,next,r.id,actor,'Revisão da estimativa: nova busca solicitada para '+r.items[index].name.slice(0,300),now))throw new FlowError('Solicitação atualizada ou mês fechado. Recarregue.',409);
   const job=await estimateJob({...next,version:r.version+1},index,'estimate_search',now);
@@ -305,7 +306,9 @@ function searchOutcomeLine(item:Item,itemIndex:number,j:IntegrationJob,now:strin
   const evidence=j.state==='review'&&j.priceEvidence&&j.researchedAt?classifyEvidence(item,j.priceEvidence):null;
   if(evidence&&evidence.outcome!=='pending'){
     const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(j.researchedAt!));
-    return {kind:'product',itemIndex,value:evidence.unitPrice,origin:evidence.outcome==='verified'?'automatic':'to_check',...(evidence.outcome==='to_check'?{reason:evidence.reason}:{}),sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day,author:'Sistema',at:now};
+    // Ticket 08: UF de origem da loja, quando a evidência a traz (ponte antiga: ausente).
+    const origin=researchOriginState(j.priceEvidence!);
+    return {kind:'product',itemIndex,value:evidence.unitPrice,origin:evidence.outcome==='verified'?'automatic':'to_check',...(evidence.outcome==='to_check'?{reason:evidence.reason}:{}),sourceUrl:j.priceEvidence!.url,sourceName:j.priceEvidence!.title.slice(0,150),researchedOn:day,...(origin?{originState:origin.uf,originStateVerified:origin.verified}:{}),author:'Sistema',at:now};
   }
   return {kind:'product',itemIndex,value:null,origin:'pending',reason:(j.state==='failed'?j.error:j.analysisReason)||'Preço não comprovado pelas páginas pesquisadas.',author:'Sistema',at:now};
 }
@@ -343,9 +346,9 @@ async function projectAutomaticEstimates(db:D1Database,now:string) {
     // calcula pelo percentual padrão (a conferir) ou deixa pendente (ticket 06).
     const lines:EstimateLine[]=outcomes.flatMap(o=>o.freight?[o.line,o.freight]:[o.line]);
     const pending=outcomes.filter(o=>o.line.origin==='pending').length,toCheck=outcomes.filter(o=>o.line.origin==='to_check').length;
-    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. '+`Frete da loja simulado até o CEP ${schoolFreightDestination.cep} quando a página o exibe; `+(typeof settings?.freightPercent==='number'?`sem frete da loja, percentual padrão (${settings.freightPercent}% sobre o valor do produto), a conferir. `:'sem frete da loja, pendente: percentual padrão não configurado. ')+'Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
+    const notes=('Estimativa preenchida pelo agente de pesquisa do OpenClaw a partir das páginas. '+`Frete da loja simulado até o CEP ${schoolFreightDestination.cep} quando a página o exibe; `+(typeof settings?.freightPercent==='number'?`sem frete da loja, percentual padrão (${settings.freightPercent}% sobre o valor do produto), a conferir. `:'sem frete da loja, pendente: percentual padrão não configurado. ')+(settings?.icmsEnabled?'ICMS estimado pela diferença de alíquota (tabela vigente do Master) nas lojas de fora do Amazonas; origem não identificada fica a conferir. ':'ICMS aguardando contador: cálculo desligado pelo Master. ')+'Não representa proposta comercial. Conferir na análise administrativa. '+outcomes.map(({job:j,line},i)=>`Item ${i+1}${j.researchCriteria?` (similares ${j.researchCriteria.allowSimilar?'autorizados':'não autorizados'} por ${j.researchCriteria.actor})`:''} (${line.origin==='pending'?'pendência de estimativa':(line.origin==='to_check'?'a conferir, ':'')+(j.priceEvidence?.origin==='authenticated_browser'?'navegador autenticado':'página pública')}): ${(line.origin==='automatic'?j.analysisReason:line.reason)||''}`).join(' ')).slice(0,2000);
     const summary=[pending&&(pending===1?'1 pendência':pending+' pendências')+' de estimativa',toCheck&&(toCheck===1?'1 valor':toCheck+' valores')+' a conferir'].filter(Boolean).join(' e ');
-    const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'},freightPolicy(r,settings))};
+    const data:Purchase={...r,updatedAt:now,status:'admin_review',estimate:estimateFromLines(lines,r.items,{notes,recordedAt:now,method:'automatic'},freightPolicy(r,settings,now))};
     await update(db,r,data,r.id,'Sistema',summary?`Estimativa automática concluída com ${summary}; encaminhada à revisão da Diretoria Administrativa`:'Estimativa automática preenchida com fontes; encaminhada à análise administrativa',now,selected);
   }
 }
@@ -372,7 +375,7 @@ async function projectItemResearch(db:D1Database,jobs:IntegrationJob[],r:Row<Pur
   }
   if(!selected.length)return;
   const e=r.estimate!;
-  const data:Purchase={...r,updatedAt:now,estimate:estimateFromLines(next,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},freightPolicy(r,settings)),estimateEditHistory:[...(r.estimateEditHistory||[]),...edits]};
+  const data:Purchase={...r,updatedAt:now,estimate:estimateFromLines(next,r.items,{notes:e.notes,recordedAt:e.recordedAt,method:e.method},freightPolicy(r,settings,now)),estimateEditHistory:[...(r.estimateEditHistory||[]),...edits]};
   await update(db,r,data,r.id,'Sistema','Revisão da estimativa: resultado da nova busca de '+edits.map(x=>r.items[x.itemIndex].name).join(', ').slice(0,500)+(edits.some(x=>x.line.value===null)?' (pendência de estimativa)':edits.some(x=>x.line.origin==='to_check')?' (a conferir)':''),now,selected as Row<IntegrationJob>[]);
 }
 export async function tick(db:D1Database,env:IntegrationEnv,now:string) {
@@ -446,7 +449,7 @@ const sourceSchema=z.object({title:z.string().trim().min(1).max(300),url:z.strin
 // Ticket 07: frete da loja na evidência do item. Fora do formato, é descartado sem recusar o
 // resultado (o Site cai para o percentual); a regra classifyFreight decide o valor.
 const freightSchema=z.object({status:z.enum(['quoted','free','not_shown']),amount:z.number().nonnegative().max(1000000).optional(),quote:z.string().max(2000).optional(),cep:z.string().max(20).optional(),quantity:z.number().int().positive().max(100000).optional(),approximate:z.boolean().optional(),reason:z.string().max(2000).optional()}).optional().catch(undefined);
-const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.enum(['verified','to_check']),sourceUrl:z.string().url().max(2000),productName:z.string().max(300).optional(),productQuote:z.string().max(2000).optional(),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().max(2000).optional(),packageQuantity:z.number().optional(),unit:z.string().max(30).optional(),unitQuote:z.string().max(2000).optional(),itemMatches:z.boolean().optional(),unitMatches:z.boolean().optional(),reason:z.string().max(2000).optional(),freight:freightSchema})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
+const resultSchema=z.object({jobId:z.string().max(100),leaseToken:z.string().uuid(),outcome:z.enum(['success','error','uncertain']),sources:z.array(sourceSchema).max(5).optional(),browserResearch:z.object({state:z.enum(['ready','login_required','unverified','unavailable']),detail:z.string().max(600),profile:z.literal('compras'),checkedAt:z.string().datetime()}).optional(),priceEvidence:z.object({url:z.string().url().max(2000),title:z.string().max(300),text:z.string().max(12000),origin:z.enum(['public','authenticated_browser']).optional(),analysis:z.object({status:z.enum(['verified','to_check']),sourceUrl:z.string().url().max(2000),productName:z.string().max(300).optional(),productQuote:z.string().max(2000).optional(),priceAmount:z.number().positive().max(10000000),currency:z.literal('BRL'),priceType:z.literal('total'),priceQuote:z.string().max(2000).optional(),packageQuantity:z.number().optional(),unit:z.string().max(30).optional(),unitQuote:z.string().max(2000).optional(),itemMatches:z.boolean().optional(),unitMatches:z.boolean().optional(),reason:z.string().max(2000).optional(),freight:freightSchema,originState:z.string().max(2).optional().catch(undefined),originStateQuote:z.string().max(2000).optional().catch(undefined)})}).optional(),analysisReason:z.string().max(800).optional(),providerMessageId:z.string().min(1).max(300).optional(),sentAt:z.string().datetime().optional()});
 export async function completeJob(db:D1Database,input:unknown,now:string) {
   const b=resultSchema.parse(input),j=await row<IntegrationJob>(db,b.jobId,jobKind);
   if(!j||j.leaseToken!==b.leaseToken)throw new FlowError('Processamento expirado ou não reconhecido.',409);

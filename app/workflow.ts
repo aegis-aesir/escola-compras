@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import {masterReanalysis} from './master-reanalysis';
 import {budgetTransition,ensureAdministrativeReview} from './budget-workflow';
-import { estimateSchema, estimateItemsSchema, estimateFreightItemsSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
+import { estimateSchema, estimateItemsSchema, estimateFreightItemsSchema, estimateIcmsItemsSchema, quoteSchema, quoteTotal, type Purchase, type Supplier, type Settings, type Member } from './model';
 import {normalizeQuote,quoteComparable} from './quote-comparison';
 import {parseManagement} from './budget';
-import {estimatePendingMessage,estimateSendBlockMessage,fillEstimateItems,acceptEstimateItem,fillEstimateFreight,acceptEstimateFreight,applyFreightPercent,freightPolicy,EstimateEditError} from './estimate-lines';
+import {estimatePendingMessage,estimateSendBlockMessage,fillEstimateItems,acceptEstimateItem,fillEstimateFreight,acceptEstimateFreight,applyFreightPercent,fillEstimateIcms,acceptEstimateIcms,applyIcmsTable,freightPolicy,EstimateEditError} from './estimate-lines';
 export class FlowError extends Error {constructor(message:string,public status=400){super(message)}}
 export const todayManaus=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date(at));
 export function nextBusinessDay(at:string,holidays:string[]=[]){
@@ -48,26 +48,26 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
       const entries=estimateItemsSchema.parse(b.entries);
       if(entries.some(x=>x.researchedOn>todayManaus(now)))throw new FlowError('A data de pesquisa não pode estar no futuro.');
       try{
-        const filled=fillEstimateItems(old,entries,me.name,now,freightPolicy(old,settings));
+        const filled=fillEstimateItems(old,entries,me.name,now,freightPolicy(old,settings,now));
         data.estimate=filled.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),...filled.edits];
       }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
       action='Revisão da estimativa: preço informado pela diretoria administrativa para '+entries.map(x=>old.items[x.itemIndex].name).join(', ');break;
     }
     case 'accept_estimate_item':{
       permit('administrativo');stage('admin_review');
-      const itemIndex=z.number().int().min(0).max(49).parse(b.itemIndex),freight=b.kind==='freight';
+      const itemIndex=z.number().int().min(0).max(49).parse(b.itemIndex),freight=b.kind==='freight',icms=b.kind==='icms';
       try{
-        // Ticket 06: kind freight aceita o frete por percentual do item.
-        const accepted=(freight?acceptEstimateFreight:acceptEstimateItem)(old,itemIndex,me.name,now,freightPolicy(old,settings));
+        // Ticket 06: kind freight aceita o frete do item; ticket 08: kind icms aceita o ICMS.
+        const accepted=(freight?acceptEstimateFreight:icms?acceptEstimateIcms:acceptEstimateItem)(old,itemIndex,me.name,now,freightPolicy(old,settings,now));
         data.estimate=accepted.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),accepted.edit];
       }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
-      action='Revisão da estimativa: '+(freight?'frete a conferir aceito':'valor a conferir aceito')+' pela diretoria administrativa para '+old.items[itemIndex].name;break;
+      action='Revisão da estimativa: '+(freight?'frete a conferir aceito':icms?'ICMS a conferir aceito':'valor a conferir aceito')+' pela diretoria administrativa para '+old.items[itemIndex].name;break;
     }
     case 'estimate_freight':{
       permit('administrativo');stage('admin_review');
       const entries=estimateFreightItemsSchema.parse(b.entries);
       try{
-        const filled=fillEstimateFreight(old,entries,me.name,now,freightPolicy(old,settings));
+        const filled=fillEstimateFreight(old,entries,me.name,now,freightPolicy(old,settings,now));
         data.estimate=filled.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),...filled.edits];
       }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
       action='Revisão da estimativa: frete informado pela diretoria administrativa para '+entries.map(x=>old.items[x.itemIndex].name).join(', ');break;
@@ -75,12 +75,30 @@ export function transition(old:Purchase,b:any,me:{role:Member['role'];name:strin
     case 'estimate_freight_percent':{
       permit('administrativo');stage('admin_review');
       try{
-        const applied=applyFreightPercent(old,me.name,now,freightPolicy(old,settings));
+        const applied=applyFreightPercent(old,me.name,now,freightPolicy(old,settings,now));
         data.estimate=applied.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),...applied.edits];
       }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
       action='Revisão da estimativa: frete calculado pelo percentual padrão'+(typeof settings.freightPercent==='number'?' ('+settings.freightPercent+'%)':'');break;
     }
-    case 'admin_review':permit('administrativo');stage('admin_review');ensureAdministrativeReview(old);if(!old.estimate)throw new FlowError('A estimativa da internet deve estar concluída antes da aprovação administrativa.');{const pending=estimateSendBlockMessage(old);if(pending)throw new FlowError(pending,409);}data.adminReview=reason();data.status='general_review';action='Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview;break;
+    case 'estimate_icms':{
+      // Ticket 08: UF de origem (tabela vigente aplicada pelo Site) ou valor manual do ICMS.
+      permit('administrativo');stage('admin_review');
+      const entries=estimateIcmsItemsSchema.parse(b.entries);
+      try{
+        const filled=fillEstimateIcms(old,entries,me.name,now,freightPolicy(old,settings,now));
+        data.estimate=filled.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),...filled.edits];
+      }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
+      action='Revisão da estimativa: ICMS informado pela diretoria administrativa para '+entries.map(x=>old.items[x.itemIndex].name+('uf' in x?' (origem '+x.uf+(x.exception?', '+x.exception:'')+')':'')).join(', ');break;
+    }
+    case 'estimate_icms_table':{
+      permit('administrativo');stage('admin_review');
+      try{
+        const applied=applyIcmsTable(old,me.name,now,freightPolicy(old,settings,now));
+        data.estimate=applied.estimate;data.estimateEditHistory=[...(old.estimateEditHistory||[]),...applied.edits];
+      }catch(error){if(error instanceof EstimateEditError)throw new FlowError(error.message,error.status);throw error}
+      action='Revisão da estimativa: ICMS calculado pela tabela vigente';break;
+    }
+    case 'admin_review':permit('administrativo');stage('admin_review');ensureAdministrativeReview(old);if(!old.estimate)throw new FlowError('A estimativa da internet deve estar concluída antes da aprovação administrativa.');{const pending=estimateSendBlockMessage(old,settings.icmsEnabled===true);if(pending)throw new FlowError(pending,409);}data.adminReview=reason();data.status='general_review';action='Diretoria administrativa aprovou e encaminhou à Diretoria Geral: '+data.adminReview;break;
     case 'approve':permit('geral');stage('general_review');if(old.form)throw new FlowError('Use a decisão estruturada do formulário.');if(!old.adminReview||!old.estimate)throw new FlowError('A análise administrativa é obrigatória.');{const pending=estimatePendingMessage(old);if(pending)throw new FlowError(pending,409);}data.generalApproval={actor:me.name,at:now,reason:reason()};data.status='quoting';action='Diretoria geral aprovou a necessidade do pedido, sem aprovação de valor: '+data.generalApproval.reason;break;
     case 'reject':
       // Administrative rejection may happen before, during or after the automatic

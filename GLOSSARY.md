@@ -39,8 +39,8 @@ Custo de entrega até o CEP da escola incluído na estimativa, simulado na loja 
 _Avoid_: Frete real, frete da proposta
 
 **ICMS estimado**:
-Imposto estimado incluído na estimativa como referência de custo, pela tabela de alíquotas mantida pelo Master. Não é apuração fiscal.
-_Avoid_: DIFAL calculado, imposto devido
+Imposto estimado incluído na estimativa como referência de custo: a diferença de alíquota (DIFAL) que a escola paga nas compras de outro estado — alíquota interna do Amazonas menos a interestadual da UF de origem, sobre produto + frete —, pela tabela com vigência mantida pelo Master. Loja do Amazonas e assinaturas digitais: não se aplica. Enquanto o Master não liga o cálculo, fica aguardando contador. Não é apuração fiscal.
+_Avoid_: DIFAL apurado, imposto devido
 
 **Pendência de estimativa**:
 Item para o qual a pesquisa automática não encontrou preço nenhum; precisa de preço manual antes de a solicitação seguir à Diretoria Geral.

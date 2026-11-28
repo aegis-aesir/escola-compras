@@ -112,7 +112,7 @@ try{
  assert.equal(saved.estimate.lines.some(l=>l.kind==='freight'&&l.itemIndex===undefined),false,'sem frete único da solicitação');
  // Total = produtos + frete, frete somado uma vez.
  assert.equal(saved.estimate.total,1000.23,'909,30 + 90,93');assert.equal(saved.estimate.freight,90.93);
- assert.deepEqual(api.estimateComposition(saved),{products:909.3,freight:90.93,total:1000.23});
+ assert.deepEqual(api.estimateComposition(saved),{products:909.3,freight:90.93,icms:0,total:1000.23});
  assert.equal(api.readEstimate(saved).total,saved.estimate.total);
  assert.match(saved.estimate.notes,/percentual padrão \(10%/);
  assert.throws(()=>send(saved),/2 fretes a conferir/i,'frete a conferir bloqueia o envio');
@@ -165,7 +165,7 @@ try{
  assert.match(html,/Composição da estimativa/);
  assert.match(html,new RegExp('<th>Produtos</th><td>'+brl(600).replace(/[$]/,'\\$').replace(/\s/,'.')+'</td>'),'linha de produtos');
  assert.match(html,new RegExp('<th>Frete estimado</th><td></td><td>'+brl(50).replace(/[$]/,'\\$').replace(/\s/,'.')+'</td>'),'linha de frete');
- assert.match(html,new RegExp('<th>Total geral</th><td colSpan="3"><strong>'+brl(650).replace(/[$]/,'\\$').replace(/\s/,'.')+'</strong>'),'total geral');
+ assert.match(html,new RegExp('<th>Total geral</th><td colSpan="5"><strong>'+brl(650).replace(/[$]/,'\\$').replace(/\s/,'.')+'</strong>'),'total geral');
  assert.doesNotMatch(html,/Aceitar frete/);
 
  // 8. Assinaturas digitais: frete não se aplica e não bloqueia.
@@ -195,6 +195,6 @@ try{
  const legacy={...old,estimate:{references:[{unitPrice:129.9,sourceUrl:'https://example.com/a',sourceName:'A',researchedOn:'2026-11-12'},{unitPrice:129.9,sourceUrl:'https://example.com/a',sourceName:'A',researchedOn:'2026-11-12'}],freight:0,freightKnown:false,notes:'Antiga.',total:909.3,recordedAt:now,method:'manual'}};
  assert.throws(()=>send(legacy),/frete pendente em 1 item/i);
  assert.doesNotThrow(()=>send({...legacy,estimate:{...legacy.estimate,freight:30,freightKnown:true,total:939.3}}));
- assert.deepEqual(api.estimateComposition({...legacy,estimate:{...legacy.estimate,freight:30,freightKnown:true,total:939.3}}),{products:909.3,freight:30,total:939.3},'formato antigo: frete único somado uma vez');
+ assert.deepEqual(api.estimateComposition({...legacy,estimate:{...legacy.estimate,freight:30,freightKnown:true,total:939.3}}),{products:909.3,freight:30,icms:0,total:939.3},'formato antigo: frete único somado uma vez');
  console.log('PASS: configuração só do Master com histórico, frete por percentual a conferir, aceite/manual com histórico, total sem dupla contagem, envio à DG exige frete, DG vê composição, assinaturas não se aplica e estimativas antigas.');
 }finally{await mf.dispose();delete globalThis.freightTestEnv;delete globalThis.freightTestUser}

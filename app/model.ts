@@ -3,6 +3,7 @@ import type {RequestDraft,RequestDraftValues} from './request-draft';
 import { z } from 'zod';
 import type {SavedEstimateCriteria} from './estimate-criteria';
 import type {EstimateLine} from './estimate-lines';
+import type {IcmsTable} from './estimate-icms';
 import type { IntegrationSnapshot } from './integration-model';
 import {subscriptionSchema,budgetAmountSchema, type BudgetForm, type ManagementData} from './budget';
 import type { BudgetRecord } from './budget-month';
@@ -22,9 +23,16 @@ export const estimateItemSchema=z.object({itemIndex:z.number().int().min(0).max(
 export const estimateItemsSchema=z.array(estimateItemSchema).min(1).max(50).refine(e=>new Set(e.map(x=>x.itemIndex)).size===e.length,'Informe cada item uma única vez.');
 // action ausente: preço informado (ticket 03). research: nova busca pedida; research_result: resultado dela (ticket 04); accept: valor a conferir aceito (ticket 05).
 // kind freight: linha de frete do item (ticket 06); freight_percent: frete recalculado pelo percentual.
-export type EstimateEdit={itemIndex:number;actor:string;at:string;previous:EstimateLine;line:EstimateLine;kind?:'product'|'freight';action?:'fill'|'research'|'research_result'|'accept'|'freight_percent'};
+// kind icms: linha de ICMS do item (ticket 08); icms_table: ICMS recalculado pela tabela vigente.
+export type EstimateEdit={itemIndex:number;actor:string;at:string;previous:EstimateLine;line:EstimateLine;kind?:'product'|'freight'|'icms';action?:'fill'|'research'|'research_result'|'accept'|'freight_percent'|'icms_table'};
 // Frete manual na revisão (ticket 06): valor da linha (zero aceito), com fonte ou justificativa.
 export const estimateFreightItemsSchema=z.array(z.object({itemIndex:z.number().int().min(0).max(49),value:z.number().nonnegative().max(1000000),sourceName:z.string().trim().min(2,'Informe a fonte ou a justificativa do frete.').max(150),sourceUrl:webUrl.optional()})).min(1).max(50).refine(e=>new Set(e.map(x=>x.itemIndex)).size===e.length,'Informe cada item uma única vez.');
+// ICMS na revisão (ticket 08): UF de origem do item (o Site aplica a tabela vigente, com
+// exceção opcional) ou valor manual com justificativa.
+export const estimateIcmsItemsSchema=z.array(z.union([
+  z.object({itemIndex:z.number().int().min(0).max(49),uf:z.string().regex(/^[A-Z]{2}$/,'Informe a UF de origem.'),exception:z.string().trim().max(80).optional()}),
+  z.object({itemIndex:z.number().int().min(0).max(49),value:z.number().nonnegative().max(1000000),sourceName:z.string().trim().min(2,'Informe a fonte ou a justificativa do ICMS.').max(150)}),
+])).min(1).max(50).refine(e=>new Set(e.map(x=>x.itemIndex)).size===e.length,'Informe cada item uma única vez.');
 export const commercialSchema=z.object({researchedOn:date.optional(),responsible:z.string().trim().max(100).optional(),taxId:z.string().trim().max(30).optional(),email:z.string().trim().max(150).optional(),freightIncluded:z.enum(['Sim','Não','N/A']).optional(),warranty:z.string().trim().max(500).optional(),invoice:z.enum(['Sim','Não','N/A']).optional(),immediateAvailability:z.enum(['Sim','Não','N/A']).optional(),registration:z.enum(['Sim','Não','N/A']).optional(),notes:z.string().trim().max(2000).optional(),documentRef:z.string().trim().max(2000).optional(),priceRating:z.enum(['Favorável','Regular','Desfavorável']).optional(),qualityRating:z.enum(['Favorável','Regular','Desfavorável']).optional(),deliveryRating:z.enum(['Favorável','Regular','Desfavorável']).optional(),paymentRating:z.enum(['Favorável','Regular','Desfavorável']).optional(),warrantyRating:z.enum(['Favorável','Regular','Desfavorável']).optional(),historyRating:z.enum(['Favorável','Regular','Desfavorável']).optional()});
 export const quoteSchema = z.object({supplierId:z.string().uuid(),prices:z.array(budgetAmountSchema).min(1).max(50),freight:z.number().nonnegative().max(1000000),deliveryDays:z.number().int().nonnegative().max(365),conditions:z.string().trim().min(2).max(1000),validUntil:date,otherExpenses:z.number().nonnegative().max(1000000).optional(),commercial:commercialSchema.optional(),...quoteMetadataSchema.shape});
 export type Item = z.infer<typeof itemSchema>;
@@ -39,8 +47,11 @@ export type Member = {id:string;email:string;username?:string;name:string;role:'
 // freightPercent: configuração da estimativa pelo Master (E1, ticket 06), com histórico. schoolCep é
 // legado (ticket 06): preservado nos dados e no histórico, sem uso; o CEP comercial é constante
 // do sistema (app/school-destination.ts, ticket 07).
-export type EstimateSettingsChange={actor:string;at:string;previous:{schoolCep?:string;freightPercent?:number};next:{schoolCep?:string;freightPercent?:number}};
-export type Settings = {name:string;legalName:string;minQuotes:number;departments:string[];holidays?:string[];schoolCep?:string;freightPercent?:number;estimateSettingsHistory?:EstimateSettingsChange[]};
+// icmsEnabled/icmsTables (ticket 08): chave do cálculo do ICMS (padrão desligada) e tabelas de
+// alíquotas por vigência, somente pelo Master; as mudanças entram no mesmo histórico.
+export type EstimateSettingsValue={schoolCep?:string;freightPercent?:number;icmsEnabled?:boolean;icmsTable?:IcmsTable};
+export type EstimateSettingsChange={actor:string;at:string;previous:EstimateSettingsValue;next:EstimateSettingsValue};
+export type Settings = {name:string;legalName:string;minQuotes:number;departments:string[];holidays?:string[];schoolCep?:string;freightPercent?:number;icmsEnabled?:boolean;icmsTables?:IcmsTable[];estimateSettingsHistory?:EstimateSettingsChange[]};
 export const estimateSettingsSchema=z.object({freightPercent:z.number().min(0,'O percentual não pode ser negativo.').max(100,'O percentual deve ser de no máximo 100%.').refine(v=>Math.abs(v*100-Math.round(v*100))<1e-6,'Use até duas casas decimais.').optional()});
 export type Activity = {id:string;entity:string;actor:string;action:string;at:string};
 export type Snapshot = {budgetRecords?:BudgetRecord[];requests:Purchase[];suppliers:Supplier[];members:Member[];settings:Settings;activity:Activity[];integrations?:IntegrationSnapshot;me:{id:string;name:string;email:string;username?:string;role:Member['role'];department:string}};

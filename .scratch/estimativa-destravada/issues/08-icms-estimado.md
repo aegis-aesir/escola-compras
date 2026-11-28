@@ -6,10 +6,10 @@
 
 **Blocked by:** 06.
 
-**Status:** ready-for-agent
+**Status:** done (28/11/2026, branch codex/compras; DIFAL conforme a premissa do usuário; a ponte não muda — UF informada pela Diretoria Administrativa enquanto a pesquisa não a trouxer)
 
-- [ ] Chave desligada: linha aguardando contador, envio à Diretoria Geral permitido
-- [ ] Chave ligada: alíquota aplicada pela tabela vigente e pelo estado de origem; tabela registrada na estimativa
-- [ ] Origem incerta gera ICMS a conferir
-- [ ] Somente Master altera tabela e chave, com histórico
-- [ ] Diretoria Geral vê produtos, frete, ICMS e total separados
+- [x] Chave desligada: linha aguardando contador, envio à Diretoria Geral permitido
+- [x] Chave ligada: alíquota aplicada pela tabela vigente e pelo estado de origem; tabela registrada na estimativa
+- [x] Origem incerta gera ICMS a conferir
+- [x] Somente Master altera tabela e chave, com histórico
+- [x] Diretoria Geral vê produtos, frete, ICMS e total separados

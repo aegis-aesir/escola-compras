@@ -45,7 +45,7 @@ export function BudgetRecordPanel(props:PanelProps){return <BudgetRecordContent 
 function BudgetRecordContent({request:r,data,busy,onSave,onEdit,estimates,quotations}:PanelProps){
  const [management,setManagement]=useState<Record<string,string|number|boolean>>(()=>({...r.management,...(!r.archived&&['admin','administrativo'].includes(data.me.role)?{validatedPriority:r.management?.validatedPriority||r.priority}:{})}));
  const [notice,setNotice]=useState(''),[localError,setLocalError]=useState('');
- const estimatePending=estimateSendBlockMessage(r);
+ const estimatePending=estimateSendBlockMessage(r,data.settings?.icmsEnabled===true);
  const [generalReturnResponse,setGeneralReturnResponse]=useState('');
  const [choice,setChoice]=useState('approve'),[itemIndexes,setItemIndexes]=useState<number[]>([]),[quantities,setQuantities]=useState<Record<number,number>>({});
  const admin=!r.archived&&['admin','administrativo'].includes(data.me.role),general=!r.archived&&['admin','geral'].includes(data.me.role),financial=data.me.role==='financeiro'||!!r.archived;
