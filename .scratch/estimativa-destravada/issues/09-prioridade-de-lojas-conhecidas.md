@@ -4,8 +4,8 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Com resultados simulados misturados, as páginas de lojas conhecidas são analisadas primeiro
-- [ ] Sem loja conhecida nos resultados, o comportamento atual permanece
-- [ ] Lista de lojas configurável sem mudar código da ponte
+- [x] Com resultados simulados misturados, as páginas de lojas conhecidas são analisadas primeiro
+- [x] Sem loja conhecida nos resultados, o comportamento atual permanece
+- [x] Lista de lojas configurável sem mudar código da ponte

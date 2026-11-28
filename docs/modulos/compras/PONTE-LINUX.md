@@ -77,3 +77,7 @@ A ponte aceita `ESTRELAS_RESEARCH_BACKEND=hermes` e `ESTRELAS_HERMES_SSH_HOST=10
 Para aplicar, validar primeiro a busca, a leitura e a análise com dados de teste e sem consultar a fila real. Guardar cópias de `client.mjs` e `bridge.env`, instalar `client.mjs` e `hermes-research.mjs` da mesma revisão, configurar as duas variáveis e reiniciar somente a ponte. As opções de navegador e checkout precisam estar desligadas para esta rota. Verificar o protocolo `criteria-v1`, o primeiro ciclo, o sinal recebido no CT 110 e os bloqueios de envio. A rota de WhatsApp permanece no OpenClaw.
 
 Para voltar, remover `ESTRELAS_RESEARCH_BACKEND` ou definir `openclaw`, reiniciar somente a ponte e conferir o primeiro ciclo e o monitor. Uma falha do Hermes retorna erro à fila pela regra existente de retry. A ponte não muda de provedor automaticamente.
+
+### Lojas conhecidas na estimativa (E1, ticket 09)
+
+Na estimativa, a ponte analisa primeiro as páginas de lojas nacionais conhecidas e depois os demais resultados, na ordem da busca. Lista padrão, em ordem de prioridade: `mercadolivre.com.br`, `magazineluiza.com.br`, `amazon.com.br`, `kabum.com.br`, `leroymerlin.com.br` (subdomínios contam; domínios parecidos não). Para trocar a lista sem mudar código, definir `ESTRELAS_KNOWN_STORES` no arquivo de ambiente do CT 105 com domínios separados por vírgula; `none` desliga a priorização. Reiniciar somente a ponte. Sem loja conhecida nos resultados, o comportamento é o anterior. Teste: `node --test integrations/openclaw/known-stores.test.mjs`.

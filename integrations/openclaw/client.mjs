@@ -2,7 +2,7 @@ import {researchMercadoLivre} from './mercado-browser.mjs';
 import {analyzePages} from './agent-estimator.mjs';
 import {classifyEvidence} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
-import { isGoogleMapsUrl } from './search-utils.mjs';
+import { isGoogleMapsUrl, knownStores, prioritizeKnownStores } from './search-utils.mjs';
 import { routeTool } from './agent-routing.mjs';
 import {callHermesResearch,hermesAnalysis,hermesResearchConfig,hermesTool} from './hermes-research.mjs';
 import { quotationJobMessage } from './quotation-template.mjs';
@@ -20,7 +20,7 @@ export function bridgeConfig(env=process.env) {
   if(!['http:','https:'].includes(gateway.protocol)||!['127.0.0.1','localhost','[::1]'].includes(gateway.hostname)||gateway.username||gateway.password||gateway.pathname!=='/'||gateway.search||gateway.hash)throw new Error('O gateway deve permanecer no loopback da máquina OpenClaw.');
   const scoped=!!env.ESTRELAS_TEST_SEND_GRANT;
   const hermesResearch=hermesResearchConfig(env);
-  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,hermesResearch,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,checkoutFreight:env.ESTRELAS_BROWSER_CHECKOUT_FREIGHT==='true'&&env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
+  return {site:site.origin,knownStores:knownStores(env.ESTRELAS_KNOWN_STORES),gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,hermesResearch,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,checkoutFreight:env.ESTRELAS_BROWSER_CHECKOUT_FREIGHT==='true'&&env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
 }
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());
@@ -114,6 +114,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze,runHermes=call
     }catch{if(!browserResearch)throw new Error('Pesquisa indisponível.');}
     // Mercado Livre must use its authenticated browser when this mode is enabled.
     if(config.browserResearch)webSources=webSources.filter(s=>!/(^|\.)mercadolivre\.com(?:\.br)?$/.test(new URL(s.url).hostname));
+    if(job.type==='estimate_search')webSources=prioritizeKnownStores(webSources,config.knownStores);
     const sources=[...browserSources,...webSources].slice(0,5);
     if(job.type==='estimate_search'&&job.item) {
       const pages=await Promise.all(webSources.slice(0,Math.max(0,3-browserPages.length)).map(async source=>{
