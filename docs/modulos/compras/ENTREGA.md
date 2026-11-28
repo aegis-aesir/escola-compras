@@ -644,3 +644,7 @@ Build, testes HTTP, testes de interface e integrações reais não foram executa
 Não há pendência de implementação neste escopo, migração, variável, segredo ou configuração a aplicar. Integração na main e publicação pertencem exclusivamente ao coordenador; esta entrega envia somente `codex/compras`.
 
 Para revisar, conferir o SHA informado no chat e o diff do commit: somente os oito arquivos Markdown acima devem constar. Comparar os textos de adiamento com `reapplyDeferredRequest`/`consolidateDeferredDrafts`, o Financeiro com `canFinanceReadRequest`/`financeProjection` e a porta com `.ceea-worktree.json`/`localDevelopmentBase`. Na consulta do guia de formulários, conferir também a explicação do prazo da decisão. Não é necessário testar com dados reais para revisar esta entrega.
+
+## Pesquisa Web via Hermes
+
+A ponte tem um seletor com OpenClaw como padrão e suporte ao adaptador restrito do Hermes. A alternativa usa a identidade exclusiva do CT 105 e a chave do host fixada para o CT 104. O teste de integração exercita busca, extração, análise, rejeição de preço adulterado e volta à seleção anterior. A ativação no runner de produção é uma etapa separada, descrita no [guia da ponte Linux](PONTE-LINUX.md).

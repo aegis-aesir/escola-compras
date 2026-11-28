@@ -4,6 +4,7 @@ import {classifyEvidence} from './price-evidence.mjs';
 import { createHmac } from 'node:crypto';
 import { isGoogleMapsUrl } from './search-utils.mjs';
 import { routeTool } from './agent-routing.mjs';
+import {callHermesResearch,hermesAnalysis,hermesResearchConfig,hermesTool} from './hermes-research.mjs';
 import { quotationJobMessage } from './quotation-template.mjs';
 import {parseTestSendGrant,matchesTestSendJob} from './test-send-grant.mjs';
 
@@ -18,7 +19,8 @@ export function bridgeConfig(env=process.env) {
   const gateway=new URL(env.OPENCLAW_GATEWAY_URL||'http://127.0.0.1:18789');
   if(!['http:','https:'].includes(gateway.protocol)||!['127.0.0.1','localhost','[::1]'].includes(gateway.hostname)||gateway.username||gateway.password||gateway.pathname!=='/'||gateway.search||gateway.hash)throw new Error('O gateway deve permanecer no loopback da máquina OpenClaw.');
   const scoped=!!env.ESTRELAS_TEST_SEND_GRANT;
-  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,checkoutFreight:env.ESTRELAS_BROWSER_CHECKOUT_FREIGHT==='true'&&env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
+  const hermesResearch=hermesResearchConfig(env);
+  return {site:site.origin,gateway:gateway.origin,secret:env.INTEGRATION_SECRET,serviceToken:env.ESTRELAS_SITES_SERVICE_TOKEN,gatewayToken:env.OPENCLAW_GATEWAY_TOKEN,hermesResearch,browserResearch:env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,checkoutFreight:env.ESTRELAS_BROWSER_CHECKOUT_FREIGHT==='true'&&env.ESTRELAS_BROWSER_RESEARCH==='true'&&!local,contactsSync:true,canSend:env.ESTRELAS_ENABLE_SEND==='true'&&!local&&!scoped,testSendGrant:!local?parseTestSendGrant(env.ESTRELAS_TEST_SEND_GRANT):undefined,testSendMode:scoped};
 }
 export async function callSite(config,body,fetcher=fetch) {
   const raw=JSON.stringify(body),timestamp=String(Date.now());
@@ -60,9 +62,17 @@ export function searchSources(result) {
   }
   return sources;
 }
-export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) {
+export async function executeJob(config,job,fetcher=fetch,analyze,runHermes=callHermesResearch) {
   const result={jobId:job.id,leaseToken:job.leaseToken};
-  const invokeJob=body=>invoke(config,routeTool(job,body),fetcher);
+  const hermes=config.hermesResearch;
+  const invokeJob=body=>{
+    const routed=routeTool(job,body);
+    if(hermes&&routed.agentId==='pesquisa-web')return runHermes(hermes,hermesTool(routed));
+    return invoke(config,routed,fetcher);
+  };
+  const analyzeJob=analyze||(hermes
+    ? (request,pages)=>runHermes(hermes,hermesAnalysis(request,pages))
+    : analyzePages);
   if(job.type==='whatsapp_quote') {
     // Never rely on OpenClaw's HTTP dryRun flag: that flag is ignored by the
     // installed gateway. Two independent switches are required before claim/send.
@@ -115,7 +125,7 @@ export async function executeJob(config,job,fetcher=fetch,analyze=analyzePages) 
       }));
       const available=[...browserPages,...pages.filter(Boolean)];
       if(!available.length)return {...result,outcome:'success',sources,browserResearch,analysisReason:browserResearch?.detail||'Não foi possível ler as páginas dos produtos.'};
-      const analysis=await analyze(job,available);
+      const analysis=await analyzeJob(job,available);
       const selected=available.find(p=>p.url===analysis.sourceUrl);
       const evidence=selected?{...selected,analysis}:undefined;
       return {...result,outcome:'success',sources,browserResearch,priceEvidence:evidence&&classifyEvidence(job.item,evidence).outcome!=='pending'?evidence:undefined,analysisReason:typeof analysis.reason==='string'&&analysis.reason.trim()?analysis.reason.slice(0,800):'Análise sem evidência validável.'};
